@@ -1,0 +1,46 @@
+{
+  "name": "eslint-plugin-jupyter",
+  "version": "1.0.0",
+  "description": "ESLint plugin for Jupyter core and extensions with early error catching and best practices enforcement",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "eslint",
+    "eslint-plugin",
+    "jupyter",
+    "jupyterlab",
+    "extensions",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/eslint": "^8.56.2",
+    "@types/estree": "^1.0.5",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.11.5",
+    "@typescript-eslint/parser": "^6.19.1",
+    "@typescript-eslint/utils": "^6.19.1",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "eslint": ">=8.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
+
