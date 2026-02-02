@@ -97,8 +97,7 @@ const jupyterPluginActivationArgs: Rule.RuleModule = {
     docs: {
       description:
         'Ensure JupyterLab plugin activation function arguments match requires and optional tokens in order',
-      category: 'Best Practices',
-      recommended: true,
+      recommended: 'recommended',
       url: 'https://github.com/jupyter-extensions/eslint-plugin-jupyter',
     },
     messages: {

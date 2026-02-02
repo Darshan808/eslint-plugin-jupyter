@@ -9,8 +9,7 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
     docs: {
       description:
         'Ensure JupyterLab commands include describedBy property',
-      category: 'Best Practices',
-      recommended: true,
+      recommended: 'recommended',
       url: 'https://github.com/jupyter-extensions/eslint-plugin-jupyter',
     },
     messages: {

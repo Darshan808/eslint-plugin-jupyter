@@ -11,15 +11,6 @@ const plugin = {
   configs: {
     recommended: {
       files: ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx'],
-      plugins: {
-        jupyter: {
-          rules: {
-            'plugin-activation-args': pluginActivationArgs,
-            'command-described-by': commandDescribedBy,
-            'plugin-description': pluginDescription,
-          },
-        },
-      },
       rules: {
         'jupyter/plugin-activation-args': 'error',
         'jupyter/command-described-by': 'error',

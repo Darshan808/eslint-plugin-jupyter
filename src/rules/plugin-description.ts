@@ -33,8 +33,7 @@ const jupyterPluginDescription: Rule.RuleModule = {
     docs: {
       description:
         'Ensure all JupyterLab plugins have a description property',
-      category: 'Best Practices',
-      recommended: true,
+      recommended: 'recommended',
       url: 'https://github.com/jupyter-extensions/eslint-plugin-jupyter',
     },
     messages: {
