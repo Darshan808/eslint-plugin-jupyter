@@ -1,6 +1,6 @@
 import { Rule } from 'eslint';
 import * as ESTree from 'estree';
-import { hasJupyterPluginType, getPluginId } from '../utils/plugin-utils'
+import { hasJupyterPluginType, getPluginId } from '../utils/plugin-utils';
 
 /**
  * Checks if an object expression has a description property
@@ -11,7 +11,10 @@ function hasDescriptionProperty(obj: ESTree.ObjectExpression): boolean {
       let keyName: string | null = null;
       if (prop.key.type === 'Identifier') {
         keyName = prop.key.name;
-      } else if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') {
+      } else if (
+        prop.key.type === 'Literal' &&
+        typeof prop.key.value === 'string'
+      ) {
         keyName = prop.key.value;
       }
       if (keyName === 'description') {
@@ -31,18 +34,17 @@ const jupyterPluginDescription: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        'Ensure all JupyterLab plugins have a description property',
+      description: 'Ensure all JupyterLab plugins have a description property',
       recommended: 'recommended',
-      url: 'https://github.com/jupyter-extensions/eslint-plugin-jupyter',
+      url: 'https://github.com/jupyter-extensions/eslint-plugin-jupyter'
     },
     messages: {
       missingDescription:
         'JupyterLab plugin{{ pluginId }} is missing a "description" property.',
       emptyDescription:
-        'JupyterLab plugin{{ pluginId }} has an empty "description" property.',
+        'JupyterLab plugin{{ pluginId }} has an empty "description" property.'
     },
-    schema: [],
+    schema: []
   },
 
   create(context: Rule.RuleContext): Rule.RuleListener {
@@ -69,12 +71,12 @@ const jupyterPluginDescription: Rule.RuleModule = {
           context.report({
             node: pluginObj,
             messageId: 'missingDescription',
-            data: { pluginId: pluginIdSuffix },
+            data: { pluginId: pluginIdSuffix }
           });
         }
-      },
+      }
     };
-  },
+  }
 };
 
 export = jupyterPluginDescription;

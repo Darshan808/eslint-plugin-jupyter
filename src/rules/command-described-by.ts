@@ -7,16 +7,15 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        'Ensure JupyterLab commands include describedBy property',
+      description: 'Ensure JupyterLab commands include describedBy property',
       recommended: 'recommended',
-      url: 'https://github.com/jupyter-extensions/eslint-plugin-jupyter',
+      url: 'https://github.com/jupyter-extensions/eslint-plugin-jupyter'
     },
     messages: {
       missingDescribedBy:
-        'Command "{{ commandId }}" is missing the "describedBy" property.',
+        'Command "{{ commandId }}" is missing the "describedBy" property.'
     },
-    schema: [],
+    schema: []
   },
 
   create(context: Rule.RuleContext): Rule.RuleListener {
@@ -39,7 +38,10 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
 
         // Extract command ID for error message
         let commandId = 'unknown';
-        if (commandIdArg.type === 'Literal' && typeof commandIdArg.value === 'string') {
+        if (
+          commandIdArg.type === 'Literal' &&
+          typeof commandIdArg.value === 'string'
+        ) {
           commandId = commandIdArg.value;
         } else if (commandIdArg.type === 'Identifier') {
           commandId = commandIdArg.name;
@@ -70,7 +72,7 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
           context.report({
             node: callExpr,
             messageId: 'missingDescribedBy',
-            data: { commandId },
+            data: { commandId }
           });
           return;
         }
@@ -78,9 +80,9 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
         if (describedByProp.value.type !== 'ObjectExpression') {
           return;
         }
-      },
+      }
     };
-  },
+  }
 };
 
 export = jupyterCommandDescribedBy;

@@ -6,7 +6,7 @@ const plugin = {
   rules: {
     'plugin-activation-args': pluginActivationArgs,
     'command-described-by': commandDescribedBy,
-    'plugin-description': pluginDescription,
+    'plugin-description': pluginDescription
   },
   configs: {
     recommended: {
@@ -14,10 +14,10 @@ const plugin = {
       rules: {
         'jupyter/plugin-activation-args': 'error',
         'jupyter/command-described-by': 'error',
-        'jupyter/plugin-description': 'error',
-      },
-    },
-  },
+        'jupyter/plugin-description': 'error'
+      }
+    }
+  }
 };
 
 export = plugin;

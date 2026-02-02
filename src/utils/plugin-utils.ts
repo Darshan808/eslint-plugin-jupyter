@@ -12,7 +12,10 @@ export function getObjectProperties(
       let keyName: string | null = null;
       if (prop.key.type === 'Identifier') {
         keyName = prop.key.name;
-      } else if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') {
+      } else if (
+        prop.key.type === 'Literal' &&
+        typeof prop.key.value === 'string'
+      ) {
         keyName = prop.key.value;
       }
       if (keyName) {
@@ -29,7 +32,9 @@ export function getObjectProperties(
 export function hasJupyterPluginType(node: ESTree.VariableDeclarator): boolean {
   // Check if the variable declarator has a type annotation
   const id = node.id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ((id as any).typeAnnotation) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const typeAnnotation = (id as any).typeAnnotation;
     if (typeAnnotation.typeAnnotation) {
       const typeNode = typeAnnotation.typeAnnotation;
@@ -52,7 +57,10 @@ export function getPluginId(obj: ESTree.ObjectExpression): string | null {
       let keyName: string | null = null;
       if (prop.key.type === 'Identifier') {
         keyName = prop.key.name;
-      } else if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') {
+      } else if (
+        prop.key.type === 'Literal' &&
+        typeof prop.key.value === 'string'
+      ) {
         keyName = prop.key.value;
       }
       if (keyName === 'id' && prop.value.type === 'Literal') {
@@ -70,12 +78,14 @@ export function getPluginId(obj: ESTree.ObjectExpression): string | null {
  * Extracts identifier names from an array expression
  * Useful for extracting token names from requires/optional arrays
  */
-export function extractIdentifierNames(arrayNode: ESTree.ArrayExpression): string[] {
+export function extractIdentifierNames(
+  arrayNode: ESTree.ArrayExpression
+): string[] {
   return arrayNode.elements
     .filter((elem): elem is ESTree.Identifier => {
       return elem !== null && elem.type === 'Identifier';
     })
-    .map((id) => id.name);
+    .map(id => id.name);
 }
 
 /**
@@ -83,27 +93,33 @@ export function extractIdentifierNames(arrayNode: ESTree.ArrayExpression): strin
  * Returns the type name if it has a type annotation, null otherwise
  */
 export function extractParameterType(param: ESTree.Identifier): string | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ((param as any).typeAnnotation) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const annotation = (param as any).typeAnnotation;
     if (annotation && annotation.typeAnnotation) {
       const typeNode = annotation.typeAnnotation;
-      
+
       // Handle TSTypeReference (e.g., type: IType)
       if (typeNode.type === 'TSTypeReference' && typeNode.typeName) {
         if (typeNode.typeName.type === 'Identifier') {
           return typeNode.typeName.name;
         }
       }
-      
+
       // Handle TSUnionType (e.g., type: IType | null)
       if (typeNode.type === 'TSUnionType') {
         const types = typeNode.types;
         if (Array.isArray(types) && types.length > 0) {
           const nonNullType = types.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (t: any) => t.type !== 'TSNullKeyword'
           );
           if (nonNullType && nonNullType.type === 'TSTypeReference') {
-            if (nonNullType.typeName && nonNullType.typeName.type === 'Identifier') {
+            if (
+              nonNullType.typeName &&
+              nonNullType.typeName.type === 'Identifier'
+            ) {
               return nonNullType.typeName.name;
             }
           }
@@ -111,6 +127,6 @@ export function extractParameterType(param: ESTree.Identifier): string | null {
       }
     }
   }
-  
+
   return null;
 }

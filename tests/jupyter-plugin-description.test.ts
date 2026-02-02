@@ -6,9 +6,9 @@ const ruleTester = new RuleTester({
     parser: require('@typescript-eslint/parser'),
     parserOptions: {
       ecmaVersion: 2020,
-      sourceType: 'module',
-    },
-  },
+      sourceType: 'module'
+    }
+  }
 });
 
 ruleTester.run('plugin-description', pluginDescription, {
@@ -23,7 +23,7 @@ ruleTester.run('plugin-description', pluginDescription, {
             console.log('Activated');
           }
         };
-      `,
+      `
     },
     {
       code: `
@@ -33,8 +33,8 @@ ruleTester.run('plugin-description', pluginDescription, {
           description: description,
           activate: (app: JupyterFrontEnd) => {}
         };
-      `,
-    },
+      `
+    }
   ],
 
   invalid: [
@@ -50,9 +50,9 @@ ruleTester.run('plugin-description', pluginDescription, {
       `,
       errors: [
         {
-          messageId: 'missingDescription',
-        },
-      ],
+          messageId: 'missingDescription'
+        }
+      ]
     },
     {
       code: `
@@ -64,9 +64,9 @@ ruleTester.run('plugin-description', pluginDescription, {
       `,
       errors: [
         {
-          messageId: 'missingDescription',
-        },
-      ],
+          messageId: 'missingDescription'
+        }
+      ]
     }
-  ],
+  ]
 });

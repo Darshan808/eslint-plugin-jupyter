@@ -6,15 +6,15 @@ const ruleTester = new RuleTester({
     parser: require('@typescript-eslint/parser'),
     parserOptions: {
       ecmaVersion: 2020,
-      sourceType: 'module',
-    },
-  },
+      sourceType: 'module'
+    }
+  }
 });
 
 ruleTester.run('command-described-by', commandDescribedBy, {
-    valid: [
-        {
-            code: `
+  valid: [
+    {
+      code: `
                 app.commands.addCommand(CommandIDs.noArgsTest, {
                     label: 'Simple Test',
                     execute: () => {
@@ -27,10 +27,10 @@ ruleTester.run('command-described-by', commandDescribedBy, {
                         }
                     }
                 });
-            `,
-        },
-        {
-            code: `
+            `
+    },
+    {
+      code: `
                 test.addCommand('test:execute', {
                     label: 'Test Execute',
                     execute: (args) => {
@@ -45,13 +45,13 @@ ruleTester.run('command-described-by', commandDescribedBy, {
                         }
                     }
                 });
-            `,
-        },
-    ],
+            `
+    }
+  ],
 
-    invalid: [
-        {
-            code: `
+  invalid: [
+    {
+      code: `
                 app.commands.addCommand(CommandIDs.test, {
                     label: 'Test Command',
                     execute: (args) => {
@@ -59,14 +59,14 @@ ruleTester.run('command-described-by', commandDescribedBy, {
                     }
                 });
             `,
-            errors: [
-                {
-                    messageId: 'missingDescribedBy',
-                },
-            ],
-        },
+      errors: [
         {
-            code: `
+          messageId: 'missingDescribedBy'
+        }
+      ]
+    },
+    {
+      code: `
                 test.addCommand(CommandIDs.test, {
                     label: 'Test Command',
                     execute: () => {
@@ -74,11 +74,11 @@ ruleTester.run('command-described-by', commandDescribedBy, {
                     }
                 });
             `,
-            errors: [
-                {
-                    messageId: 'missingDescribedBy',
-                },
-            ],
-        },
-    ],
+      errors: [
+        {
+          messageId: 'missingDescribedBy'
+        }
+      ]
+    }
+  ]
 });

@@ -26,14 +26,14 @@ module.exports = [
   {
     files: ['**/*.ts', '**/*.tsx'],
     plugins: {
-      jupyter: jupyterPlugin,
+      jupyter: jupyterPlugin
     },
     rules: {
       'jupyter/command-described-by': 'warn',
       'jupyter/plugin-activation-args': 'warn',
-      'jupyter/plugin-description': 'warn',
-    },
-  },
+      'jupyter/plugin-description': 'warn'
+    }
+  }
 ];
 ```
 

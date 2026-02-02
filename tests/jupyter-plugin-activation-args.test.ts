@@ -6,9 +6,9 @@ const ruleTester = new RuleTester({
     parser: require('@typescript-eslint/parser'),
     parserOptions: {
       ecmaVersion: 2020,
-      sourceType: 'module',
-    },
-  },
+      sourceType: 'module'
+    }
+  }
 });
 
 ruleTester.run('plugin-activation-args', pluginActivationArgs, {
@@ -23,7 +23,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
             console.log('Activated');
           }
         };
-      `,
+      `
     },
     {
       // Both requires and optional token
@@ -42,7 +42,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
             console.log('Activated');
           }
         };
-      `,
+      `
     },
     {
       // Only optional tokens
@@ -58,7 +58,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
             console.log('Activated');
           }
         };
-      `,
+      `
     },
     {
       // No requires or optional
@@ -69,7 +69,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
             console.log('Activated');
           }
         };
-      `,
+      `
     },
     {
       // Empty requires and optional arrays
@@ -82,7 +82,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
             console.log('Activated');
           }
         };
-      `,
+      `
     },
     {
       // Multiple required and optional tokens
@@ -104,8 +104,8 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
             console.log('Activated');
           }
         };
-      `,
-    },
+      `
+    }
   ],
 
   invalid: [
@@ -123,13 +123,13 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'mismatchedOrder',
-          data: { arg: 'rendermime' },
+          data: { arg: 'rendermime' }
         },
         {
           messageId: 'mismatchedOrder',
-          data: { arg: 'tracker' },
-        },
-      ],
+          data: { arg: 'tracker' }
+        }
+      ]
     },
     {
       // Missing argument from requires
@@ -144,13 +144,13 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `,
       errors: [
         {
-          messageId: 'wrongArgumentCount',
+          messageId: 'wrongArgumentCount'
         },
         {
           messageId: 'missingArgument',
-          data: { token: 'IRenderMimeRegistry' },
-        },
-      ],
+          data: { token: 'IRenderMimeRegistry' }
+        }
+      ]
     },
     {
       // Extra argument not in requires/optional
@@ -165,13 +165,13 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `,
       errors: [
         {
-          messageId: 'wrongArgumentCount',
+          messageId: 'wrongArgumentCount'
         },
         {
           messageId: 'extraArgument',
-          data: { arg: 'extraArg' },
-        },
-      ],
+          data: { arg: 'extraArg' }
+        }
+      ]
     },
     {
       // app is not first argument
@@ -187,9 +187,9 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'appNotFirst',
-          data: { arg: 'tracker' },
-        },
-      ],
+          data: { arg: 'tracker' }
+        }
+      ]
     },
     {
       // Wrong order in requires and optional mix
@@ -212,17 +212,17 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'mismatchedOrder',
-          data: { arg: 'translator' },
+          data: { arg: 'translator' }
         },
         {
           messageId: 'mismatchedOrder',
-          data: { arg: 'rendermime' },
+          data: { arg: 'rendermime' }
         },
         {
           messageId: 'mismatchedOrder',
-          data: { arg: 'toolbarRegistry' },
-        },
-      ],
+          data: { arg: 'toolbarRegistry' }
+        }
+      ]
     },
     {
       // Missing optional argument
@@ -242,13 +242,13 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `,
       errors: [
         {
-          messageId: 'wrongArgumentCount',
+          messageId: 'wrongArgumentCount'
         },
         {
           messageId: 'missingArgument',
-          data: { token: 'ITranslator' },
-        },
-      ],
+          data: { token: 'ITranslator' }
+        }
+      ]
     },
     {
       // Too many arguments
@@ -268,17 +268,17 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `,
       errors: [
         {
-          messageId: 'wrongArgumentCount',
+          messageId: 'wrongArgumentCount'
         },
         {
           messageId: 'extraArgument',
-          data: { arg: 'extraArg1' },
+          data: { arg: 'extraArg1' }
         },
         {
           messageId: 'extraArgument',
-          data: { arg: 'extraArg2' },
-        },
-      ],
+          data: { arg: 'extraArg2' }
+        }
+      ]
     },
     {
       // No requires or optional but extra token(s)
@@ -292,13 +292,13 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `,
       errors: [
         {
-          messageId: 'wrongArgumentCount',
+          messageId: 'wrongArgumentCount'
         },
         {
           messageId: 'extraArgument',
-          data: { arg: 'test' },
-        },
-      ],
+          data: { arg: 'test' }
+        }
+      ]
     }
-  ],
+  ]
 });
