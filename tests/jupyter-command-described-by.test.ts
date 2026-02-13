@@ -1,10 +1,9 @@
 import { RuleTester } from 'eslint';
 import commandDescribedBy from '../src/rules/command-described-by';
-import parser from '@typescript-eslint/parser';
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    parser,
+    parser: require('@typescript-eslint/parser'),
     parserOptions: {
       ecmaVersion: 2020,
       sourceType: 'module'

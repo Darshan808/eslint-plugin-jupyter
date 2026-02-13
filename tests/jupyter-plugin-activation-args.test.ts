@@ -1,10 +1,9 @@
 import { RuleTester } from 'eslint';
 import pluginActivationArgs from '../src/rules/plugin-activation-args';
-import parser from '@typescript-eslint/parser';
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    parser,
+    parser: require('@typescript-eslint/parser'),
     parserOptions: {
       ecmaVersion: 2020,
       sourceType: 'module'
@@ -133,7 +132,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         };
       `
     },
-    {
+     {
       code: `
         const plugin = {
           id: 'test-plugin',
@@ -143,7 +142,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           }
         };
       `
-    }
+    },
   ],
 
   invalid: [
