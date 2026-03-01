@@ -22,6 +22,8 @@ interface RequiresOptionalInfo {
   optional: string[];
 }
 
+const DEFAULT_ALLOWED_FIRST_ARGUMENT_NAMES = ['app', '_app', '_'];
+
 /**
  * Finds the activate function in the plugin object
  */
@@ -111,6 +113,23 @@ function extractRequiresOptional(
   return result;
 }
 
+/**
+ * Checks if a type name is compatible with JupyterFrontEnd
+ */
+function isCompatibleWithJupyterFrontEnd(typeName: string | null): boolean {
+  if (!typeName) {
+    return true; // If we can't check, we allow it
+  }
+
+  const compatibleTypes = [
+    'JupyterFrontEnd',
+    'JupyterLab',
+    'Application'
+  ];
+
+  return compatibleTypes.includes(typeName);
+}
+
 const jupyterPluginActivationArgs: Rule.RuleModule = {
   meta: {
     type: 'problem',
@@ -128,15 +147,37 @@ const jupyterPluginActivationArgs: Rule.RuleModule = {
       extraArgument:
         'Activation argument "{{ arg }}" is not in requires/optional tokens.',
       appNotFirst:
-        'First activation argument must be "app" (JupyterFrontEnd), got "{{ arg }}".',
+        'First activation argument must be one of [{{ allowedNames }}] (JupyterFrontEnd), got "{{ arg }}".',
+      invalidAppType:
+        'First activation argument "{{ arg }}" has invalid type "{{ type }}". Expected JupyterFrontEnd, JupyterLab, or Application.',
       wrongArgumentCount:
         'Expected {{ expected }} activation arguments (app + {{ tokenCount }} tokens), got {{ actual }}.'
     },
     fixable: 'code',
-    schema: []
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          allowedFirstArgumentNames: {
+            type: 'array',
+            items: {
+              type: 'string'
+            },
+            default: DEFAULT_ALLOWED_FIRST_ARGUMENT_NAMES,
+            description: 'Allowed names for the first activation argument (JupyterFrontEnd)'
+          }
+        },
+        additionalProperties: false
+      }
+    ]
   },
 
   create(context: Rule.RuleContext): Rule.RuleListener {
+    // Get configuration options
+    const options = context.options[0] || {};
+    const allowedFirstArgumentNames: string[] =
+      options.allowedFirstArgumentNames || DEFAULT_ALLOWED_FIRST_ARGUMENT_NAMES;
+
     return {
       VariableDeclarator(node: ESTree.Node) {
         const varDecl = node as ESTree.VariableDeclarator;
@@ -159,15 +200,38 @@ const jupyterPluginActivationArgs: Rule.RuleModule = {
           const expectedCount = 1 + requires.length + optional.length;
           const expectedTokensWithoutApp = [...requires, ...optional];
 
-          // Validation 1: Check if first argument is 'app'
-          if (params.length > 0 && params[0] !== 'app') {
+          if(expectedCount === 1 && params.length === 0) {
+            // Special case, not invalid
+            return;
+          }
+
+          // Validation 1a: Check if first argument is one of the allowed names
+          if (params.length > 0 && !allowedFirstArgumentNames.includes(params[0])) {
             context.report({
               node: activateInfo.node,
               messageId: 'appNotFirst',
-              data: { arg: params[0] }
+              data: {
+                arg: params[0],
+                allowedNames: allowedFirstArgumentNames.map(name => `"${name}"`).join(', ')
+              }
             });
-            // Skip further as the structure is fundamentally wrong
             return;
+          }
+
+          // Validation 1b: Check if first argument type is compatible with JupyterFrontEnd
+          if (params.length > 0 && paramTypes.length > 0) {
+            const firstParamType = paramTypes[0];
+            if (!isCompatibleWithJupyterFrontEnd(firstParamType)) {
+              context.report({
+                node: activateInfo.node,
+                messageId: 'invalidAppType',
+                data: {
+                  arg: params[0],
+                  type: firstParamType || 'unknown'
+                }
+              });
+              return;
+            }
           }
 
           // Validation 2: Check if argument count matches
@@ -184,7 +248,7 @@ const jupyterPluginActivationArgs: Rule.RuleModule = {
           }
 
           // Validation 3: If parameters have type annotations, validate order
-          const actualParamTypes = paramTypes.slice(1); // Skip 'app'
+          const actualParamTypes = paramTypes.slice(1); // Already validated above
           const hasTypeInfo = actualParamTypes.some(
             (t: string | null) => t !== null
           );

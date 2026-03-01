@@ -148,6 +148,28 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         };
       `
     },
+    {
+      // Sepcial case but valid
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          activate: () => {
+            console.log('Activated');
+          }
+        };
+      `
+    },
+    {
+      // JupyterLab and some other types are allowed
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          activate: (app: JupyterLab) => {
+            console.log('Activated');
+          }
+        };
+      `
+    },
   ],
 
   invalid: [
@@ -229,7 +251,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'appNotFirst',
-          data: { arg: 'tracker' }
+          data: { arg: 'tracker', allowedNames: '"app", "_app", "_"' }
         }
       ]
     },
@@ -341,6 +363,23 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           data: { arg: 'test' }
         }
       ]
-    }
+    },
+    {
+      // First argument has incompatible type
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          activate: (app: JupyterFrontEndPlugin) => {
+            console.log('Activated');
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'invalidAppType',
+          data: { arg: 'app', type: 'JupyterFrontEndPlugin' }
+        }
+      ]
+    },
   ]
 });
