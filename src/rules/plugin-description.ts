@@ -5,7 +5,7 @@
 
 import { Rule } from 'eslint';
 import * as ESTree from 'estree';
-import { hasJupyterPluginType, getPluginId } from '../utils/plugin-utils';
+import {getJupyterPluginKind, getPluginId } from '../utils/plugin-utils';
 
 /**
  * Checks if an object expression has a description property
@@ -58,7 +58,7 @@ const jupyterPluginDescription: Rule.RuleModule = {
         const varDecl = node as ESTree.VariableDeclarator;
 
         // Check if this has a JupyterFrontEndPlugin type annotation
-        if (!hasJupyterPluginType(varDecl)) {
+        if (!getJupyterPluginKind(varDecl)) {
           return;
         }
 

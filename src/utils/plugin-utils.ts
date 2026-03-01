@@ -5,6 +5,36 @@
 
 import * as ESTree from 'estree';
 
+export type JupyterPluginKind = 'frontend' | 'service-manager';
+
+/**
+ * Gets plugin kind from a variable declaration type annotation.
+ */
+export function getJupyterPluginKind(
+  node: ESTree.VariableDeclarator
+): JupyterPluginKind | null {
+  const id = node.id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((id as any).typeAnnotation) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const typeAnnotation = (id as any).typeAnnotation;
+    if (typeAnnotation.typeAnnotation) {
+      const typeNode = typeAnnotation.typeAnnotation;
+      if (typeNode.type === 'TSTypeReference' && typeNode.typeName) {
+        if (typeNode.typeName.type === 'Identifier') {
+          if (typeNode.typeName.name === 'JupyterFrontEndPlugin') {
+            return 'frontend';
+          }
+          if (typeNode.typeName.name === 'ServiceManagerPlugin') {
+            return 'service-manager';
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Extracts properties from an object expression
  */
@@ -29,28 +59,6 @@ export function getObjectProperties(
     }
   }
   return props;
-}
-
-/**
- * Checks if a variable declaration has a JupyterFrontEndPlugin type annotation
- */
-export function hasJupyterPluginType(node: ESTree.VariableDeclarator): boolean {
-  // Check if the variable declarator has a type annotation
-  const id = node.id;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((id as any).typeAnnotation) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const typeAnnotation = (id as any).typeAnnotation;
-    if (typeAnnotation.typeAnnotation) {
-      const typeNode = typeAnnotation.typeAnnotation;
-      if (typeNode.type === 'TSTypeReference' && typeNode.typeName) {
-        if (typeNode.typeName.type === 'Identifier') {
-          return typeNode.typeName.name === 'JupyterFrontEndPlugin';
-        }
-      }
-    }
-  }
-  return false;
 }
 
 /**
