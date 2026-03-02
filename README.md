@@ -5,7 +5,7 @@ ESLint plugin for Jupyter core and extensions with early error catching and best
 ## Installation
 
 ```bash
-npm install --save-dev @jupyterlab/eslint-plugin-jupyter
+npm install --save-dev @jupyter/eslint-plugin-jupyter
 ```
 
 ## Rules
@@ -20,7 +20,7 @@ Add `jupyter` to the plugins section of your ESLint configuration:
 
 ```javascript
 // eslint.config.js
-import jupyterPlugin from '@jupyterlab/eslint-plugin-jupyter';
+import jupyterPlugin from '@jupyter/eslint-plugin-jupyter';
 
 export default [
   {
