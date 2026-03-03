@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) Jupyter Development Team.
+ * Distributed under the terms of the Modified BSD License.
+ */
+
 import type { Config } from '@docusaurus/types';
 import type { Options as PresetClassicOptions } from '@docusaurus/preset-classic';
 
