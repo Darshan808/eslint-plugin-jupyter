@@ -89,48 +89,7 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Getting Started',
-              to: '/getting-started/overview'
-            },
-            {
-              label: 'Configuration',
-              to: '/configuration/flat-config'
-            }
-          ]
-        },
-        {
-          title: 'Rules',
-          items: [
-            {
-              label: 'Rule Index',
-              to: '/rules'
-            },
-            {
-              label: 'plugin-activation-args',
-              to: '/rules/plugin-activation-args'
-            }
-          ]
-        },
-        {
-          title: 'Community',
-          items: [
-            {
-              label: 'Issues',
-              href: 'https://github.com/jupyterlab/eslint-plugin/issues'
-            },
-            {
-              label: 'JupyterLab',
-              href: 'https://jupyterlab.readthedocs.io'
-            }
-          ]
-        }
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()}, Jupyter Development Team.`
+      copyright: `Copyright © ${new Date().getFullYear()}, Jupyter Development Team. Built with Docusaurus.`
     }
   }
 };

@@ -2,19 +2,27 @@
 slug: /
 ---
 
-# ESLint Plugin Jupyter Documentation
+# Introduction
 
 `@jupyterlab/eslint-plugin-jupyter` enforces code quality and project-specific standards for Jupyter core and extensions with early error catching and best practices enforcement.
 
-Use this site to:
+## What it does
 
-- Install and enable the plugin
-- Adopt the recommended config
-- Understand rule behavior with concrete examples
-- Troubleshoot common integration issues
+This plugin is built for JupyterLab extension and core package development. It enforces conventions that are easy to miss during development but costly in production.
 
-## Quick links
+### Who should use it
 
-- [Getting Started](./getting-started/overview)
-- [Recommended Config](./configuration/recommended-config)
-- [Rules](./rules)
+- JupyterLab extension authors
+- Maintainers of Jupyter Projects
+
+## Versioning
+
+This project follows [ESLint's Semantic Versioning Policy](https://github.com/eslint/eslint#semantic-versioning-policy). For details on version changes and breaking changes, see the [releases page](https://github.com/jupyterlab/eslint-plugin/releases).
+
+## Changelog
+
+For a complete history of changes, see the [changelog](https://github.com/jupyterlab/eslint-plugin/releases).
+
+## License
+
+This project is licensed under the [Modified BSD License](https://github.com/jupyterlab/eslint-plugin/blob/main/LICENSE).
