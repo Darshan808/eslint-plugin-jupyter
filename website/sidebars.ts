@@ -3,45 +3,8 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   docs: [
     'intro',
-    {
-      type: 'category',
-      label: 'Getting Started',
-      link: {
-        type: 'generated-index',
-        title: 'Getting Started'
-      },
-      items: [
-        'getting-started/overview',
-        'getting-started/installation',
-        'getting-started/quickstart'
-      ]
-    },
-    {
-      type: 'category',
-      label: 'Configuration',
-      link: {
-        type: 'generated-index',
-        title: 'Configuration'
-      },
-      items: [
-        'configuration/flat-config',
-        'configuration/recommended-config',
-        'configuration/rule-options'
-      ]
-    },
-    {
-      type: 'category',
-      label: 'Reference',
-      link: {
-        type: 'generated-index',
-        title: 'Reference'
-      },
-      items: [
-        'reference/troubleshooting',
-        'reference/architecture',
-        'reference/contributing'
-      ]
-    },
+    'user-guide',
+    'developer-guide',
     {
       type: 'category',
       label: 'Rules',
