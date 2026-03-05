@@ -25,9 +25,10 @@ const config: Config = {
   title: 'Eslint Plugin Jupyter',
   tagline: 'ESLint rules for Jupyter core and extensions with early error catching and best practices enforcement',
   favicon: '/jupyter_logo.svg',
-  url: 'https://example.com', // TODO: Replace with actual docs URL
+  url: process.env.READTHEDOCS_CANONICAL_URL,
   baseUrl: '/',
   onBrokenLinks: 'throw',
+  trailingSlash: true,
   markdown: {
     format: 'md',
     hooks: {
