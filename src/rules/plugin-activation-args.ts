@@ -261,6 +261,22 @@ const jupyterPluginActivationArgs: Rule.RuleModule = {
             }
           }
 
+          // Validation 1b: Check if first argument type is compatible with JupyterFrontEnd
+          if (params.length > 0 && paramTypes.length > 0) {
+            const firstParamType = paramTypes[0];
+            if (!isCompatibleWithJupyterFrontEnd(firstParamType)) {
+              context.report({
+                node: activateInfo.node,
+                messageId: 'invalidAppType',
+                data: {
+                  arg: params[0],
+                  type: firstParamType || 'unknown'
+                }
+              });
+              return;
+            }
+          }
+
           // Validation 2: Check if argument count matches
           if (params.length !== expectedCount) {
             context.report({
