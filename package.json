@@ -15,7 +15,11 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docs:start": "npm --prefix website run start",
+    "docs:build": "npm --prefix website run build",
+    "docs:serve": "npm --prefix website run serve",
+    "docs:clear": "npm --prefix website run clear"
   },
   "keywords": [
     "eslint",

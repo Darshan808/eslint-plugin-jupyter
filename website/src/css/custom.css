@@ -1,0 +1,57 @@
+/*
+ * Copyright (c) Jupyter Development Team.
+ * Distributed under the terms of the Modified BSD License.
+ */
+
+:root {
+	--ifm-color-primary: #f37726;
+	--ifm-color-primary-dark: #ea6915;
+	--ifm-color-primary-darker: #dd6314;
+	--ifm-color-primary-darkest: #b85211;
+	--ifm-color-primary-light: #f58a42;
+	--ifm-color-primary-lighter: #f69658;
+	--ifm-color-primary-lightest: #f9b07f;
+	--ifm-code-font-size: 95%;
+}
+
+[data-theme='dark'] {
+	--ifm-color-primary: #f58a42;
+	--ifm-color-primary-dark: #f37927;
+	--ifm-color-primary-darker: #f16f18;
+	--ifm-color-primary-darkest: #d45f0d;
+	--ifm-color-primary-light: #f79b5d;
+	--ifm-color-primary-lighter: #f8a56d;
+	--ifm-color-primary-lightest: #fac094;
+}
+
+/* Navbar logo styling */
+.navbar-item-jupyter,
+.navbar-item-github {
+  display: none;
+}
+
+@media (min-width: 997px) {
+  .navbar-item-jupyter,
+  .navbar-item-github {
+    display: inline-block !important;
+    width: 22px;
+    height: 22px;
+    padding: 0 !important;
+    margin: 0 6px;
+    filter: brightness(0.8) contrast(1.2);
+  }
+
+  .navbar-item-jupyter {
+    background-image: url('/jupyter_logo.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+
+  .navbar-item-github {
+    background-image: url('/github_logo.svg');
+    background-size: 20px 20px;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+}

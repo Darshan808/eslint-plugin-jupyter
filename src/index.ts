@@ -18,8 +18,15 @@ const plugin = {
       files: ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx'],
       rules: {
         'jupyter/plugin-activation-args': 'error',
-        'jupyter/command-described-by': 'error',
-        'jupyter/plugin-description': 'error'
+        'jupyter/command-described-by': 'warn',
+        'jupyter/plugin-description': 'warn'
+      }
+    },
+    'recommended-legacy': {
+      rules: {
+        'jupyter/plugin-activation-args': 'error',
+        'jupyter/command-described-by': 'warn',
+        'jupyter/plugin-description': 'warn'
       }
     }
   }

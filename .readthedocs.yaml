@@ -1,0 +1,13 @@
+version: 2
+build:
+  os: "ubuntu-22.04"
+  tools:
+    nodejs: "22"
+  jobs:
+    install:
+      - cd website/ && npm ci
+    build:
+      html:
+        - cd website/ && npm run build
+        - mkdir -p $READTHEDOCS_OUTPUT/html/
+        - cp -r website/build/* $READTHEDOCS_OUTPUT/html/
