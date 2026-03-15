@@ -54,11 +54,7 @@ const jupyterPluginDescription: Rule.RuleModule = {
   create(context: Rule.RuleContext): Rule.RuleListener {
     return {
       VariableDeclarator(node: Rule.Node) {
-        if (node.type !== 'VariableDeclarator') {
-          return;
-        }
-
-        const varDecl = node as unknown as TSESTree.VariableDeclarator;
+        const varDecl = node as TSESTree.VariableDeclarator;
 
         // Check if this has a JupyterFrontEndPlugin type annotation
         if (!getJupyterPluginKind(varDecl)) {

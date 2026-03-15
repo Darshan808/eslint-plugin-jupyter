@@ -26,11 +26,7 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
   create(context: Rule.RuleContext): Rule.RuleListener {
     return {
       CallExpression(node: Rule.Node) {
-        if (node.type !== 'CallExpression') {
-          return;
-        }
-
-        const callExpr = node as unknown as TSESTree.CallExpression;
+        const callExpr = node as TSESTree.CallExpression;
 
         // Check if this is <something>.addCommand()
         if (!isAddCommandCall(callExpr)) {

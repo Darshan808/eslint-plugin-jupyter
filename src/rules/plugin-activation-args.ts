@@ -171,11 +171,7 @@ const jupyterPluginActivationArgs: Rule.RuleModule = {
 
     return {
       VariableDeclarator(node: Rule.Node) {
-        if (node.type !== 'VariableDeclarator') {
-          return;
-        }
-
-        const varDecl = node as unknown as TSESTree.VariableDeclarator;
+        const varDecl = node as TSESTree.VariableDeclarator;
 
         const pluginKind = getJupyterPluginKind(varDecl);
         if (!pluginKind) {
