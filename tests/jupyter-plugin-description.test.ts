@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { RuleTester } from 'eslint';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 import pluginDescription from '../src/rules/plugin-description';
 
 const ruleTester = new RuleTester({

@@ -3,18 +3,16 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { Rule } from 'eslint';
-import * as ESTree from 'estree';
 import { getObjectProperties } from '../utils/plugin-utils';
 import { isAddCommandCall } from '../utils/commands';
+import { createRule } from '../utils/create-rule';
 
-const jupyterCommandDescribedBy: Rule.RuleModule = {
+const jupyterCommandDescribedBy = createRule({
+  name: 'command-described-by',
   meta: {
     type: 'problem',
     docs: {
       description: 'Ensure JupyterLab commands include describedBy property',
-      recommended: 'recommended',
-      url: 'https://github.com/jupyterlab/eslint-plugin'
     },
     messages: {
       missingDescribedBy:
@@ -22,24 +20,23 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
     },
     schema: []
   },
+  defaultOptions: [],
 
-  create(context: Rule.RuleContext): Rule.RuleListener {
+  create(context) {
     return {
-      CallExpression(node: ESTree.Node) {
-        const callExpr = node as ESTree.CallExpression;
-
+      CallExpression(node) {
         // Check if this is <something>.addCommand()
-        if (!isAddCommandCall(callExpr)) {
+        if (!isAddCommandCall(node)) {
           return;
         }
 
         // Get the command ID and options
-        if (callExpr.arguments.length < 2) {
+        if (node.arguments.length < 2) {
           return;
         }
 
-        const commandIdArg = callExpr.arguments[0];
-        const optionsArg = callExpr.arguments[1];
+        const commandIdArg = node.arguments[0];
+        const optionsArg = node.arguments[1];
 
         // Extract command ID for error message
         let commandId = 'unknown';
@@ -62,8 +59,7 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
           return;
         }
 
-        const options = optionsArg as ESTree.ObjectExpression;
-        const properties = getObjectProperties(options);
+        const properties = getObjectProperties(optionsArg);
 
         // Check if execute function exists and has parameters
         const executeProp = properties.get('execute');
@@ -75,7 +71,7 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
 
         if (!describedByProp) {
           context.report({
-            node: callExpr,
+            node,
             messageId: 'missingDescribedBy',
             data: { commandId }
           });
@@ -88,6 +84,6 @@ const jupyterCommandDescribedBy: Rule.RuleModule = {
       }
     };
   }
-};
+});
 
 export = jupyterCommandDescribedBy;

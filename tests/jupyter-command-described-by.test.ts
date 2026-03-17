@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { RuleTester } from 'eslint';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 import commandDescribedBy from '../src/rules/command-described-by';
 
 const ruleTester = new RuleTester({

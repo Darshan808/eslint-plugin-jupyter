@@ -3,12 +3,12 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import * as ESTree from 'estree';
+import { TSESTree } from '@typescript-eslint/types';
 
 /**
  * Checks if a node represents *.addCommand()
  */
-export function isAddCommandCall(node: ESTree.CallExpression): boolean {
+export function isAddCommandCall(node: TSESTree.CallExpression): boolean {
   if (node.callee.type === 'MemberExpression') {
     const callee = node.callee;
     if (

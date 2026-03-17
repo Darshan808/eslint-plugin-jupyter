@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { RuleTester } from 'eslint';
+import { RuleTester } from '@typescript-eslint/rule-tester';
 import pluginActivationArgs from '../src/rules/plugin-activation-args';
 
 const ruleTester = new RuleTester({
@@ -436,7 +436,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'serviceManagerFirstArgNotNull',
-          data: { arg: 'app' }
+          data: { arg: 'JupyterFrontEnd' }
         }
       ]
     },

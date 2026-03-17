@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import * as ESTree from 'estree';
+import { TSESTree } from '@typescript-eslint/types';
 
 export type JupyterPluginKind = 'frontend' | 'service-manager';
 
@@ -11,27 +11,26 @@ export type JupyterPluginKind = 'frontend' | 'service-manager';
  * Gets plugin kind from a variable declaration type annotation.
  */
 export function getJupyterPluginKind(
-  node: ESTree.VariableDeclarator
+  node: TSESTree.VariableDeclarator
 ): JupyterPluginKind | null {
   const id = node.id;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((id as any).typeAnnotation) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const typeAnnotation = (id as any).typeAnnotation;
-    if (typeAnnotation.typeAnnotation) {
-      const typeNode = typeAnnotation.typeAnnotation;
-      if (typeNode.type === 'TSTypeReference' && typeNode.typeName) {
-        if (typeNode.typeName.type === 'Identifier') {
-          if (typeNode.typeName.name === 'JupyterFrontEndPlugin') {
-            return 'frontend';
-          }
-          if (typeNode.typeName.name === 'ServiceManagerPlugin') {
-            return 'service-manager';
-          }
-        }
-      }
-    }
+  if (id.type !== 'Identifier' || !id.typeAnnotation) {
+    return null;
   }
+
+  const typeNode = id.typeAnnotation.typeAnnotation;
+  if (typeNode.type !== 'TSTypeReference') {
+    return null;
+  }
+
+  const pluginTypeName = extractTypeName(typeNode.typeName);
+  if (pluginTypeName === 'JupyterFrontEndPlugin') {
+    return 'frontend';
+  }
+  if (pluginTypeName === 'ServiceManagerPlugin') {
+    return 'service-manager';
+  }
+
   return null;
 }
 
@@ -39,9 +38,9 @@ export function getJupyterPluginKind(
  * Extracts properties from an object expression
  */
 export function getObjectProperties(
-  obj: ESTree.ObjectExpression
-): Map<string, ESTree.Property> {
-  const props = new Map<string, ESTree.Property>();
+  obj: TSESTree.ObjectExpression
+): Map<string, TSESTree.Property> {
+  const props = new Map<string, TSESTree.Property>();
   for (const prop of obj.properties) {
     if (prop.type === 'Property' && !prop.computed) {
       let keyName: string | null = null;
@@ -64,7 +63,7 @@ export function getObjectProperties(
 /**
  * Gets the plugin ID from an object expression
  */
-export function getPluginId(obj: ESTree.ObjectExpression): string | null {
+export function getPluginId(obj: TSESTree.ObjectExpression): string | null {
   for (const prop of obj.properties) {
     if (prop.type === 'Property') {
       let keyName: string | null = null;
@@ -77,7 +76,7 @@ export function getPluginId(obj: ESTree.ObjectExpression): string | null {
         keyName = prop.key.value;
       }
       if (keyName === 'id' && prop.value.type === 'Literal') {
-        const value = (prop.value as ESTree.Literal).value;
+        const value = prop.value.value;
         if (typeof value === 'string') {
           return value;
         }
@@ -90,7 +89,9 @@ export function getPluginId(obj: ESTree.ObjectExpression): string | null {
 /**
  * Extracts element names from an array, including member expressions like JupyterFrontEnd.IPaths
  */
-export function extractArrayElements(arrayExpr: ESTree.ArrayExpression): string[] {
+export function extractArrayElements(
+  arrayExpr: TSESTree.ArrayExpression
+): string[] {
   const names: string[] = [];
 
   for (const element of arrayExpr.elements) {
@@ -110,31 +111,22 @@ export function extractArrayElements(arrayExpr: ESTree.ArrayExpression): string[
 
   return names;
 }
-export function extractParameterType(param: ESTree.Identifier): string | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((param as any).typeAnnotation) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const annotation = (param as any).typeAnnotation;
-    if (annotation && annotation.typeAnnotation) {
-      const typeNode = annotation.typeAnnotation;
+export function extractParameterType(param: TSESTree.Identifier): string | null {
+  if (!param.typeAnnotation) {
+    return null;
+  }
 
-      // Handle TSTypeReference (like JupyterFrontEnd.IPaths)
-      if (typeNode.type === 'TSTypeReference' && typeNode.typeName) {
-        return extractTypeName(typeNode.typeName);
-      }
+  const typeNode = param.typeAnnotation.typeAnnotation;
 
-      if (typeNode.type === 'TSUnionType') {
-        const types = typeNode.types;
-        if (Array.isArray(types) && types.length > 0) {
-          const nonNullType = types.find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (t: any) => t.type !== 'TSNullKeyword'
-          );
-          if (nonNullType && nonNullType.type === 'TSTypeReference') {
-            return extractTypeName(nonNullType.typeName);
-          }
-        }
-      }
+  // Handle TSTypeReference (like JupyterFrontEnd.IPaths)
+  if (typeNode.type === 'TSTypeReference') {
+    return extractTypeName(typeNode.typeName);
+  }
+
+  if (typeNode.type === 'TSUnionType') {
+    const nonNullType = typeNode.types.find(t => t.type !== 'TSNullKeyword');
+    if (nonNullType && nonNullType.type === 'TSTypeReference') {
+      return extractTypeName(nonNullType.typeName);
     }
   }
 
@@ -146,10 +138,7 @@ export function extractParameterType(param: ESTree.Identifier): string | null {
  * handling both simple Identifiers and qualified names (TSQualifiedName)
  * e.g. `IType` -> "IType", `JupyterFrontEnd.IPaths` -> "JupyterFrontEnd.IPaths"
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractTypeName(typeName: any): string | null {
-  if (!typeName) return null;
-
+function extractTypeName(typeName: TSESTree.EntityName): string | null {
   if (typeName.type === 'Identifier') {
     return typeName.name;
   }
