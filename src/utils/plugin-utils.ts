@@ -118,7 +118,9 @@ export function extractArrayTokens(
 
   return entries;
 }
-export function extractParameterType(param: TSESTree.Identifier): string | null {
+export function extractParameterType(
+  param: TSESTree.Identifier
+): string | null {
   if (!param.typeAnnotation) {
     return null;
   }

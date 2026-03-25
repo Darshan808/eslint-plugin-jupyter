@@ -195,7 +195,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         };
       `
     },
-     {
+    {
       code: `
         const plugin = {
           id: 'test-plugin',
@@ -242,7 +242,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           }
         };
       `
-    },
+    }
   ],
 
   invalid: [
@@ -474,7 +474,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           data: { arg: 'JupyterFrontEnd' }
         }
       ]
-    },
+    }
   ]
 });
 
@@ -491,9 +491,9 @@ const typeAwareRuleTester = new RuleTester({
         // Allow any .ts file under tests/ to use the default project so we can
         // lint virtual (in-memory) test code with full type information.
         allowDefaultProject: ['tests/*.ts'],
-        defaultProject: 'tsconfig.test.json',
+        defaultProject: 'tsconfig.test.json'
       },
-      tsconfigRootDir: path.resolve(__dirname, '..'),
+      tsconfigRootDir: path.resolve(__dirname, '..')
     }
   }
 });
@@ -511,13 +511,16 @@ const TYPE_STUBS = `
   declare const ITranslatorToken: Token<ITranslator>;
 `;
 
-typeAwareRuleTester.run('plugin-activation-args (type-aware)', pluginActivationArgs, {
-  valid: [
-    {
-      // Namespace pattern: Token<IDebugger.ISidebar> matched by IDebugger.ISidebar param type.
-      // Type stubs are declared inline to simulate types being in a separate file.
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
+typeAwareRuleTester.run(
+  'plugin-activation-args (type-aware)',
+  pluginActivationArgs,
+  {
+    valid: [
+      {
+        // Namespace pattern: Token<IDebugger.ISidebar> matched by IDebugger.ISidebar param type.
+        // Type stubs are declared inline to simulate types being in a separate file.
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
         ${TYPE_STUBS}
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -530,11 +533,11 @@ typeAwareRuleTester.run('plugin-activation-args (type-aware)', pluginActivationA
           }
         };
       `
-    },
-    {
-      // Namespace pattern with optional token
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
+      },
+      {
+        // Namespace pattern with optional token
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
         ${TYPE_STUBS}
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -549,11 +552,11 @@ typeAwareRuleTester.run('plugin-activation-args (type-aware)', pluginActivationA
           }
         };
       `
-    },
-    {
-      // Cross-file: token and interface declared in a separate .d.ts.
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
+      },
+      {
+        // Cross-file: token and interface declared in a separate .d.ts.
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
         import { IDebugger, IDebuggerSidebar, INotebookTracker, INotebookTrackerToken } from './fixtures/debugger-types';
         declare class JupyterFrontEnd {}
         declare class JupyterFrontEndPlugin<T> {}
@@ -569,14 +572,14 @@ typeAwareRuleTester.run('plugin-activation-args (type-aware)', pluginActivationA
           }
         };
       `
-    },
-  ],
+      }
+    ],
 
-  invalid: [
-    {
-      // Namespace pattern but wrong order
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
+    invalid: [
+      {
+        // Namespace pattern but wrong order
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
         ${TYPE_STUBS}
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -590,10 +593,11 @@ typeAwareRuleTester.run('plugin-activation-args (type-aware)', pluginActivationA
           }
         };
       `,
-      errors: [
-        { messageId: 'mismatchedOrder', data: { arg: 'debuggerSidebar' } },
-        { messageId: 'mismatchedOrder', data: { arg: 'tracker' } },
-      ]
-    },
-  ]
-});
+        errors: [
+          { messageId: 'mismatchedOrder', data: { arg: 'debuggerSidebar' } },
+          { messageId: 'mismatchedOrder', data: { arg: 'tracker' } }
+        ]
+      }
+    ]
+  }
+);

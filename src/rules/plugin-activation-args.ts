@@ -133,7 +133,7 @@ const jupyterPluginActivationArgs = createRule({
     type: 'problem',
     docs: {
       description:
-        'Ensure JupyterLab plugin activation function arguments match requires and optional tokens in order',
+        'Ensure JupyterLab plugin activation function arguments match requires and optional tokens in order'
     },
     messages: {
       mismatchedOrder:
@@ -225,7 +225,9 @@ const jupyterPluginActivationArgs = createRule({
         // Handle `T | null/undefined` (optional token pattern)
         if (type.isUnion()) {
           const nonNullTypes = type.types.filter(
-            t => !(t.flags & ts.TypeFlags.Null) && !(t.flags & ts.TypeFlags.Undefined)
+            t =>
+              !(t.flags & ts.TypeFlags.Null) &&
+              !(t.flags & ts.TypeFlags.Undefined)
           );
           if (nonNullTypes.length === 1) {
             return nonNullTypes[0];
@@ -264,8 +266,8 @@ const jupyterPluginActivationArgs = createRule({
       }
       if (paramType === token.name) return true;
       // Without a checker we cannot resolve namespace patterns like
-      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`. 
-      // Should Qualified names (those containing a dot) 
+      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`.
+      // Should Qualified names (those containing a dot)
       // be passed through ?
       if (!checker && paramType && paramType.includes('.')) return true;
       return false;
@@ -379,7 +381,9 @@ const jupyterPluginActivationArgs = createRule({
                     data: { arg: params[i + 1] }
                   });
                 }
-              } else if (!tokenMatchesParam(expectedToken, paramType, paramNode)) {
+              } else if (
+                !tokenMatchesParam(expectedToken, paramType, paramNode)
+              ) {
                 // Type mismatch
                 context.report({
                   node: activateInfo.node,
