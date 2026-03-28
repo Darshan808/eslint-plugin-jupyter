@@ -1,0 +1,49 @@
+name: Integration Test against JupyterLab
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout eslint-plugin
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install and build plugin
+        run: |
+          npm install
+          npm run build
+
+      - name: Clone JupyterLab
+        uses: actions/checkout@v4
+        with:
+          repository: jupyterlab/jupyterlab
+          path: jupyterlab
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install and build JupyterLab
+        working-directory: jupyterlab
+        run: |
+          pip install .
+          jlpm
+          jlpm run build
+
+      - name: Run integration lint check
+        run: |
+          npx eslint \
+            --config eslint.jp.config.mjs \
+            --max-warnings=999
+        env:
+          NODE_PATH: ./jupyterlab/node_modules
