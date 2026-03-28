@@ -36,7 +36,8 @@ jobs:
       - name: Install and build JupyterLab
         working-directory: jupyterlab
         run: |
-          pip install .
+          python -m pip install .
+          python -m pip install "hatchling>=1.21.1"
           jlpm
           jlpm run build
 
