@@ -133,7 +133,8 @@ const jupyterPluginActivationArgs = createRule({
     type: 'problem',
     docs: {
       description:
-        'Ensure JupyterLab plugin activation function arguments match requires and optional tokens in order'
+        'Ensure JupyterLab plugin activation function arguments match requires and optional tokens in order',
+      url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-activation-args/'
     },
     messages: {
       mismatchedOrder:

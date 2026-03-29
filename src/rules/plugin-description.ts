@@ -41,6 +41,7 @@ const jupyterPluginDescription = createRule({
     type: 'problem',
     docs: {
       description: 'Ensure all JupyterLab plugins have a description property',
+      url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-description/'
     },
     messages: {
       missingDescription:
