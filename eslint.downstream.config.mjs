@@ -26,9 +26,9 @@ export default [
       '@typescript-eslint': resolvedTsPlugin  // registered but rules not enforced
     },
     rules: {
-      'jupyter/command-described-by': 'warn',
+      'jupyter/command-described-by': 'error',
       'jupyter/plugin-activation-args': 'error',
-      'jupyter/plugin-description': 'warn'
+      'jupyter/plugin-description': 'error'
     },
     languageOptions: {
       parser: resolvedParser,

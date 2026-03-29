@@ -43,7 +43,7 @@ jobs:
 
       - name: Run integration lint check
         run: |
-          npx eslint --config eslint.jp.config.mjs \
+          npx eslint --config eslint.downstream.config.mjs \
             'jupyterlab/packages/*/src/**/*.ts' \
             --max-warnings=9999
         env:
@@ -86,7 +86,7 @@ jobs:
 
       - name: Run integration lint check
         run: |
-          npx eslint --config eslint.jp.config.mjs \
+          npx eslint --config eslint.downstream.config.mjs \
             'notebook/packages/*/src/**/*.ts' \
             --max-warnings=9999
         env:
