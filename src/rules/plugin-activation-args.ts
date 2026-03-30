@@ -4,10 +4,13 @@
  */
 
 import { TSESTree } from '@typescript-eslint/types';
+import { ESLintUtils, ParserServices } from '@typescript-eslint/utils';
+import * as ts from 'typescript';
 import {
   getJupyterPluginKind,
   extractParameterType,
-  extractArrayElements
+  extractArrayTokens,
+  TokenEntry
 } from '../utils/plugin-utils';
 import { createRule } from '../utils/create-rule';
 
@@ -15,11 +18,12 @@ interface ActivateFunctionInfo {
   node: TSESTree.Node;
   params: string[];
   paramTypes: (string | null)[];
+  paramNodes: (TSESTree.Identifier | null)[];
 }
 
 interface RequiresOptionalInfo {
-  requires: string[];
-  optional: string[];
+  requires: TokenEntry[];
+  optional: TokenEntry[];
 }
 
 const DEFAULT_ALLOWED_FIRST_ARGUMENT_NAMES = ['app', '_app', '_'];
@@ -58,10 +62,15 @@ function findActivateFunction(
       param.type === 'Identifier' ? extractParameterType(param) : null
     );
 
+    const paramNodes = activateValue.params.map(param =>
+      param.type === 'Identifier' ? param : null
+    );
+
     return {
       node: activateProp,
       params,
-      paramTypes
+      paramTypes,
+      paramNodes
     };
   }
 
@@ -93,12 +102,12 @@ function extractRequiresOptional(
     }
 
     if (keyName === 'requires' && prop.value.type === 'ArrayExpression') {
-      result.requires = extractArrayElements(prop.value);
+      result.requires = extractArrayTokens(prop.value);
     } else if (
       keyName === 'optional' &&
       prop.value.type === 'ArrayExpression'
     ) {
-      result.optional = extractArrayElements(prop.value);
+      result.optional = extractArrayTokens(prop.value);
     }
   }
 
@@ -141,7 +150,9 @@ const jupyterPluginActivationArgs = createRule({
       invalidAppType:
         'First activation argument "{{ arg }}" has invalid type "{{ type }}". Expected JupyterFrontEnd, JupyterLab, or Application.',
       wrongArgumentCount:
-        'Expected {{ expected }} activation arguments (app + {{ tokenCount }} tokens), got {{ actual }}.'
+        'Expected {{ expected }} activation arguments (app + {{ tokenCount }} tokens), got {{ actual }}.',
+      unresolvableTokenType:
+        'Token "{{ token }}" type could not be resolved — package may be unbuilt. Build it for accurate type checking.'
     },
     fixable: 'code',
     schema: [
@@ -169,9 +180,118 @@ const jupyterPluginActivationArgs = createRule({
   ],
 
   create(context, [options]) {
-    // Get configuration options
     const allowedFirstArgumentNames: string[] =
       options.allowedFirstArgumentNames || DEFAULT_ALLOWED_FIRST_ARGUMENT_NAMES;
+
+    // Try to obtain the TypeScript type checker for type-aware comparisons.
+    let services: ParserServices | null = null;
+    let checker: ts.TypeChecker | null = null;
+
+    try {
+      services = ESLintUtils.getParserServices(context, true);
+      checker = services.program ? services.program.getTypeChecker() : null;
+    } catch {
+      // Parser services unavailable (e.g., non-TS file or misconfigured parser)
+      services = null;
+    }
+
+    /**
+     * Given the AST node for a token in requires/optional, uses the TypeScript checker to extract T from
+     * `Token<T>` and returns the TypeScript type object for T.
+     * Returns null when type information is unavailable or extraction fails.
+     */
+    function resolveTokenInnerType(tokenNode: TSESTree.Node): ts.Type | null {
+      if (!checker) {
+        return null;
+      }
+      try {
+        const tsNode = services?.esTreeNodeToTSNodeMap.get(tokenNode);
+        if (!tsNode) {
+          return null;
+        }
+        const tokenType = checker.getTypeAtLocation(tsNode);
+        const typeArgs = checker.getTypeArguments(
+          tokenType as ts.TypeReference
+        );
+        if (typeArgs && typeArgs.length > 0) {
+          return typeArgs[0];
+        }
+      } catch {
+        // Fall through
+      }
+      return null;
+    }
+
+    /**
+     * Given the AST node for an activate parameter identifier, uses the
+     * TypeScript checker to get its type.
+     * Returns null when type information is unavailable or extraction fails.
+     */
+    function resolveParamType(paramNode: TSESTree.Identifier): ts.Type | null {
+      if (!checker) return null;
+      try {
+        const tsNode = services?.esTreeNodeToTSNodeMap.get(paramNode);
+        if (!tsNode) return null;
+        const type = checker.getTypeAtLocation(tsNode);
+        // Handle `T | null/undefined` (optional token pattern)
+        if (type.isUnion()) {
+          const nonNullTypes = type.types.filter(
+            t =>
+              !(t.flags & ts.TypeFlags.Null) &&
+              !(t.flags & ts.TypeFlags.Undefined)
+          );
+          if (nonNullTypes.length === 1) {
+            return nonNullTypes[0];
+          }
+        }
+        return type;
+      } catch {
+        // Fall through
+      }
+      return null;
+    }
+
+    /**
+     * Returns true when two TypeScript types refer to the same type.
+     */
+    function isSameType(a: ts.Type, b: ts.Type): boolean {
+      if (a === b) return true;
+      if (a.symbol && b.symbol && a.symbol === b.symbol) return true;
+      return checker!.typeToString(a) === checker!.typeToString(b);
+    }
+
+    /**
+     * Returns [matches, tokenUnresolved] where:
+     * - matches: true when the activate parameter type is compatible with the token's type.
+     * - tokenUnresolved: true when the token's inner type could not be resolved (null, undefined, or any),
+     *   meaning the result is inconclusive (e.g. package is unbuilt).
+     */
+    function tokenMatchesParam(
+      token: TokenEntry,
+      paramType: string | null,
+      paramNode: TSESTree.Identifier | null
+    ): [boolean, boolean] {
+      // For most cases this check is sufficient
+      if (paramType === token.name) return [true, false];
+      if (checker && paramNode) {
+        const resolvedToken = resolveTokenInnerType(token.node);
+        const tokenUnresolved =
+          resolvedToken === null ||
+          resolvedToken === undefined ||
+          !!(resolvedToken.flags & ts.TypeFlags.Any);
+        if (tokenUnresolved) {
+          return [true, true];
+        }
+        const resolvedParam = resolveParamType(paramNode);
+        if (resolvedParam !== null) {
+          return [isSameType(resolvedToken, resolvedParam), false];
+        }
+      }
+      // Without a checker we cannot resolve namespace patterns like
+      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`.
+      if (!checker && paramType && paramType.includes('.')) return [true, false];
+      return [false, false];
+    }
 
     return {
       VariableDeclarator(node) {
@@ -189,7 +309,7 @@ const jupyterPluginActivationArgs = createRule({
           if (!activateInfo) {
             return;
           }
-          const { params, paramTypes } = activateInfo;
+          const { params, paramTypes, paramNodes } = activateInfo;
 
           const expectedCount = 1 + requires.length + optional.length;
           const expectedTokensWithoutApp = [...requires, ...optional];
@@ -262,12 +382,14 @@ const jupyterPluginActivationArgs = createRule({
 
           // Validation 3: If parameters have type annotations, validate order
           const actualParamTypes = paramTypes.slice(1); // First arg already validated above
+          const actualParamNodes = paramNodes.slice(1);
           const hasTypeInfo = actualParamTypes.some(t => t !== null);
 
           if (hasTypeInfo) {
             // Validate that parameter types match expected token types in order
             for (let i = 0; i < actualParamTypes.length; i++) {
               const paramType = actualParamTypes[i];
+              const paramNode = actualParamNodes[i];
               const expectedToken = expectedTokensWithoutApp[i];
 
               if (expectedToken === undefined) {
@@ -279,13 +401,25 @@ const jupyterPluginActivationArgs = createRule({
                     data: { arg: params[i + 1] }
                   });
                 }
-              } else if (paramType !== expectedToken) {
-                // Type mismatch
-                context.report({
-                  node: activateInfo.node,
-                  messageId: 'mismatchedOrder',
-                  data: { arg: params[i + 1] }
-                });
+              } else {
+                const [matches, tokenUnresolved] = tokenMatchesParam(
+                  expectedToken,
+                  paramType,
+                  paramNode
+                );
+                if (tokenUnresolved) {
+                  context.report({
+                    node: activateInfo.node,
+                    messageId: 'unresolvableTokenType',
+                    data: { token: expectedToken.name }
+                  });
+                } else if (!matches) {
+                  context.report({
+                    node: activateInfo.node,
+                    messageId: 'mismatchedOrder',
+                    data: { arg: params[i + 1] }
+                  });
+                }
               }
             }
           } else {
@@ -315,7 +449,7 @@ const jupyterPluginActivationArgs = createRule({
               context.report({
                 node: activateInfo.node,
                 messageId: 'missingArgument',
-                data: { token: missingToken }
+                data: { token: missingToken.name }
               });
             }
           }

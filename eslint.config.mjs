@@ -8,7 +8,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 
 export default [
   {
-    ignores: ['node_modules/', 'dist/', 'coverage/', '*.js']
+    ignores: ['node_modules/', 'dist/', 'coverage/', '**/*.js', '**/*.d.ts']
   },
   {
     files: ['src/**/*.ts'],

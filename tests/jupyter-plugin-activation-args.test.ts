@@ -4,6 +4,7 @@
  */
 
 import { RuleTester } from '@typescript-eslint/rule-tester';
+import * as path from 'path';
 import pluginActivationArgs from '../src/rules/plugin-activation-args';
 
 const ruleTester = new RuleTester({
@@ -112,6 +113,40 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
+      // Namespace pattern without type info: qualified param types (X.Y) are
+      // allowed even when the token name differs (e.g. IDebuggerSidebar vs
+      // IDebugger.ISidebar) because we can't verify the match without a checker.
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [IDebuggerSidebar],
+          activate: (
+            app: JupyterFrontEnd,
+            sidebar: IDebugger.ISidebar,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `
+    },
+    {
+      // Namespace pattern without type info, mixed with a normal token.
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [ITranslator],
+          optional: [IDefaultDrive],
+          activate: (
+            app: JupyterFrontEnd,
+            translator: ITranslator,
+            defaultDrive: Contents.IDrive | null,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `
+    },
+    {
       // Tokens with qualified names (JupyterFrontEnd.IPaths)
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
@@ -160,7 +195,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         };
       `
     },
-     {
+    {
       code: `
         const plugin = {
           id: 'test-plugin',
@@ -207,7 +242,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           }
         };
       `
-    },
+    }
   ],
 
   invalid: [
@@ -439,6 +474,130 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           data: { arg: 'JupyterFrontEnd' }
         }
       ]
-    },
+    }
   ]
 });
+
+// ─── Type-aware tests ────────────────────────────────────────────────────────
+// These use a real TypeScript program so the rule can resolve Token<T> type
+// arguments and handle namespace/interface patterns like
+// `IDebuggerSidebar: Token<IDebugger.ISidebar>`.
+
+const typeAwareRuleTester = new RuleTester({
+  languageOptions: {
+    parser: require('@typescript-eslint/parser'),
+    parserOptions: {
+      projectService: {
+        // Allow any .ts file under tests/ to use the default project so we can
+        // lint virtual (in-memory) test code with full type information.
+        allowDefaultProject: ['tests/*.ts'],
+        defaultProject: 'tsconfig.test.json'
+      },
+      tsconfigRootDir: path.resolve(__dirname, '..')
+    }
+  }
+});
+
+// Inline type stubs shared across type-aware test cases
+const TYPE_STUBS = `
+  declare class Token<T> {}
+  declare class JupyterFrontEnd {}
+  declare class JupyterFrontEndPlugin<T> {}
+  declare namespace IDebugger { interface ISidebar {} }
+  declare const IDebuggerSidebar: Token<IDebugger.ISidebar>;
+  declare interface INotebookTracker {}
+  declare const INotebookTrackerToken: Token<INotebookTracker>;
+  declare interface ITranslator {}
+  declare const ITranslatorToken: Token<ITranslator>;
+`;
+
+typeAwareRuleTester.run(
+  'plugin-activation-args (type-aware)',
+  pluginActivationArgs,
+  {
+    valid: [
+      {
+        // Namespace pattern: Token<IDebugger.ISidebar> matched by IDebugger.ISidebar param type.
+        // Type stubs are declared inline to simulate types being in a separate file.
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
+        ${TYPE_STUBS}
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [IDebuggerSidebar],
+          activate: (
+            app: JupyterFrontEnd,
+            debuggerSidebar: IDebugger.ISidebar,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `
+      },
+      {
+        // Namespace pattern with optional token
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
+        ${TYPE_STUBS}
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTrackerToken],
+          optional: [IDebuggerSidebar],
+          activate: (
+            app: JupyterFrontEnd,
+            tracker: INotebookTracker,
+            debuggerSidebar: IDebugger.ISidebar | null,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `
+      },
+      {
+        // Cross-file: token and interface declared in a separate .d.ts.
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
+        import { IDebugger, IDebuggerSidebar, INotebookTracker, INotebookTrackerToken } from './fixtures/debugger-types';
+        declare class JupyterFrontEnd {}
+        declare class JupyterFrontEndPlugin<T> {}
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTrackerToken, IDebuggerSidebar],
+          activate: (
+            app: JupyterFrontEnd,
+            tracker: INotebookTracker,
+            debuggerSidebar: IDebugger.ISidebar,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `
+      }
+    ],
+
+    invalid: [
+      {
+        // Namespace pattern but wrong order
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
+        ${TYPE_STUBS}
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTrackerToken, IDebuggerSidebar],
+          activate: (
+            app: JupyterFrontEnd,
+            debuggerSidebar: IDebugger.ISidebar,
+            tracker: INotebookTracker,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `,
+        errors: [
+          { messageId: 'mismatchedOrder', data: { arg: 'debuggerSidebar' } },
+          { messageId: 'mismatchedOrder', data: { arg: 'tracker' } }
+        ]
+      }
+    ]
+  }
+);
