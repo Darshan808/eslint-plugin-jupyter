@@ -34,7 +34,9 @@ export default [
       parser: resolvedParser,
       parserOptions: {
         ecmaVersion: 'latest',
-        sourceType: 'module'
+        sourceType: 'module',
+        project: true,
+        tsconfigRootDir: __dirname
       }
     },
     linterOptions: {
