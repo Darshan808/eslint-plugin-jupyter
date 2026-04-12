@@ -69,7 +69,7 @@ ruleTester.run('plugin-description', pluginDescription, {
       `,
       errors: [
         {
-          messageId: 'missingDescription'
+          messageId: 'emptyDescription'
         }
       ]
     }
