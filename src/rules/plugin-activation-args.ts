@@ -290,7 +290,11 @@ const jupyterPluginActivationArgs = createRule({
         }
       }
       // Without a checker we cannot resolve namespace patterns like
-      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`.
+      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`, so we cannot distinguish
+      // a genuine mismatch from a valid aliasing convention. Treat as a match
+      // to avoid false positives; the exact-name check above already handles
+      // the common case. Users wanting full type-aware checks should configure
+      // `parserOptions.project`.
       if (!checker) return [true, false];
       return [false, false];
     }
