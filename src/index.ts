@@ -6,12 +6,14 @@
 import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
 import pluginDescription from './rules/plugin-description';
+import noUntranslatedString from './rules/no-untranslated-string';
 
 const plugin = {
   rules: {
     'plugin-activation-args': pluginActivationArgs,
     'command-described-by': commandDescribedBy,
-    'plugin-description': pluginDescription
+    'plugin-description': pluginDescription,
+    'no-untranslated-string': noUntranslatedString
   },
   configs: {
     recommended: {
@@ -19,14 +21,16 @@ const plugin = {
       rules: {
         'jupyter/plugin-activation-args': 'error',
         'jupyter/command-described-by': 'warn',
-        'jupyter/plugin-description': 'warn'
+        'jupyter/plugin-description': 'warn',
+        'jupyter/no-untranslated-string': 'warn'
       }
     },
     'recommended-legacy': {
       rules: {
         'jupyter/plugin-activation-args': 'error',
         'jupyter/command-described-by': 'warn',
-        'jupyter/plugin-description': 'warn'
+        'jupyter/plugin-description': 'warn',
+        'jupyter/no-untranslated-string': 'warn'
       }
     }
   }
