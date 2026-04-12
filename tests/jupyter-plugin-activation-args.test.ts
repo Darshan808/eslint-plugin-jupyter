@@ -489,7 +489,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'incorrectType',
-          data: { arg: 'tracker', type: 'null', expected: 'INotebookTracker' }
+          data: { arg: 'tracker', type: null, expected: 'INotebookTracker' }
         }
       ]
     },

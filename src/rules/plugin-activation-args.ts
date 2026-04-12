@@ -291,7 +291,7 @@ const jupyterPluginActivationArgs = createRule({
       }
       // Without a checker we cannot resolve namespace patterns like
       // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`.
-      if (!checker && paramType && paramType.includes('.')) return [true, false];
+      if (!checker) return [true, false];
       return [false, false];
     }
 
@@ -382,7 +382,7 @@ const jupyterPluginActivationArgs = createRule({
             });
           }
 
-          // Validation 3: If parameters have type annotations, validate order
+          // Validation 3: Validate remaining parameters against expected token order
           const actualParamTypes = paramTypes.slice(1); // First arg already validated above
           const actualParamNodes = paramNodes.slice(1);
 
@@ -394,13 +394,11 @@ const jupyterPluginActivationArgs = createRule({
 
             if (expectedToken === undefined) {
               // Extra argument
-              if (paramType) {
-                context.report({
-                  node: activateInfo.node,
-                  messageId: 'extraArgument',
-                  data: { arg: params[i + 1] }
-                });
-              }
+              context.report({
+                node: activateInfo.node,
+                messageId: 'extraArgument',
+                data: { arg: params[i + 1] }
+              });
             } else {
               const [matches, tokenUnresolved] = tokenMatchesParam(
                 expectedToken,
@@ -418,12 +416,12 @@ const jupyterPluginActivationArgs = createRule({
                 const matchesAnyOtherToken = expectedTokensWithoutApp.some(
                   (otherToken, j) => {
                     if (j === i) return false;
-                    const [otherMatches] = tokenMatchesParam(
+                    const [otherMatches, tokenUnresolved] = tokenMatchesParam(
                       otherToken,
                       paramType,
                       paramNode
                     );
-                    return otherMatches;
+                    return otherMatches && !tokenUnresolved;
                   }
                 );
                 if (matchesAnyOtherToken) {
