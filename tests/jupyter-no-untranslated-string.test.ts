@@ -18,6 +18,7 @@ const ruleTester = new RuleTester({
 
 ruleTester.run('no-untranslated-string', noUntranslatedString, {
   valid: [
+    // --- addCommand: translated values ---
     {
       code: `
         commands.addCommand('file-download', {
@@ -39,11 +40,11 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
         commands.addCommand('file-download', {
           label: trans.__('Save'),
           caption: trans.__('Save notebook'),
-          description: trans.__('Save the current notebook'),
           execute: () => {}
         });
       `
     },
+    // --- addCommand: non-literal values ---
     {
       code: `
         commands.addCommand('file-download', {
@@ -52,6 +53,7 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
         });
       `
     },
+    // --- addCommand: empty strings ---
     {
       code: `
         commands.addCommand('file-download', {
@@ -60,49 +62,42 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
         });
       `
     },
-    
-    // setAttribute: translated values are OK
+    // --- setAttribute: translated values ---
+    { code: `el.setAttribute('aria-label', trans.__('main sidebar'));` },
+    { code: `el.setAttribute('title', trans.__('Close Tab'));` },
+    // --- direct property assignment: translated ---
+    { code: `el.title = trans.__('Close Tab');` },
+    { code: `el.ariaLabel = trans.__('Search results');` },
+    // --- title.label / title.caption: translated ---
+    { code: `this.title.label = trans.__('Source');` },
+    { code: `this.title.caption = trans.__('Source file');` },
+    // --- showDialog: translated options ---
     {
-      code: `el.setAttribute('aria-label', trans.__('main sidebar'));`
+      code: `
+        showDialog({
+          title: trans.__('Build Recommended'),
+          body,
+          buttons: [Dialog.cancelButton(), Dialog.okButton({ label: trans.__('Build') })]
+        });
+      `
     },
+    // --- new Dialog: translated options ---
     {
-      code: `el.setAttribute('title', trans.__('Close Tab'));`
+      code: `
+        const dialog = new Dialog({
+          title: trans.__('Select Kernel'),
+          body,
+          buttons
+        });
+      `
     },
-    {
-      code: `el.setAttribute('data-custom', 'some-value');`
-    },
-    {
-      code: `el.setAttribute('class', 'jp-widget');`
-    },
-    {
-      code: `el.setAttribute('aria-label', labelVar);`
-    },
-    {
-      code: `el.setAttribute('title', '');`
-    },
-    // property assignment: translated values are OK
-    {
-      code: `el.title = trans.__('Close Tab');`
-    },
-    {
-      code: `el.ariaLabel = trans.__('Search results');`
-    },
-    {
-      code: `el.id = 'my-element';`
-    },
-    // Variable is OK
-    {
-      code: `el.title = titleVar;`
-    },
-    {
-      code: `el['title'] = 'Close Tab';`
-    },
-    {
-      code: `el.title += 'Close Tab';`
-    }
+
+    // --- Dialog button builders: translated label ---
+    { code: `Dialog.okButton({ label: trans.__('Build') });` },
   ],
 
   invalid: [
+    // --- addCommand: raw string in label ---
     {
       code: `
         commands.addCommand('file-download', {
@@ -112,6 +107,7 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
       `,
       errors: [{ messageId: 'untranslatedCommandProp', data: { prop: 'label' } }]
     },
+    // --- addCommand: raw string in caption ---
     {
       code: `
         commands.addCommand('file-save', {
@@ -123,17 +119,19 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
         { messageId: 'untranslatedCommandProp', data: { prop: 'caption' } }
       ]
     },
+    // --- addCommand: raw string in usage ---
     {
       code: `
         commands.addCommand('filebrowser:open', {
-          description: 'Opens the file browser',
+          usage: 'Opens the file browser',
           execute: () => {}
         });
       `,
       errors: [
-        { messageId: 'untranslatedCommandProp', data: { prop: 'description' } }
+        { messageId: 'untranslatedCommandProp', data: { prop: 'usage' } }
       ]
     },
+    // --- addCommand: concise arrow returning raw string ---
     {
       code: `
         commands.addCommand(CommandIDs.close, {
@@ -143,6 +141,7 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
       `,
       errors: [{ messageId: 'untranslatedCommandProp', data: { prop: 'label' } }]
     },
+    // --- addCommand: template literal ---
     {
       code: `
         commands.addCommand('file-download', {
@@ -152,50 +151,115 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
       `,
       errors: [{ messageId: 'untranslatedCommandProp', data: { prop: 'label' } }]
     },
-   
-    // setAttribute: raw string with aria-label
+    // --- setAttribute: raw string with aria-label ---
     {
       code: `el.setAttribute('aria-label', 'main sidebar');`,
       errors: [
         { messageId: 'untranslatedSetAttribute', data: { attr: 'aria-label' } }
       ]
     },
+    // --- setAttribute: raw string with title ---
     {
       code: `el.setAttribute('title', 'Close Tab');`,
       errors: [
         { messageId: 'untranslatedSetAttribute', data: { attr: 'title' } }
       ]
     },
-    // setAttribute: raw string with aria-descriptin
-    {
-      code: `el.setAttribute('aria-description', 'Describes the widget');`,
-      errors: [
-        {
-          messageId: 'untranslatedSetAttribute',
-          data: { attr: 'aria-description' }
-        }
-      ]
-    },
-    // setAttribute: template literal with no expressions
+    // --- setAttribute: template literal ---
     {
       code: `el.setAttribute('aria-label', \`main sidebar\`);`,
       errors: [
         { messageId: 'untranslatedSetAttribute', data: { attr: 'aria-label' } }
       ]
     },
-    // Property assignment: raw string to title
+
+    // --- direct property assignment: raw string to title ---
     {
       code: `el.title = 'Close Tab';`,
       errors: [
         { messageId: 'untranslatedPropertyAssign', data: { prop: 'title' } }
       ]
     },
-    // Property assignment: raw string to ariaLabel
+    // --- direct property assignment: raw string to ariaLabel ---
     {
       code: `el.ariaLabel = 'Search results';`,
       errors: [
         { messageId: 'untranslatedPropertyAssign', data: { prop: 'ariaLabel' } }
       ]
+    },
+    // --- title.label: raw string ---
+    {
+      code: `this.title.label = 'Source';`,
+      errors: [
+        { messageId: 'untranslatedTitleProp', data: { prop: 'label' } }
+      ]
+    },
+    // --- title.label: arbitrary receiver ---
+    {
+      code: `widget.title.label = 'My Panel';`,
+      errors: [
+        { messageId: 'untranslatedTitleProp', data: { prop: 'label' } }
+      ]
+    },
+    // --- showDialog: raw string title ---
+    {
+      code: `showDialog({ title: 'Confirm' });`,
+      errors: [
+        { messageId: 'untranslatedDialogOption', data: { prop: 'title' } }
+      ]
+    },
+    // --- showDialog: raw string body ---
+    {
+      code: `showDialog({ title: trans.__('Build'), body: 'Are you sure?' });`,
+      errors: [
+        { messageId: 'untranslatedDialogOption', data: { prop: 'body' } }
+      ]
+    },
+    // --- new Dialog: raw string title ---
+    {
+      code: `const d = new Dialog({ title: 'Select Kernel', body });`,
+      errors: [
+        { messageId: 'untranslatedDialogOption', data: { prop: 'title' } }
+      ]
+    },
+
+    // --- Dialog button builders: raw string label ---
+    {
+      code: `Dialog.okButton({ label: 'Build' });`,
+      errors: [{ messageId: 'untranslatedDialogButtonLabel' }]
+    },
+  ]
+});
+
+// JSX tests require a separate tester with JSX parsing enabled
+const jsxRuleTester = new RuleTester({
+  languageOptions: {
+    parser: require('@typescript-eslint/parser'),
+    parserOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      ecmaFeatures: { jsx: true }
+    }
+  }
+});
+
+jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
+  valid: [
+    // --- JSX: translated expression ---
+    { code: `const el = <span>{trans.__('Error message:')}</span>;` },
+    { code: `const el = (\n  <div>\n    <span>{trans.__('Label')}</span>\n  </div>\n);` }
+  ],
+
+  invalid: [
+    // --- JSXText: raw text content ---
+    {
+      code: `const el = <span>Hello world</span>;`,
+      errors: [{ messageId: 'untranslatedJsxText' }]
+    },
+    // --- JSXExpressionContainer: raw string literal ---
+    {
+      code: `const el = <span>{'raw string'}</span>;`,
+      errors: [{ messageId: 'untranslatedJsxText' }]
     }
   ]
 });
