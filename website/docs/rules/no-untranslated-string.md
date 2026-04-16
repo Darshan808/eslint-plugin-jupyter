@@ -8,62 +8,88 @@ The rule reports raw string literals (and template literals without expressions)
 
 ### 1. `commands.addCommand()` properties
 
-The `label`, `caption`, and `description` properties of a command registration must not contain bare string literals. Concise arrow functions that return a raw string (e.g. `() => 'string'`) are also flagged.
-
-#### Incorrect
+The `label`, `caption`, and `usage` properties must not contain bare strings. Concise arrow functions returning a raw string (e.g. `() => 'string'`) are also flagged.
 
 ```ts
-commands.addCommand('file-download', {
-  label: 'Download',
-  caption: 'Download the file',
-  execute: () => { /* ... */ }
-});
+// Incorrect
+commands.addCommand('file-download', { label: 'Download' });
+
+// Correct
+commands.addCommand('file-download', { label: trans.__('Download') });
+commands.addCommand('file-download', { label: () => trans.__('Download') });
 ```
-
-#### Correct
-
-```ts
-commands.addCommand('file-download', {
-  label: trans.__('Download'),
-  caption: trans.__('Download the file'),
-  execute: () => { /* ... */ }
-});
-```
-
----
 
 ### 2. `element.setAttribute()` with accessibility attributes
 
-The second argument of `setAttribute` must not be a raw string when the attribute is `aria-label`, `aria-description`, or `title`.
-
-#### Incorrect
+Applies to `aria-label`, `aria-description`, and `title`.
 
 ```ts
+// Incorrect
 node.setAttribute('aria-label', 'main sidebar');
-```
 
-#### Correct
-
-```ts
+// Correct
 node.setAttribute('aria-label', trans.__('main sidebar'));
 ```
 
----
-
 ### 3. Direct assignment to `title` and `ariaLabel`
 
-Assigning a raw string literal to `element.title` or `element.ariaLabel` is flagged.
-
-#### Incorrect
-
 ```ts
+// Incorrect
 element.title = 'Close Tab';
+element.ariaLabel = 'Search results';
+
+// Correct
+element.title = trans.__('Close Tab');
+element.ariaLabel = trans.__('Search results');
 ```
 
-#### Correct
+### 4. Lumino widget title properties
+
+Applies to `*.title.label` and `*.title.caption` assignments.
 
 ```ts
-element.title = trans.__('Close Tab');
+// Incorrect
+this.title.label = 'Source';
+
+// Correct
+this.title.label = trans.__('Source');
+```
+
+### 5. `showDialog()` and `new Dialog()` options
+
+The `title` and `body` options must not be raw strings.
+
+```ts
+// Incorrect
+showDialog({ title: 'Confirm', body: 'Are you sure?' });
+
+// Correct
+showDialog({ title: trans.__('Confirm'), body: trans.__('Are you sure?') });
+```
+
+### 6. Dialog button builder labels
+
+Applies to `Dialog.okButton`, `Dialog.cancelButton`, `Dialog.warnButton`, and `Dialog.errorButton`.
+
+```ts
+// Incorrect
+Dialog.okButton({ label: 'Build' });
+
+// Correct
+Dialog.okButton({ label: trans.__('Build') });
+```
+
+### 7. JSX text content
+
+Raw text between JSX tags and string literals inside `{...}` expressions are flagged.
+
+```tsx
+// Incorrect
+const el = <span>Error message:</span>;
+const el = <span>{'raw string'}</span>;
+
+// Correct
+const el = <span>{trans.__('Error message:')}</span>;
 ```
 
 ## Options
