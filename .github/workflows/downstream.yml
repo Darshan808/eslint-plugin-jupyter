@@ -121,7 +121,7 @@ jobs:
       - name: Install and build jupyterlite
         working-directory: jupyterlite
         run: |
-          python -m pip install .
+          python -m pip install --group build
           jlpm
           jlpm run build
 
