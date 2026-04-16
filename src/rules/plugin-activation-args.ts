@@ -155,7 +155,7 @@ const jupyterPluginActivationArgs = createRule({
       wrongArgumentCount:
         'Expected {{ expected }} activation arguments (app + {{ tokenCount }} tokens), got {{ actual }}.',
       unresolvableTokenType:
-        'Token "{{ token }}" type could not be resolved — package may be unbuilt. Build it for accurate type checking.'
+        'Token "{{ token }}" type could not be resolved. The package may be unbuilt or type checking may not be configured.'
     },
     fixable: 'code',
     schema: [
@@ -276,7 +276,13 @@ const jupyterPluginActivationArgs = createRule({
     ): [boolean, boolean] {
       // For most cases this check is sufficient
       if (paramType === token.name) return [true, false];
-      if (checker && paramNode) {
+      // Without a checker we cannot resolve namespace patterns like
+      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`, so we cannot distinguish
+      // a genuine mismatch from a valid aliasing convention.
+      // Users wanting full type-aware checks should configure
+      // `parserOptions.project`.
+      if (!checker) return [false, true];
+      if (paramNode) {
         const resolvedToken = resolveTokenInnerType(token.node);
         const tokenUnresolved =
           resolvedToken === null ||
@@ -290,13 +296,6 @@ const jupyterPluginActivationArgs = createRule({
           return [isSameType(resolvedToken, resolvedParam), false];
         }
       }
-      // Without a checker we cannot resolve namespace patterns like
-      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`, so we cannot distinguish
-      // a genuine mismatch from a valid aliasing convention. Treat as a match
-      // to avoid false positives; the exact-name check above already handles
-      // the common case. Users wanting full type-aware checks should configure
-      // `parserOptions.project`.
-      if (!checker) return [true, false];
       return [false, false];
     }
 

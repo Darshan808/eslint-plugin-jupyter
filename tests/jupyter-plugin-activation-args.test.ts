@@ -7,6 +7,17 @@ import { RuleTester } from '@typescript-eslint/rule-tester';
 import * as path from 'path';
 import pluginActivationArgs from '../src/rules/plugin-activation-args';
 
+const nonTypeAwareTester = new RuleTester({
+  languageOptions: {
+    parser: require('@typescript-eslint/parser'),
+    parserOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      tsconfigRootDir: path.resolve(__dirname, '..')
+    }
+  }
+});
+
 const ruleTester = new RuleTester({
   languageOptions: {
     parser: require('@typescript-eslint/parser'),
@@ -20,6 +31,32 @@ const ruleTester = new RuleTester({
       tsconfigRootDir: path.resolve(__dirname, '..')
     }
   }
+});
+
+nonTypeAwareTester.run('plugin-activation-args (non-type-aware)', pluginActivationArgs, {
+  valid: [],
+  invalid: [
+    // This same case is in valid cases for the type-aware tester
+    {
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { IDebuggerSidebar, IDebugger } from './fixtures/debugger-types';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [IDebuggerSidebar],
+          activate: (app: JupyterFrontEnd, sidebar: IDebugger.ISidebar) => {
+            console.log('Activated');
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'unresolvableTokenType',
+          data: { token: 'IDebuggerSidebar' }
+        }
+      ]
+    },
+  ]
 });
 
 ruleTester.run('plugin-activation-args', pluginActivationArgs, {
