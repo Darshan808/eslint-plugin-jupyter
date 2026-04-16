@@ -90,3 +90,45 @@ jobs:
             --max-warnings=9999
         env:
           NODE_PATH: ./notebook/node_modules
+
+  jupyterlite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout eslint-plugin
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install and build plugin
+        run: |
+          npm install
+          npm run build
+
+      - name: Clone JupyterLite
+        uses: actions/checkout@v4
+        with:
+          repository: jupyterlite/jupyterlite
+          path: jupyterlite
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install and build jupyterlite
+        working-directory: jupyterlite
+        run: |
+          python -m pip install .
+          jlpm
+          jlpm run build
+
+      - name: Run integration lint check
+        run: |
+          npx eslint --config eslint.downstream.config.mjs \
+            'jupyterlite/packages/*/src/**/*.ts' \
+            --max-warnings=9999
+        env:
+          NODE_PATH: ./jupyterlite/node_modules

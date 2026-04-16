@@ -68,5 +68,31 @@ export default [
     linterOptions: {
       reportUnusedDisableDirectives: 'off'
     }
+  },
+
+  // Jupyterlite
+  {
+    basePath: __dirname,
+    files: ['jupyterlite/packages/*/src/**/*.ts'],
+    plugins: {
+      'jupyter': resolvedPlugin,
+      '@typescript-eslint': resolvedTsPlugin
+    },
+    rules: {
+      'jupyter/command-described-by': 'error',
+      'jupyter/plugin-activation-args': 'error',
+      'jupyter/plugin-description': 'error'
+    },
+    languageOptions: {
+      parser: resolvedParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: path.resolve(__dirname, 'jupyterlite/tsconfig.eslint.json')
+      }
+    },
+    linterOptions: {
+      reportUnusedDisableDirectives: 'off'
+    }
   }
 ];
