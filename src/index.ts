@@ -7,6 +7,7 @@ import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
 import pluginDescription from './rules/plugin-description';
 import tokenFormat from './rules/token-format';
+import noUntranslatedString from './rules/no-untranslated-string';
 
 const plugin = {
   rules: {
@@ -14,6 +15,7 @@ const plugin = {
     'command-described-by': commandDescribedBy,
     'plugin-description': pluginDescription,
     'token-format': tokenFormat
+    'no-untranslated-string': noUntranslatedString
   },
   configs: {
     recommended: {
@@ -23,6 +25,7 @@ const plugin = {
         'jupyter/command-described-by': 'warn',
         'jupyter/plugin-description': 'warn',
         'jupyter/token-format': 'error'
+        'jupyter/no-untranslated-string': 'warn'
       }
     },
     'recommended-legacy': {
@@ -31,6 +34,7 @@ const plugin = {
         'jupyter/command-described-by': 'warn',
         'jupyter/plugin-description': 'warn',
         'jupyter/token-format': 'error'
+        'jupyter/no-untranslated-string': 'warn'
       }
     }
   }
