@@ -14,7 +14,7 @@ const plugin = {
     'plugin-activation-args': pluginActivationArgs,
     'command-described-by': commandDescribedBy,
     'plugin-description': pluginDescription,
-    'token-format': tokenFormat
+    'token-format': tokenFormat,
     'no-untranslated-string': noUntranslatedString
   },
   configs: {
@@ -24,7 +24,7 @@ const plugin = {
         'jupyter/plugin-activation-args': 'error',
         'jupyter/command-described-by': 'warn',
         'jupyter/plugin-description': 'warn',
-        'jupyter/token-format': 'error'
+        'jupyter/token-format': 'error',
         'jupyter/no-untranslated-string': 'warn'
       }
     },
@@ -33,7 +33,7 @@ const plugin = {
         'jupyter/plugin-activation-args': 'error',
         'jupyter/command-described-by': 'warn',
         'jupyter/plugin-description': 'warn',
-        'jupyter/token-format': 'error'
+        'jupyter/token-format': 'error',
         'jupyter/no-untranslated-string': 'warn'
       }
     }
