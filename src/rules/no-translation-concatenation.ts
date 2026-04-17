@@ -9,14 +9,28 @@ import { TSESTree } from '@typescript-eslint/types';
 const TRANS_METHOD = '__';
 
 /**
- * Returns the first `+` BinaryExpression found anywhere in the subtree,
- * or null if none exists.
+ * Returns true when every leaf of a `+` expression tree is a string literal.
+ * Such concatenation is static and translation tools can handle it.
+ */
+function isAllStringLiterals(node: TSESTree.Node): boolean {
+  if (node.type === 'Literal') {
+    return typeof node.value === 'string';
+  }
+  if (node.type === 'BinaryExpression' && node.operator === '+') {
+    return isAllStringLiterals(node.left) && isAllStringLiterals(node.right);
+  }
+  return false;
+}
+
+/**
+ * Returns the first `+` BinaryExpression found anywhere in the subtree that
+ * involves a non-literal operand, or null if none exists.
  */
 function findConcatenation(
   node: TSESTree.Node
 ): TSESTree.BinaryExpression | null {
   if (node.type === 'BinaryExpression' && node.operator === '+') {
-    return node;
+    return isAllStringLiterals(node) ? null : node;
   }
   const record = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(record)) {
