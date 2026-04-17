@@ -28,6 +28,7 @@ export default [
     },
     rules: {
       'jupyter/command-described-by': 'error',
+      'jupyter/no-untranslated-string': 'error',
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error'
     },
@@ -54,6 +55,7 @@ export default [
     },
     rules: {
       'jupyter/command-described-by': 'error',
+      'jupyter/no-untranslated-string': 'error',
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error'
     },
