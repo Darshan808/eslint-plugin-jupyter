@@ -28,6 +28,7 @@ export default [
     },
     rules: {
       'jupyter/command-described-by': 'error',
+      'jupyter/no-untranslated-string': 'error',
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error',
       'jupyter/no-translation-concatenation': 'error'
@@ -55,6 +56,7 @@ export default [
     },
     rules: {
       'jupyter/command-described-by': 'error',
+      'jupyter/no-untranslated-string': 'error',
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error'
     },
@@ -64,6 +66,32 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'module',
         project: path.resolve(__dirname, 'notebook/tsconfig.eslint.json')
+      }
+    },
+    linterOptions: {
+      reportUnusedDisableDirectives: 'off'
+    }
+  },
+
+  // Jupyterlite
+  {
+    basePath: __dirname,
+    files: ['jupyterlite/packages/*/src/**/*.ts'],
+    plugins: {
+      'jupyter': resolvedPlugin,
+      '@typescript-eslint': resolvedTsPlugin
+    },
+    rules: {
+      'jupyter/command-described-by': 'error',
+      'jupyter/plugin-activation-args': 'error',
+      'jupyter/plugin-description': 'error'
+    },
+    languageOptions: {
+      parser: resolvedParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: path.resolve(__dirname, 'jupyterlite/tsconfig.eslint.json')
       }
     },
     linterOptions: {

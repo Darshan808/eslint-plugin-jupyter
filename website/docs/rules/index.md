@@ -6,6 +6,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 
 - [command-described-by](./command-described-by)
 - [no-translation-concatenation](./no-translation-concatenation)
+- [no-untranslated-string](./no-untranslated-string)
 - [plugin-activation-args](./plugin-activation-args)
 - [plugin-description](./plugin-description)
 
@@ -19,6 +20,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | --- | --- |
 | [jupyter/plugin-activation-args](./plugin-activation-args) | `error` |
 | [jupyter/command-described-by](./command-described-by) | `warn` |
+| [jupyter/no-untranslated-string](./no-untranslated-string) | `warn` |
 | [jupyter/plugin-description](./plugin-description) | `warn` |
 | [jupyter/no-translation-concatenation](./no-translation-concatenation) | `error` |
 

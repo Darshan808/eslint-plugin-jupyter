@@ -16,7 +16,7 @@ import { createRule } from '../utils/create-rule';
 
 interface ActivateFunctionInfo {
   node: TSESTree.Node;
-  params: string[];
+  paramNames: string[];
   paramTypes: (string | null)[];
   paramNodes: (TSESTree.Identifier | null)[];
 }
@@ -56,19 +56,20 @@ function findActivateFunction(
       .filter(
         (param): param is TSESTree.Identifier => param.type === 'Identifier'
       )
-      .map(param => param.name);
 
-    const paramTypes = activateValue.params.map(param =>
+    const paramNames = params.map(param => param.name);
+
+    const paramTypes = params.map(param =>
       param.type === 'Identifier' ? extractParameterType(param) : null
     );
 
-    const paramNodes = activateValue.params.map(param =>
+    const paramNodes = params.map(param =>
       param.type === 'Identifier' ? param : null
     );
 
     return {
       node: activateProp,
-      params,
+      paramNames,
       paramTypes,
       paramNodes
     };
@@ -139,6 +140,8 @@ const jupyterPluginActivationArgs = createRule({
     messages: {
       mismatchedOrder:
         'Activation argument "{{ arg }}" does not match the order of requires/optional tokens.',
+      incorrectType:
+        'Activation argument "{{ arg }}" has incorrect type annotation "{{ type }}". Expected type "{{ expected }}".',
       missingArgument:
         'Token "{{ token }}" from requires/optional is missing in activation arguments.',
       extraArgument:
@@ -152,7 +155,7 @@ const jupyterPluginActivationArgs = createRule({
       wrongArgumentCount:
         'Expected {{ expected }} activation arguments (app + {{ tokenCount }} tokens), got {{ actual }}.',
       unresolvableTokenType:
-        'Token "{{ token }}" type could not be resolved — package may be unbuilt. Build it for accurate type checking.'
+        'Token "{{ token }}" type could not be resolved. The package may be unbuilt or type checking may not be configured.'
     },
     fixable: 'code',
     schema: [
@@ -273,7 +276,13 @@ const jupyterPluginActivationArgs = createRule({
     ): [boolean, boolean] {
       // For most cases this check is sufficient
       if (paramType === token.name) return [true, false];
-      if (checker && paramNode) {
+      // Without a checker we cannot resolve namespace patterns like
+      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`, so we cannot distinguish
+      // a genuine mismatch from a valid aliasing convention.
+      // Users wanting full type-aware checks should configure
+      // `parserOptions.project`.
+      if (!checker) return [false, true];
+      if (paramNode) {
         const resolvedToken = resolveTokenInnerType(token.node);
         const tokenUnresolved =
           resolvedToken === null ||
@@ -287,9 +296,6 @@ const jupyterPluginActivationArgs = createRule({
           return [isSameType(resolvedToken, resolvedParam), false];
         }
       }
-      // Without a checker we cannot resolve namespace patterns like
-      // `IDebugger.ISidebar` ↔ `IDebuggerSidebar`.
-      if (!checker && paramType && paramType.includes('.')) return [true, false];
       return [false, false];
     }
 
@@ -309,12 +315,12 @@ const jupyterPluginActivationArgs = createRule({
           if (!activateInfo) {
             return;
           }
-          const { params, paramTypes, paramNodes } = activateInfo;
+          const { paramNames, paramTypes, paramNodes } = activateInfo;
 
           const expectedCount = 1 + requires.length + optional.length;
           const expectedTokensWithoutApp = [...requires, ...optional];
 
-          if (expectedCount === 1 && params.length === 0) {
+          if (expectedCount === 1 && paramNames.length === 0) {
             // Special case, not invalid
             return;
           }
@@ -322,14 +328,14 @@ const jupyterPluginActivationArgs = createRule({
           if (pluginKind === 'frontend') {
             // Validation 1a: Check if first argument is one of the allowed names
             if (
-              params.length > 0 &&
-              !allowedFirstArgumentNames.includes(params[0])
+              paramNames.length > 0 &&
+              !allowedFirstArgumentNames.includes(paramNames[0])
             ) {
               context.report({
                 node: activateInfo.node,
                 messageId: 'appNotFirst',
                 data: {
-                  arg: params[0],
+                  arg: paramNames[0],
                   allowedNames: allowedFirstArgumentNames
                     .map(name => `"${name}"`)
                     .join(', ')
@@ -339,14 +345,14 @@ const jupyterPluginActivationArgs = createRule({
             }
 
             // Validation 1b: Check if first argument type is compatible with JupyterFrontEnd
-            if (params.length > 0 && paramTypes.length > 0) {
+            if (paramNames.length > 0 && paramTypes.length > 0) {
               const firstParamType = paramTypes[0];
               if (!isCompatibleWithJupyterFrontEnd(firstParamType)) {
                 context.report({
                   node: activateInfo.node,
                   messageId: 'invalidAppType',
                   data: {
-                    arg: params[0],
+                    arg: paramNames[0],
                     type: firstParamType || 'unknown'
                   }
                 });
@@ -355,7 +361,7 @@ const jupyterPluginActivationArgs = createRule({
             }
           } else if (pluginKind === 'service-manager') {
             // Validation 1: First argument must be literal null
-            if (params.length === 0 || paramTypes[0] !== null) {
+            if (paramNames.length === 0 || paramTypes[0] !== null) {
               context.report({
                 node: activateInfo.node,
                 messageId: 'serviceManagerFirstArgNotNull',
@@ -368,80 +374,85 @@ const jupyterPluginActivationArgs = createRule({
           }
 
           // Validation 2: Check if argument count matches
-          if (params.length !== expectedCount) {
+          if (paramNames.length !== expectedCount) {
             context.report({
               node: activateInfo.node,
               messageId: 'wrongArgumentCount',
               data: {
                 expected: String(expectedCount),
                 tokenCount: String(requires.length + optional.length),
-                actual: String(params.length)
+                actual: String(paramNames.length)
               }
             });
           }
 
-          // Validation 3: If parameters have type annotations, validate order
+          // Validation 3: Validate remaining parameters against expected token order
           const actualParamTypes = paramTypes.slice(1); // First arg already validated above
           const actualParamNodes = paramNodes.slice(1);
-          const hasTypeInfo = actualParamTypes.some(t => t !== null);
 
-          if (hasTypeInfo) {
-            // Validate that parameter types match expected token types in order
-            for (let i = 0; i < actualParamTypes.length; i++) {
-              const paramType = actualParamTypes[i];
-              const paramNode = actualParamNodes[i];
-              const expectedToken = expectedTokensWithoutApp[i];
+          // Validate that parameter types match expected token types in order
+          for (let i = 0; i < actualParamTypes.length; i++) {
+            const paramType = actualParamTypes[i];
+            const paramNode = actualParamNodes[i];
+            const expectedToken = expectedTokensWithoutApp[i];
 
-              if (expectedToken === undefined) {
-                // Extra argument
-                if (paramType) {
-                  context.report({
-                    node: activateInfo.node,
-                    messageId: 'extraArgument',
-                    data: { arg: params[i + 1] }
-                  });
-                }
-              } else {
-                const [matches, tokenUnresolved] = tokenMatchesParam(
-                  expectedToken,
-                  paramType,
-                  paramNode
+            if (expectedToken === undefined) {
+              // Extra argument
+              context.report({
+                node: activateInfo.node,
+                messageId: 'extraArgument',
+                data: { arg: paramNames[i + 1] }
+              });
+            } else {
+              const [matches, tokenUnresolved] = tokenMatchesParam(
+                expectedToken,
+                paramType,
+                paramNode
+              );
+              if (tokenUnresolved) {
+                context.report({
+                  node: activateInfo.node,
+                  messageId: 'unresolvableTokenType',
+                  data: { token: expectedToken.name }
+                });
+              } else if (!matches) {
+                // Distinguish token-order conflict vs. invalid type annotation.
+                const matchesAnyOtherToken = expectedTokensWithoutApp.some(
+                  (otherToken, j) => {
+                    if (j === i) return false;
+                    const [otherMatches, tokenUnresolved] = tokenMatchesParam(
+                      otherToken,
+                      paramType,
+                      paramNode
+                    );
+                    return otherMatches && !tokenUnresolved;
+                  }
                 );
-                if (tokenUnresolved) {
-                  context.report({
-                    node: activateInfo.node,
-                    messageId: 'unresolvableTokenType',
-                    data: { token: expectedToken.name }
-                  });
-                } else if (!matches) {
+                if (matchesAnyOtherToken) {
                   context.report({
                     node: activateInfo.node,
                     messageId: 'mismatchedOrder',
-                    data: { arg: params[i + 1] }
+                    data: { arg: paramNames[i + 1] }
+                  });
+                } else {
+                  context.report({
+                    node: activateInfo.node,
+                    messageId: 'incorrectType',
+                    data: {
+                      arg: paramNames[i + 1],
+                      type: paramType,
+                      expected: expectedToken.name
+                    }
                   });
                 }
               }
             }
-          } else {
-            // Without type information, we only check for extra arguments
-            const actualParams = params.slice(1);
-            for (
-              let i = expectedTokensWithoutApp.length;
-              i < actualParams.length;
-              i++
-            ) {
-              context.report({
-                node: activateInfo.node,
-                messageId: 'extraArgument',
-                data: { arg: actualParams[i] }
-              });
-            }
           }
 
           // Validation 4: Check for missing arguments (only if counts don't match)
-          if (params.length < expectedCount) {
+          if (paramNames.length < expectedCount) {
             for (
-              let i = Math.max(params.length - 1, 0);
+              let i = Math.max(paramNames.length - 1, 0);
               i < expectedTokensWithoutApp.length;
               i++
             ) {
