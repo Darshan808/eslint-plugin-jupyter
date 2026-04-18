@@ -7,20 +7,63 @@ import { RuleTester } from '@typescript-eslint/rule-tester';
 import * as path from 'path';
 import pluginActivationArgs from '../src/rules/plugin-activation-args';
 
+const nonTypeAwareTester = new RuleTester({
+  languageOptions: {
+    parser: require('@typescript-eslint/parser'),
+    parserOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      tsconfigRootDir: path.resolve(__dirname, '..')
+    }
+  }
+});
+
 const ruleTester = new RuleTester({
   languageOptions: {
     parser: require('@typescript-eslint/parser'),
     parserOptions: {
       ecmaVersion: 2020,
-      sourceType: 'module'
+      sourceType: 'module',
+      projectService: {
+        allowDefaultProject: ['tests/*.ts'],
+        defaultProject: 'tsconfig.test.json'
+      },
+      tsconfigRootDir: path.resolve(__dirname, '..')
     }
   }
+});
+
+nonTypeAwareTester.run('plugin-activation-args (non-type-aware)', pluginActivationArgs, {
+  valid: [],
+  invalid: [
+    // This same case is in valid cases for the type-aware tester
+    {
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { IDebuggerSidebar, IDebugger } from './fixtures/debugger-types';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [IDebuggerSidebar],
+          activate: (app: JupyterFrontEnd, sidebar: IDebugger.ISidebar) => {
+            console.log('Activated');
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'unresolvableTokenType',
+          data: { token: 'IDebuggerSidebar' }
+        }
+      ]
+    },
+  ]
 });
 
 ruleTester.run('plugin-activation-args', pluginActivationArgs, {
   valid: [
     {
-      // Only requires token
+      // Only requires token, not provided type_stubs as the names match
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -33,6 +76,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Both requires and optional token
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -52,6 +96,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Only optional tokens
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -68,6 +113,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // No requires or optional
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -79,6 +125,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Empty requires and optional arrays
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -92,6 +139,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Multiple required and optional tokens
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -113,10 +161,10 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
-      // Namespace pattern without type info: qualified param types (X.Y) are
-      // allowed even when the token name differs (e.g. IDebuggerSidebar vs
-      // IDebugger.ISidebar) because we can't verify the match without a checker.
+      // Namespace pattern with type info
+      filename: 'tests/type-aware-fixture.ts',
       code: `
+       import { IDebugger, IDebuggerSidebar } from './fixtures/debugger-types';
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
           requires: [IDebuggerSidebar],
@@ -130,24 +178,8 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
-      // Namespace pattern without type info, mixed with a normal token.
-      code: `
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test-plugin',
-          requires: [ITranslator],
-          optional: [IDefaultDrive],
-          activate: (
-            app: JupyterFrontEnd,
-            translator: ITranslator,
-            defaultDrive: Contents.IDrive | null,
-          ) => {
-            console.log('Activated');
-          }
-        };
-      `
-    },
-    {
       // Tokens with qualified names (JupyterFrontEnd.IPaths)
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -170,7 +202,8 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
-      // Multiple required and optional tokens
+      // No active method, should not report any issues
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -185,7 +218,8 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
-      // Multiple required and optional tokens
+      // activate is not a function, should not report any issues
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -196,6 +230,20 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
+      // Special case but valid
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          activate: () => {
+            console.log('Activated');
+          }
+        };
+      `
+    },
+    {
+      // Similar to above one but with empty requires.
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin = {
           id: 'test-plugin',
@@ -207,18 +255,8 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
-      // Sepcial case but valid
-      code: `
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test-plugin',
-          activate: () => {
-            console.log('Activated');
-          }
-        };
-      `
-    },
-    {
       // JupyterLab and some other types are allowed
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -230,6 +268,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // ServiceManagerPlugin must use null as first activate argument
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: ServiceManagerPlugin<void> = {
           id: 'test-service-manager-plugin',
@@ -242,17 +281,58 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           }
         };
       `
+    },
+    {
+    // Namespace pattern with optional token
+    filename: 'tests/type-aware-fixture.ts',
+    code: `
+      import { IDebugger, IDebuggerSidebar } from './fixtures/debugger-types';
+      const plugin: JupyterFrontEndPlugin<void> = {
+        id: 'test-plugin',
+        requires: [INotebookTracker],
+        optional: [IDebuggerSidebar],
+        activate: (
+          app: JupyterFrontEnd,
+          tracker: INotebookTracker,
+          debuggerSidebar: IDebugger.ISidebar | null,
+        ) => {
+          console.log('Activated');
+        }
+      };
+    `
+    },
+    {
+      // Cross-file: token and interface declared in a separate .d.ts.
+    filename: 'tests/type-aware-fixture.ts',
+    code: `
+      import { IDebugger, IDebuggerSidebar, INotebookTracker } from './fixtures/debugger-types';
+      declare class JupyterFrontEnd {}
+      declare class JupyterFrontEndPlugin<T> {}
+      const plugin: JupyterFrontEndPlugin<void> = {
+        id: 'test-plugin',
+        requires: [INotebookTracker, IDebuggerSidebar],
+        activate: (
+          app: JupyterFrontEnd,
+          tracker: INotebookTracker,
+          debuggerSidebar: IDebugger.ISidebar,
+        ) => {
+          console.log('Activated');
+        }
+      };
+    `
     }
   ],
 
   invalid: [
     {
       // Arguments in wrong order (requires)
+      filename: 'tests/type-aware-fixture.ts',
       code: `
+        import { INotebookTracker, ITranslator } from './fixtures/debugger-types';
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
-          requires: [INotebookTracker, IRenderMimeRegistry],
-          activate: (app: JupyterFrontEnd, rendermime: IRenderMimeRegistry, tracker: INotebookTracker) => {
+          requires: [INotebookTracker, ITranslator],
+          activate: (app: JupyterFrontEnd, translator: ITranslator, tracker: INotebookTracker) => {
             console.log('Activated');
           }
         };
@@ -260,7 +340,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'mismatchedOrder',
-          data: { arg: 'rendermime' }
+          data: { arg: 'translator' }
         },
         {
           messageId: 'mismatchedOrder',
@@ -270,6 +350,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Missing argument from requires
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -291,6 +372,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Extra argument not in requires/optional
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -312,6 +394,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // app is not first argument
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -330,7 +413,9 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Wrong order in requires and optional mix
+      filename: 'tests/type-aware-fixture.ts',
       code: `
+        import { INotebookTracker, ITranslator, IRenderMimeRegistry, IToolbarWidgetRegistry } from './fixtures/debugger-types';
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
           requires: [INotebookTracker, IRenderMimeRegistry],
@@ -363,7 +448,9 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Missing optional argument
+      filename: 'tests/type-aware-fixture.ts',
       code: `
+        import { INotebookTracker, ITranslator, IToolbarWidgetRegistry } from './fixtures/debugger-types';
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
           requires: [INotebookTracker],
@@ -389,6 +476,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Too many arguments
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -419,6 +507,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // No requires or optional but extra token(s)
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -439,6 +528,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // First argument has incompatible type
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -456,6 +546,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // ServiceManagerPlugin first argument must be null literal
+      filename: 'tests/type-aware-fixture.ts',
       code: `
         const plugin: ServiceManagerPlugin<void> = {
           id: 'test-service-manager-plugin',
@@ -474,130 +565,87 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           data: { arg: 'JupyterFrontEnd' }
         }
       ]
-    }
-  ]
-});
-
-// ─── Type-aware tests ────────────────────────────────────────────────────────
-// These use a real TypeScript program so the rule can resolve Token<T> type
-// arguments and handle namespace/interface patterns like
-// `IDebuggerSidebar: Token<IDebugger.ISidebar>`.
-
-const typeAwareRuleTester = new RuleTester({
-  languageOptions: {
-    parser: require('@typescript-eslint/parser'),
-    parserOptions: {
-      projectService: {
-        // Allow any .ts file under tests/ to use the default project so we can
-        // lint virtual (in-memory) test code with full type information.
-        allowDefaultProject: ['tests/*.ts'],
-        defaultProject: 'tsconfig.test.json'
-      },
-      tsconfigRootDir: path.resolve(__dirname, '..')
-    }
-  }
-});
-
-// Inline type stubs shared across type-aware test cases
-const TYPE_STUBS = `
-  declare class Token<T> {}
-  declare class JupyterFrontEnd {}
-  declare class JupyterFrontEndPlugin<T> {}
-  declare namespace IDebugger { interface ISidebar {} }
-  declare const IDebuggerSidebar: Token<IDebugger.ISidebar>;
-  declare interface INotebookTracker {}
-  declare const INotebookTrackerToken: Token<INotebookTracker>;
-  declare interface ITranslator {}
-  declare const ITranslatorToken: Token<ITranslator>;
-`;
-
-typeAwareRuleTester.run(
-  'plugin-activation-args (type-aware)',
-  pluginActivationArgs,
-  {
-    valid: [
-      {
-        // Namespace pattern: Token<IDebugger.ISidebar> matched by IDebugger.ISidebar param type.
-        // Type stubs are declared inline to simulate types being in a separate file.
-        filename: 'tests/type-aware-fixture.ts',
-        code: `
-        ${TYPE_STUBS}
+    },
+    {
+      // Incorrect type (null)
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/debugger-types';
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
-          requires: [IDebuggerSidebar],
-          activate: (
-            app: JupyterFrontEnd,
-            debuggerSidebar: IDebugger.ISidebar,
-          ) => {
-            console.log('Activated');
-          }
-        };
-      `
-      },
-      {
-        // Namespace pattern with optional token
-        filename: 'tests/type-aware-fixture.ts',
-        code: `
-        ${TYPE_STUBS}
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test-plugin',
-          requires: [INotebookTrackerToken],
-          optional: [IDebuggerSidebar],
-          activate: (
-            app: JupyterFrontEnd,
-            tracker: INotebookTracker,
-            debuggerSidebar: IDebugger.ISidebar | null,
-          ) => {
-            console.log('Activated');
-          }
-        };
-      `
-      },
-      {
-        // Cross-file: token and interface declared in a separate .d.ts.
-        filename: 'tests/type-aware-fixture.ts',
-        code: `
-        import { IDebugger, IDebuggerSidebar, INotebookTracker, INotebookTrackerToken } from './fixtures/debugger-types';
-        declare class JupyterFrontEnd {}
-        declare class JupyterFrontEndPlugin<T> {}
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test-plugin',
-          requires: [INotebookTrackerToken, IDebuggerSidebar],
-          activate: (
-            app: JupyterFrontEnd,
-            tracker: INotebookTracker,
-            debuggerSidebar: IDebugger.ISidebar,
-          ) => {
-            console.log('Activated');
-          }
-        };
-      `
-      }
-    ],
-
-    invalid: [
-      {
-        // Namespace pattern but wrong order
-        filename: 'tests/type-aware-fixture.ts',
-        code: `
-        ${TYPE_STUBS}
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test-plugin',
-          requires: [INotebookTrackerToken, IDebuggerSidebar],
-          activate: (
-            app: JupyterFrontEnd,
-            debuggerSidebar: IDebugger.ISidebar,
-            tracker: INotebookTracker,
-          ) => {
+          requires: [INotebookTracker],
+          activate: (app: JupyterFrontEnd, tracker: null) => {
             console.log('Activated');
           }
         };
       `,
-        errors: [
-          { messageId: 'mismatchedOrder', data: { arg: 'debuggerSidebar' } },
-          { messageId: 'mismatchedOrder', data: { arg: 'tracker' } }
-        ]
-      }
-    ]
-  }
-);
+      errors: [
+        {
+          messageId: 'incorrectType',
+          data: { arg: 'tracker', type: null, expected: 'INotebookTracker' }
+        }
+      ]
+    },
+    {
+      // Incorrect type
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker, IRenderMimeRegistry } from './fixtures/debugger-types';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker, IRenderMimeRegistry],
+          activate: (app: JupyterFrontEnd, tracker: IDocumentTracker, rendermime: IRenderMimeRegistry) => {
+            console.log('Activated');
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'incorrectType',
+          data: { arg: 'tracker', type: 'IDocumentTracker', expected: 'INotebookTracker' }
+        }
+      ]
+    },
+    {
+      // Incorrect type (without stubs results in unresolved tokens)
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker, IRenderMimeRegistry],
+          activate: (app: JupyterFrontEnd, tracker: IDocumentTracker, rendermime: IRenderMimeRegistry) => {
+            console.log('Activated');
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'unresolvableTokenType',
+          data: { token: 'INotebookTracker'}
+        }
+      ]
+    },
+    {
+    // Namespace pattern but wrong order
+    filename: 'tests/type-aware-fixture.ts',
+    code: `
+      import { IDebugger, IDebuggerSidebar, INotebookTracker } from './fixtures/debugger-types';
+      const plugin: JupyterFrontEndPlugin<void> = {
+        id: 'test-plugin',
+        requires: [INotebookTracker, IDebuggerSidebar],
+        activate: (
+          app: JupyterFrontEnd,
+          debuggerSidebar: IDebugger.ISidebar,
+          tracker: INotebookTracker,
+        ) => {
+          console.log('Activated');
+        }
+      };
+    `,
+      errors: [
+        { messageId: 'mismatchedOrder', data: { arg: 'debuggerSidebar' } },
+        { messageId: 'mismatchedOrder', data: { arg: 'tracker' } }
+      ]
+    }
+  ]
+});
