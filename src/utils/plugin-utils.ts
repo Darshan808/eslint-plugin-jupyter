@@ -85,33 +85,42 @@ export function getPluginId(obj: TSESTree.ObjectExpression): string | null {
   }
   return null;
 }
+export interface TokenEntry {
+  name: string;
+  node: TSESTree.Node;
+}
 
 /**
- * Extracts element names from an array, including member expressions like JupyterFrontEnd.IPaths
+ * Extracts token names and nodes from an array, including member expressions like JupyterFrontEnd.IPaths
  */
-export function extractArrayElements(
+export function extractArrayTokens(
   arrayExpr: TSESTree.ArrayExpression
-): string[] {
-  const names: string[] = [];
+): TokenEntry[] {
+  const entries: TokenEntry[] = [];
 
   for (const element of arrayExpr.elements) {
     if (element === null) continue;
 
     if (element.type === 'Identifier') {
-      names.push(element.name);
+      entries.push({ name: element.name, node: element });
     } else if (element.type === 'MemberExpression') {
       if (
         element.object.type === 'Identifier' &&
         element.property.type === 'Identifier'
       ) {
-        names.push(`${element.object.name}.${element.property.name}`);
+        entries.push({
+          name: `${element.object.name}.${element.property.name}`,
+          node: element
+        });
       }
     }
   }
 
-  return names;
+  return entries;
 }
-export function extractParameterType(param: TSESTree.Identifier): string | null {
+export function extractParameterType(
+  param: TSESTree.Identifier
+): string | null {
   if (!param.typeAnnotation) {
     return null;
   }

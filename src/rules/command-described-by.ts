@@ -13,6 +13,7 @@ const jupyterCommandDescribedBy = createRule({
     type: 'problem',
     docs: {
       description: 'Ensure JupyterLab commands include describedBy property',
+      url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/command-described-by/'
     },
     messages: {
       missingDescribedBy:

@@ -7,10 +7,19 @@ import { createRule } from '../utils/create-rule';
 import { TSESTree } from '@typescript-eslint/types';
 import { getJupyterPluginKind, getPluginId } from '../utils/plugin-utils';
 
+type DescriptionStatus = 'missing' | 'empty' | 'present';
+
 /**
- * Checks if an object expression has a description property
+ * Returns whether the object expression has a description property and whether
+ * it is non-empty.
+ *
+ * - 'missing'  – no description key found
+ * - 'empty'    – key exists but its literal value is empty / whitespace-only
+ * - 'present'  – key exists with a non-empty value (or a non-literal value)
  */
-function hasDescriptionProperty(obj: TSESTree.ObjectExpression): boolean {
+function checkDescriptionProperty(
+  obj: TSESTree.ObjectExpression
+): DescriptionStatus {
   for (const prop of obj.properties) {
     if (prop.type === 'Property') {
       let keyName: string | null = null;
@@ -23,16 +32,17 @@ function hasDescriptionProperty(obj: TSESTree.ObjectExpression): boolean {
         keyName = prop.key.value;
       }
       if (keyName === 'description') {
-        // Check if description value is not empty
         if (prop.value.type === 'Literal') {
           const value = prop.value.value;
-          return typeof value === 'string' && value.trim().length > 0;
+          return typeof value === 'string' && value.trim().length > 0
+            ? 'present'
+            : 'empty';
         }
-        return true; // Non-literal descriptions are assumed valid
+        return 'present';
       }
     }
   }
-  return false;
+  return 'missing';
 }
 
 const jupyterPluginDescription = createRule({
@@ -41,6 +51,7 @@ const jupyterPluginDescription = createRule({
     type: 'problem',
     docs: {
       description: 'Ensure all JupyterLab plugins have a description property',
+      url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/plugin-description/'
     },
     messages: {
       missingDescription:
@@ -68,11 +79,15 @@ const jupyterPluginDescription = createRule({
         const pluginId = getPluginId(varDecl.init);
         const pluginIdSuffix = pluginId ? ` "${pluginId}"` : '';
 
-        // Check if description property exists
-        if (!hasDescriptionProperty(varDecl.init)) {
+        // Check if description property exists and is non-empty
+        const descriptionStatus = checkDescriptionProperty(varDecl.init);
+        if (descriptionStatus !== 'present') {
           context.report({
             node: varDecl.init,
-            messageId: 'missingDescription',
+            messageId:
+              descriptionStatus === 'empty'
+                ? 'emptyDescription'
+                : 'missingDescription',
             data: { pluginId: pluginIdSuffix }
           });
         }

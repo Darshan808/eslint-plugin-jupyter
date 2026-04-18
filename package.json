@@ -1,6 +1,6 @@
 {
   "name": "@jupyter/eslint-plugin",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "ESLint plugin for Jupyter core and extensions with early error catching and best practices enforcement",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

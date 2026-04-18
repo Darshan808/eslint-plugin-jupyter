@@ -2,6 +2,34 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.0.3
+
+([Full Changelog](https://github.com/jupyterlab/eslint-plugin/compare/v0.0.2...5f281b51004d8f7aabc8462d00bd252d4166391e))
+
+### Enhancements made
+
+- Type-aware activation argument checking for `@jupyter/plugin-activation-args` rule [#31](https://github.com/jupyterlab/eslint-plugin/pull/31) ([@Darshan808](https://github.com/Darshan808), [@krassowski](https://github.com/krassowski))
+
+### Maintenance and upkeep improvements
+
+- Add Downstream Integration Test again Jupyter Projects [#33](https://github.com/jupyterlab/eslint-plugin/pull/33) ([@Darshan808](https://github.com/Darshan808), [@krassowski](https://github.com/krassowski))
+- Use `ESLintUtils.RuleCreator` instead for `TSESTree` types [#27](https://github.com/jupyterlab/eslint-plugin/pull/27) ([@Darshan808](https://github.com/Darshan808), [@krassowski](https://github.com/krassowski))
+
+### Documentation improvements
+
+- Docs follow up [#24](https://github.com/jupyterlab/eslint-plugin/pull/24) ([@Darshan808](https://github.com/Darshan808), [@krassowski](https://github.com/krassowski))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/eslint-plugin/graphs/contributors?from=2026-03-09&to=2026-03-30&type=c))
+
+@Darshan808 ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3ADarshan808+updated%3A2026-03-09..2026-03-30&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3Akrassowski+updated%3A2026-03-09..2026-03-30&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.0.2
 
 ([Full Changelog](https://github.com/jupyterlab/eslint-plugin/compare/e46b2b4eebe412038db2574ef0d0ce31370e8722...aaf9c9acfa9fb2807f286d8ea5dc58d59d96b2c2))
@@ -44,5 +72,3 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jupyterlab/eslint-plugin/graphs/contributors?from=2026-01-29&to=2026-03-09&type=c))
 
 @Copilot ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3ACopilot+updated%3A2026-01-29..2026-03-09&type=Issues)) | @Darshan808 ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3ADarshan808+updated%3A2026-01-29..2026-03-09&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3Akrassowski+updated%3A2026-01-29..2026-03-09&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
