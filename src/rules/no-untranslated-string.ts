@@ -122,11 +122,23 @@ const noUntranslatedString = createRule({
       untranslatedJsxText:
         'JSX text content has an untranslated string literal. Wrap it with {trans.__(...)}'
     },
-    schema: []
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          enforcePunctuation: { type: 'boolean' }
+        },
+        additionalProperties: false
+      }
+    ]
   },
-  defaultOptions: [],
+  defaultOptions: [{ enforcePunctuation: false }],
 
   create(context) {
+    const enforcePunctuation =
+      (context.options[0] as { enforcePunctuation?: boolean })
+        ?.enforcePunctuation ?? false;
+
     return {
       CallExpression(node) {
         // Branch A: commands.addCommand(id, { label, caption, usage })
@@ -289,7 +301,7 @@ const noUntranslatedString = createRule({
 
       // Raw text between JSX tags: <span>Untranslated text</span>
       JSXText(node) {
-        if (node.value.trim().length > 0 && hasLetters(node.value)) {
+        if (node.value.trim().length > 0 && (enforcePunctuation || hasLetters(node.value))) {
           context.report({
             node,
             messageId: 'untranslatedJsxText'
@@ -310,7 +322,6 @@ const noUntranslatedString = createRule({
           if (!attrName || !MONITORED_JSX_ATTRS.includes(attrName)) {
             return;
           }
-          // Accessibility attributes: flag any raw string regardless of content
           if (isRawStringNode(node.expression)) {
             context.report({
               node: node.expression,
@@ -321,7 +332,7 @@ const noUntranslatedString = createRule({
         }
         if (isRawStringNode(node.expression)) {
           const value = getRawStringValue(node.expression);
-          if (value !== null && hasLetters(value)) {
+          if (value !== null && (enforcePunctuation ? value.length > 0 : hasLetters(value))) {
             context.report({
               node: node.expression,
               messageId: 'untranslatedJsxText'

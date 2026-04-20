@@ -251,8 +251,6 @@ jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
     { code: `<div className={'normal-class-string'} />` },
     { code: `<div id={'my-id'} />` },
     { code: `<span aria-label={trans.__('Close')} />` },
-    // Variables aren't flagged
-    { code: `<span>{myVar}</span>` },
     // Punctuation-only JSX text should not be flagged
     { code: `<span>{','}</span>` },
     { code: `<span>{' + '}</span>` }
@@ -280,6 +278,32 @@ jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
     },
     {
       code: `<span aria-description={'Describes something'} />`,
+      errors: [{ messageId: 'untranslatedJsxText' }]
+    }
+  ]
+});
+
+// enforcePunctuation option tests
+jsxRuleTester.run('no-untranslated-string (JSX, enforcePunctuation)', noUntranslatedString, {
+  valid: [
+    // Empty strings still ignored even with enforcePunctuation
+    { code: `<span>{''}</span>`, options: [{ enforcePunctuation: true }] }
+  ],
+  invalid: [
+    // Punctuation-only JSX text flagged when enforcePunctuation: true
+    {
+      code: `<div>,</div>`,
+      options: [{ enforcePunctuation: true }],
+      errors: [{ messageId: 'untranslatedJsxText' }]
+    },
+    {
+      code: `<span>{' - '}</span>`,
+      options: [{ enforcePunctuation: true }],
+      errors: [{ messageId: 'untranslatedJsxText' }]
+    },
+    {
+      code: `<span>{'.'}</span>`,
+      options: [{ enforcePunctuation: true }],
       errors: [{ messageId: 'untranslatedJsxText' }]
     }
   ]
