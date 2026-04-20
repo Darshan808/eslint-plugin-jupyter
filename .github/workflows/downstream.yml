@@ -44,6 +44,8 @@ jobs:
       - name: Run integration lint check
         run: |
           npx eslint --config eslint.downstream.config.mjs \
+            'jupyterlab/packages/*/src/**/*.ts' \
+            'jupyterlab/packages/*/src/**/*.tsx' \
             --max-warnings=9999
         env:
           NODE_PATH: ./jupyterlab/node_modules
@@ -85,6 +87,8 @@ jobs:
       - name: Run integration lint check
         run: |
           npx eslint --config eslint.downstream.config.mjs \
+            'notebook/packages/*/src/**/*.ts' \
+            'notebook/packages/*/src/**/*.tsx' \
             --max-warnings=9999
         env:
           NODE_PATH: ./notebook/node_modules
@@ -126,6 +130,8 @@ jobs:
       - name: Run integration lint check
         run: |
           npx eslint --config eslint.downstream.config.mjs \
+            'jupyterlite/packages/*/src/**/*.ts' \
+            'jupyterlite/packages/*/src/**/*.tsx' \
             --max-warnings=9999
         env:
           NODE_PATH: ./jupyterlite/node_modules
