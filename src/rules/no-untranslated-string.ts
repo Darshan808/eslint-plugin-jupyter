@@ -299,6 +299,24 @@ const noUntranslatedString = createRule({
         }
       },
 
+      // Accessibility attribute with a plain string: <span aria-label="text" />
+      JSXAttribute(node) {
+        if (!node.value || node.value.type === 'JSXExpressionContainer') {
+          return;
+        }
+        const attrName =
+          node.name.type === 'JSXIdentifier' ? node.name.name : null;
+        if (!attrName || !MONITORED_JSX_ATTRS.includes(attrName)) {
+          return;
+        }
+        if (isRawStringNode(node.value)) {
+          context.report({
+            node: node.value,
+            messageId: 'untranslatedJsxText'
+          });
+        }
+      },
+
       // Raw text between JSX tags: <span>Untranslated text</span>
       JSXText(node) {
         if (node.value.trim().length > 0 && (enforcePunctuation || hasLetters(node.value))) {
@@ -332,7 +350,7 @@ const noUntranslatedString = createRule({
         }
         if (isRawStringNode(node.expression)) {
           const value = getRawStringValue(node.expression);
-          if (value !== null && (enforcePunctuation ? value.length > 0 : hasLetters(value))) {
+          if (value !== null && (enforcePunctuation ? value.trim().length > 0 : hasLetters(value))) {
             context.report({
               node: node.expression,
               messageId: 'untranslatedJsxText'

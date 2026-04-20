@@ -279,6 +279,10 @@ jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
     {
       code: `<span aria-description={'Describes something'} />`,
       errors: [{ messageId: 'untranslatedJsxText' }]
+    },
+    {
+      code: `<span aria-description="Describes something" />`,
+      errors: [{ messageId: 'untranslatedJsxText' }]
     }
   ]
 });
