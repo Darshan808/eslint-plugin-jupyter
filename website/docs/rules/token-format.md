@@ -1,4 +1,4 @@
-# `jupyter/token-format`
+# `token-format`
 
 Ensure JupyterLab `Token` ids follow the `<package>:<TokenSymbol>` naming convention where the symbol is a valid JavaScript identifier.
 

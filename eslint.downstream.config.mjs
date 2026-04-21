@@ -21,7 +21,10 @@ export default [
   // JupyterLab
   {
     basePath: __dirname,
-    files: ['jupyterlab/packages/*/src/**/*.ts'],
+    files: [
+      'jupyterlab/packages/*/src/**/*.ts',
+      'jupyterlab/packages/*/src/**/*.tsx'
+    ],
     plugins: {
       'jupyter': resolvedPlugin,
       '@typescript-eslint': resolvedTsPlugin
@@ -50,7 +53,10 @@ export default [
   // Notebook
   {
     basePath: __dirname,
-    files: ['notebook/packages/*/src/**/*.ts'],
+    files: [
+      'notebook/packages/*/src/**/*.ts',
+      'notebook/packages/*/src/**/*.tsx'
+    ],
     plugins: {
       'jupyter': resolvedPlugin,
       '@typescript-eslint': resolvedTsPlugin
@@ -79,7 +85,10 @@ export default [
   // Jupyterlite
   {
     basePath: __dirname,
-    files: ['jupyterlite/packages/*/src/**/*.ts'],
+    files: [
+      'jupyterlite/packages/*/src/**/*.ts',
+      'jupyterlite/packages/*/src/**/*.tsx'
+    ],
     plugins: {
       'jupyter': resolvedPlugin,
       '@typescript-eslint': resolvedTsPlugin

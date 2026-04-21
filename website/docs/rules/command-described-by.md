@@ -1,4 +1,4 @@
-# `jupyter/command-described-by`
+# `command-described-by`
 
 Ensure JupyterLab command registrations include a `describedBy` property.
 

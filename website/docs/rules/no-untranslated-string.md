@@ -1,4 +1,4 @@
-# `jupyter/no-untranslated-string`
+# `no-untranslated-string`
 
 Require user-facing string literals to be wrapped in a translation call such as `trans.__()`.
 
@@ -94,4 +94,10 @@ const el = <span>{trans.__('Error message:')}</span>;
 
 ## Options
 
-This rule has no options.
+```ts
+{
+  "enforcePunctuation": false
+}
+```
+
+Set `enforcePunctuation` option to `true` to enforce translation of punctuation characters such as `,`, `-`, `+`, and other symbols.

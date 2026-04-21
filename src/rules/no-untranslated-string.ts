@@ -8,31 +8,33 @@ import { isAddCommandCall } from '../utils/commands';
 import { getObjectProperties } from '../utils/plugin-utils';
 import { createRule } from '../utils/create-rule';
 
-/**
- * Returns true if the node is a non-empty raw string literal that should be
- * wrapped in a translation call. Handles:
- *   - String Literal: 'string' or "string"
- *   - TemplateLiteral with no expressions: `string`
- *   - Concise ArrowFunctionExpression whose body is one of the above
- */
-function isRawStringNode(node: TSESTree.Node): boolean {
-  if (node.type === 'Literal') {
-    return typeof node.value === 'string' && node.value.length > 0;
+function hasLetters(str: string): boolean {
+  return /\p{L}/u.test(str);
+}
+
+function getRawStringValue(node: TSESTree.Node): string | null {
+  if (node.type === 'Literal' && typeof node.value === 'string') {
+    return node.value;
   }
-  if (node.type === 'TemplateLiteral') {
-    if (node.expressions.length > 0) {
-      return false;
-    }
-    const cooked = node.quasis.map(q => q.value.cooked ?? '').join('');
-    return cooked.length > 0;
+  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis.map(q => q.value.cooked ?? '').join('');
   }
   if (
     node.type === 'ArrowFunctionExpression' &&
     node.body.type !== 'BlockStatement'
   ) {
-    return isRawStringNode(node.body);
+    return getRawStringValue(node.body);
   }
-  return false;
+  return null;
+}
+
+/**
+ * Returns true if the node is a non-empty raw string literal that should be
+ * wrapped in a translation call.
+ */
+function isRawStringNode(node: TSESTree.Node): boolean {
+  const rawValue = getRawStringValue(node);
+  return rawValue !== null && rawValue.trim().length > 0;
 }
 
 function isSetAttributeCall(node: TSESTree.CallExpression): boolean {
@@ -71,9 +73,11 @@ function isDialogButtonCall(node: TSESTree.CallExpression): boolean {
 }
 
 const MONITORED_COMMAND_PROPS = ['label', 'caption', 'usage'];
-const MONITORED_SET_ATTRIBUTE_ATTRS = ['aria-label', 'aria-description', 'title'];
+const MONITORED_A11Y_ATTRS = ['aria-label', 'aria-description', 'title'];
+const MONITORED_SET_ATTRIBUTE_ATTRS = MONITORED_A11Y_ATTRS;
 const MONITORED_ASSIGNMENT_PROPS = ['title', 'ariaLabel'];
 const MONITORED_DIALOG_PROPS = ['title', 'body'];
+const MONITORED_JSX_ATTRS = MONITORED_A11Y_ATTRS;
 
 const noUntranslatedString = createRule({
   name: 'no-untranslated-string',
@@ -100,11 +104,23 @@ const noUntranslatedString = createRule({
       untranslatedJsxText:
         'JSX text content has an untranslated string literal. Wrap it with {trans.__(...)}'
     },
-    schema: []
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          enforcePunctuation: { type: 'boolean' }
+        },
+        additionalProperties: false
+      }
+    ]
   },
-  defaultOptions: [],
+  defaultOptions: [{ enforcePunctuation: false }],
 
   create(context) {
+    const enforcePunctuation =
+      (context.options[0] as { enforcePunctuation?: boolean })
+        ?.enforcePunctuation ?? false;
+
     return {
       CallExpression(node) {
         // Branch A: commands.addCommand(id, { label, caption, usage })
@@ -265,9 +281,27 @@ const noUntranslatedString = createRule({
         }
       },
 
+      // Accessibility attribute with a plain string: <span aria-label="text" />
+      JSXAttribute(node) {
+        if (!node.value || node.value.type === 'JSXExpressionContainer') {
+          return;
+        }
+        const attrName =
+          node.name.type === 'JSXIdentifier' ? node.name.name : null;
+        if (!attrName || !MONITORED_JSX_ATTRS.includes(attrName)) {
+          return;
+        }
+        if (isRawStringNode(node.value)) {
+          context.report({
+            node: node.value,
+            messageId: 'untranslatedJsxText'
+          });
+        }
+      },
+
       // Raw text between JSX tags: <span>Untranslated text</span>
       JSXText(node) {
-        if (node.value.trim().length > 0) {
+        if (node.value.trim().length > 0 && (enforcePunctuation || hasLetters(node.value))) {
           context.report({
             node,
             messageId: 'untranslatedJsxText'
@@ -280,11 +314,30 @@ const noUntranslatedString = createRule({
         if (node.expression.type === 'JSXEmptyExpression') {
           return;
         }
+        if (node.parent.type === 'JSXAttribute') {
+          const attrName =
+            node.parent.name.type === 'JSXIdentifier'
+              ? node.parent.name.name
+              : null;
+          if (!attrName || !MONITORED_JSX_ATTRS.includes(attrName)) {
+            return;
+          }
+          if (isRawStringNode(node.expression)) {
+            context.report({
+              node: node.expression,
+              messageId: 'untranslatedJsxText'
+            });
+          }
+          return;
+        }
         if (isRawStringNode(node.expression)) {
-          context.report({
-            node: node.expression,
-            messageId: 'untranslatedJsxText'
-          });
+          const value = getRawStringValue(node.expression);
+          if (value !== null && (enforcePunctuation ? value.trim().length > 0 : hasLetters(value))) {
+            context.report({
+              node: node.expression,
+              messageId: 'untranslatedJsxText'
+            });
+          }
         }
       }
     };

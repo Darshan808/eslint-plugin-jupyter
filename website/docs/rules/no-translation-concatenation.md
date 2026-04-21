@@ -1,4 +1,4 @@
-# `jupyter/no-translation-concatenation`
+# `no-translation-concatenation`
 
 Forbid string concatenation inside JupyterLab translation wrapper calls.
 

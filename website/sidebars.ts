@@ -20,8 +20,11 @@ const sidebars: SidebarsConfig = {
       items: [
         'rules/index',
         'rules/command-described-by',
+        'rules/no-translation-concatenation',
+        'rules/no-untranslated-string',
         'rules/plugin-activation-args',
-        'rules/plugin-description'
+        'rules/plugin-description',
+        'rules/token-format'
       ]
     }
   ]
