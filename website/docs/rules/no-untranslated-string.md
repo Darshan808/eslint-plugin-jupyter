@@ -94,4 +94,10 @@ const el = <span>{trans.__('Error message:')}</span>;
 
 ## Options
 
-This rule has no options.
+```ts
+{
+  "enforcePunctuation": false
+}
+```
+
+Set `enforcePunctuation` option to `true` to enforce translation of punctuation characters such as `,`, `-`, `+`, and other symbols.
