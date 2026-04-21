@@ -1,4 +1,4 @@
-# `jupyter/plugin-description`
+# `plugin-description`
 
 Ensure all `JupyterFrontEndPlugin` objects define a non-empty `description` property.
 

@@ -1,4 +1,4 @@
-# `jupyter/no-untranslated-string`
+# `no-untranslated-string`
 
 Require user-facing string literals to be wrapped in a translation call such as `trans.__()`.
 

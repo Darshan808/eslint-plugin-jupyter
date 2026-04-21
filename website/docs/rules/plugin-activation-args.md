@@ -1,4 +1,4 @@
-# `jupyter/plugin-activation-args`
+# `plugin-activation-args`
 
 Ensure JupyterLab plugin `activate` arguments match the order and count of `requires` and `optional` tokens.
 
