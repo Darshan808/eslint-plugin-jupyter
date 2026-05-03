@@ -4,6 +4,17 @@
  */
 
 import { createRule } from '../utils/create-rule';
+import type { TSESTree } from '@typescript-eslint/utils';
+
+type JSONKey =
+  | { type: 'JSONLiteral'; value: unknown }
+  | { type: 'JSONIdentifier'; name: string };
+
+interface JSONPropertyNode {
+  key: JSONKey;
+  value: { type: string };
+  loc: TSESTree.SourceLocation;
+}
 
 function isSchemaJsonFile(filename: string): boolean {
   return /[/\\]schema[/\\][^/\\]*\.json$/.test(filename);
@@ -26,26 +37,17 @@ const noSchemaEnum = createRule({
   defaultOptions: [],
 
   create(context) {
-    const filename: string =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      context.filename ?? (context as any).getFilename?.() ?? '';
-
-    if (!isSchemaJsonFile(filename)) {
+    if (!isSchemaJsonFile(context.filename)) {
       return {};
     }
 
     return {
-      // Visitor for jsonc-eslint-parser JSON AST nodes
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      JSONProperty(node: any) {
-        const keyValue: unknown =
+      JSONProperty(node: JSONPropertyNode) {
+        const keyValue =
           node.key.type === 'JSONLiteral' ? node.key.value : node.key.name;
 
         if (keyValue === 'enum' && node.value.type === 'JSONArrayExpression') {
-          context.report({
-            node,
-            messageId: 'forbidEnum'
-          });
+          context.report({ loc: node.loc, messageId: 'forbidEnum' });
         }
       }
     };
