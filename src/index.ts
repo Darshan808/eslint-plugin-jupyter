@@ -9,6 +9,7 @@ import pluginDescription from './rules/plugin-description';
 import noTranslationConcatenation from './rules/no-translation-concatenation';
 import tokenFormat from './rules/token-format';
 import noUntranslatedString from './rules/no-untranslated-string';
+import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 
 const plugin = {
   rules: {
@@ -17,7 +18,9 @@ const plugin = {
     'plugin-description': pluginDescription,
     'no-translation-concatenation': noTranslationConcatenation,
     'token-format': tokenFormat,
-    'no-untranslated-string': noUntranslatedString
+    'no-untranslated-string': noUntranslatedString,
+    'require-soft-assertions-before-snapshots':
+      requireSoftAssertionsBeforeSnapshots
   },
   configs: {
     recommended: {
