@@ -336,6 +336,23 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           }
         };
       `
+    },
+    {
+      // Optional token with ?: syntax (implies | undefined) is acceptable
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          optional: [ISettingRegistry, ITranslator],
+          activate: (
+            app: JupyterFrontEnd,
+            settingRegistry?: ISettingRegistry,
+            translator?: ITranslator,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `
     }
   ],
 
