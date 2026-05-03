@@ -17,6 +17,9 @@ const resolvedParser = parserModule.default ?? parserModule;
 const tsPlugin = await import('@typescript-eslint/eslint-plugin');
 const resolvedTsPlugin = tsPlugin.default ?? tsPlugin;
 
+const jsoncParserModule = await import('jsonc-eslint-parser');
+const resolvedJsoncParser = jsoncParserModule.default ?? jsoncParserModule;
+
 export default [
   // JupyterLab
   {
@@ -112,5 +115,32 @@ export default [
     linterOptions: {
       reportUnusedDisableDirectives: 'off'
     }
+  },
+
+  // JupyterLab — settings schema JSON files
+  {
+    basePath: __dirname,
+    files: ['jupyterlab/packages/*/schema/*.json'],
+    plugins: { 'jupyter': resolvedPlugin },
+    rules: { 'jupyter/no-schema-enum': 'warn' },
+    languageOptions: { parser: resolvedJsoncParser }
+  },
+
+  // Notebook — settings schema JSON files
+  {
+    basePath: __dirname,
+    files: ['notebook/packages/*/schema/*.json'],
+    plugins: { 'jupyter': resolvedPlugin },
+    rules: { 'jupyter/no-schema-enum': 'warn' },
+    languageOptions: { parser: resolvedJsoncParser }
+  },
+
+  // JupyterLite — settings schema JSON files
+  {
+    basePath: __dirname,
+    files: ['jupyterlite/packages/*/schema/*.json'],
+    plugins: { 'jupyter': resolvedPlugin },
+    rules: { 'jupyter/no-schema-enum': 'warn' },
+    languageOptions: { parser: resolvedJsoncParser }
   }
 ];
