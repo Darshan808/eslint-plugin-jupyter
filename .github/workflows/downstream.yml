@@ -93,6 +93,7 @@ jobs:
             'notebook/packages/*/src/**/*.tsx' \
             'notebook/**/*.spec.ts' \
             'notebook/**/*.test.ts' \
+            --no-warn-ignored \
             --max-warnings=9999
         env:
           NODE_PATH: ./notebook/node_modules
@@ -138,6 +139,7 @@ jobs:
             'jupyterlite/packages/*/src/**/*.tsx' \
             'jupyterlite/**/*.spec.ts' \
             'jupyterlite/**/*.test.ts' \
+            --no-warn-ignored \
             --max-warnings=9999
         env:
           NODE_PATH: ./jupyterlite/node_modules
