@@ -66,7 +66,8 @@ function makeTestConfig(projectName) {
     ],
     plugins: {
       'jupyter': resolvedPlugin,
-      'jest': jestStub
+      '@typescript-eslint': resolvedTsPlugin,
+      'jest': jestStub,
     },
     rules: {
       'jupyter/require-soft-assertions-before-snapshots': 'error'
