@@ -320,6 +320,22 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         }
       };
     `
+    },
+    {
+      // Optional token with | undefined is acceptable
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          optional: [ISettingRegistry],
+          activate: (
+            app: JupyterFrontEnd,
+            settingRegistry: ISettingRegistry | undefined,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `
     }
   ],
 
@@ -645,6 +661,52 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         { messageId: 'mismatchedOrder', data: { arg: 'debuggerSidebar' } },
         { messageId: 'mismatchedOrder', data: { arg: 'tracker' } }
+      ]
+    },
+    {
+      // Optional token without | null
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          optional: [IToolbarWidgetRegistry],
+          activate: (
+            app: JupyterFrontEnd,
+            toolbarRegistry: IToolbarWidgetRegistry,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'optionalNotNullable',
+          data: { arg: 'toolbarRegistry', type: 'IToolbarWidgetRegistry' }
+        }
+      ]
+    },
+    {
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker],
+          optional: [IToolbarWidgetRegistry, ITranslator],
+          activate: (
+            app: JupyterFrontEnd,
+            tracker: INotebookTracker,
+            toolbarRegistry: IToolbarWidgetRegistry,
+            translator: ITranslator | null,
+          ) => {
+            console.log('Activated');
+          }
+        };
+      `,
+      errors: [
+        {
+          messageId: 'optionalNotNullable',
+          data: { arg: 'toolbarRegistry', type: 'IToolbarWidgetRegistry' }
+        }
       ]
     }
   ]
