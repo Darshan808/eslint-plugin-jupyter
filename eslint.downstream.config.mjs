@@ -17,100 +17,42 @@ const resolvedParser = parserModule.default ?? parserModule;
 const tsPlugin = await import('@typescript-eslint/eslint-plugin');
 const resolvedTsPlugin = tsPlugin.default ?? tsPlugin;
 
+function makeProjectConfig(projectName) {
+  return {
+    basePath: __dirname,
+    files: [
+      `${projectName}/packages/*/src/**/*.ts`,
+      `${projectName}/packages/*/src/**/*.tsx`
+    ],
+    plugins: {
+      'jupyter': resolvedPlugin,
+      '@typescript-eslint': resolvedTsPlugin
+    },
+    rules: {
+      'jupyter/command-described-by': 'error',
+      'jupyter/no-untranslated-string': 'error',
+      'jupyter/plugin-activation-args': 'error',
+      'jupyter/plugin-description': 'error',
+      'jupyter/no-translation-concatenation': 'error',
+      'jupyter/token-format': 'error',
+      'jupyter/require-soft-assertions-before-snapshots': 'error'
+    },
+    languageOptions: {
+      parser: resolvedParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: path.resolve(__dirname, `${projectName}/tsconfig.eslint.json`)
+      }
+    },
+    linterOptions: {
+      reportUnusedDisableDirectives: 'off'
+    }
+  };
+}
+
 export default [
-  // JupyterLab
-  {
-    basePath: __dirname,
-    files: [
-      'jupyterlab/packages/*/src/**/*.ts',
-      'jupyterlab/packages/*/src/**/*.tsx'
-    ],
-    plugins: {
-      'jupyter': resolvedPlugin,
-      '@typescript-eslint': resolvedTsPlugin
-    },
-    rules: {
-      'jupyter/command-described-by': 'error',
-      'jupyter/no-untranslated-string': 'error',
-      'jupyter/plugin-activation-args': 'error',
-      'jupyter/plugin-description': 'error',
-      'jupyter/no-translation-concatenation': 'error',
-      'jupyter/token-format': 'error'
-    },
-    languageOptions: {
-      parser: resolvedParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        project: path.resolve(__dirname, 'jupyterlab/tsconfig.eslint.json')
-      }
-    },
-    linterOptions: {
-      reportUnusedDisableDirectives: 'off'
-    }
-  },
-
-  // Notebook
-  {
-    basePath: __dirname,
-    files: [
-      'notebook/packages/*/src/**/*.ts',
-      'notebook/packages/*/src/**/*.tsx'
-    ],
-    plugins: {
-      'jupyter': resolvedPlugin,
-      '@typescript-eslint': resolvedTsPlugin
-    },
-    rules: {
-      'jupyter/command-described-by': 'error',
-      'jupyter/no-untranslated-string': 'error',
-      'jupyter/plugin-activation-args': 'error',
-      'jupyter/plugin-description': 'error',
-      'jupyter/no-translation-concatenation': 'error',
-      'jupyter/token-format': 'error'
-    },
-    languageOptions: {
-      parser: resolvedParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        project: path.resolve(__dirname, 'notebook/tsconfig.eslint.json')
-      }
-    },
-    linterOptions: {
-      reportUnusedDisableDirectives: 'off'
-    }
-  },
-
-  // Jupyterlite
-  {
-    basePath: __dirname,
-    files: [
-      'jupyterlite/packages/*/src/**/*.ts',
-      'jupyterlite/packages/*/src/**/*.tsx'
-    ],
-    plugins: {
-      'jupyter': resolvedPlugin,
-      '@typescript-eslint': resolvedTsPlugin
-    },
-    rules: {
-      'jupyter/command-described-by': 'error',
-      'jupyter/no-untranslated-string': 'error',
-      'jupyter/plugin-activation-args': 'error',
-      'jupyter/plugin-description': 'error',
-      'jupyter/no-translation-concatenation': 'error',
-      'jupyter/token-format': 'error'
-    },
-    languageOptions: {
-      parser: resolvedParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        project: path.resolve(__dirname, 'jupyterlite/tsconfig.eslint.json')
-      }
-    },
-    linterOptions: {
-      reportUnusedDisableDirectives: 'off'
-    }
-  }
+  makeProjectConfig('jupyterlab'),
+  makeProjectConfig('notebook'),
+  makeProjectConfig('jupyterlite')
 ];
