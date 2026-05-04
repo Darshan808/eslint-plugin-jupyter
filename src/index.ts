@@ -3,6 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
+import * as jsoncParser from 'jsonc-eslint-parser';
 import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
 import pluginDescription from './rules/plugin-description';
@@ -35,9 +36,8 @@ const plugin = {
         }
       },
       {
-        // Requires jsonc-eslint-parser configured for JSON files in the
-        // consumer's ESLint config.
         files: ['**/schema/*.json'],
+        languageOptions: { parser: jsoncParser },
         rules: {
           'jupyter/no-schema-enum': 'warn'
         }
