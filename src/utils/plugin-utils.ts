@@ -119,7 +119,6 @@ export function extractArrayTokens(
   return entries;
 }
 export function isNullableAnnotation(param: TSESTree.Identifier): boolean {
-  if (param.optional) return true; // param?: Type  implies | undefined
   if (!param.typeAnnotation) return false;
   const typeNode = param.typeAnnotation.typeAnnotation;
   if (typeNode.type !== 'TSUnionType') return false;
