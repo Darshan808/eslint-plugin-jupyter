@@ -19,6 +19,7 @@ This rule reports the following errors:
 - `missingArgument` — a token from `requires`/`optional` has no corresponding argument
 - `extraArgument` — an argument has no corresponding token in `requires`/`optional`
 - `serviceManagerFirstArgNotNull` — `ServiceManagerPlugin` first argument is not `null`
+- `optionalNotNullable` — an argument for an `optional` token is missing `| null` or `| undefined`
 
 ## Incorrect
 

@@ -118,6 +118,15 @@ export function extractArrayTokens(
 
   return entries;
 }
+export function isNullableAnnotation(param: TSESTree.Identifier): boolean {
+  if (!param.typeAnnotation) return false;
+  const typeNode = param.typeAnnotation.typeAnnotation;
+  if (typeNode.type !== 'TSUnionType') return false;
+  return typeNode.types.some(
+    t => t.type === 'TSNullKeyword' || t.type === 'TSUndefinedKeyword'
+  );
+}
+
 export function extractParameterType(
   param: TSESTree.Identifier
 ): string | null {
