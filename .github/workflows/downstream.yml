@@ -46,6 +46,8 @@ jobs:
           npx eslint --config eslint.downstream.config.mjs \
             'jupyterlab/packages/*/src/**/*.ts' \
             'jupyterlab/packages/*/src/**/*.tsx' \
+            'jupyterlab/**/*.spec.ts' \
+            'jupyterlab/**/*.test.ts' \
             --max-warnings=9999
         env:
           NODE_PATH: ./jupyterlab/node_modules
@@ -95,6 +97,7 @@ jobs:
           npx eslint --config eslint.downstream.config.mjs \
             'notebook/packages/*/src/**/*.ts' \
             'notebook/packages/*/src/**/*.tsx' \
+            'notebook/**/*.spec.ts' \
             --max-warnings=9999
         env:
           NODE_PATH: ./notebook/node_modules
@@ -144,6 +147,7 @@ jobs:
           npx eslint --config eslint.downstream.config.mjs \
             'jupyterlite/packages/*/src/**/*.ts' \
             'jupyterlite/packages/*/src/**/*.tsx' \
+            'jupyterlite/**/*.spec.ts' \
             --max-warnings=9999
         env:
           NODE_PATH: ./jupyterlite/node_modules

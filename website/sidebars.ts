@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
         'rules/no-untranslated-string',
         'rules/plugin-activation-args',
         'rules/plugin-description',
+        'rules/require-soft-assertions-before-snapshots',
         'rules/token-format'
       ]
     }

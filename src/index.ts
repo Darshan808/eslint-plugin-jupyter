@@ -11,6 +11,7 @@ import noTranslationConcatenation from './rules/no-translation-concatenation';
 import tokenFormat from './rules/token-format';
 import noUntranslatedString from './rules/no-untranslated-string';
 import noSchemaEnum from './rules/no-schema-enum';
+import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 
 const plugin = {
   rules: {
@@ -20,7 +21,9 @@ const plugin = {
     'no-translation-concatenation': noTranslationConcatenation,
     'token-format': tokenFormat,
     'no-untranslated-string': noUntranslatedString,
-    'no-schema-enum': noSchemaEnum
+    'no-schema-enum': noSchemaEnum,
+    'require-soft-assertions-before-snapshots':
+      requireSoftAssertionsBeforeSnapshots
   },
   configs: {
     recommended: [
@@ -41,6 +44,17 @@ const plugin = {
         rules: {
           'jupyter/no-schema-enum': 'warn'
         }
+      },
+      {
+        files: [
+          '**/*.spec.ts',
+          '**/*.spec.js',
+          '**/*.test.ts',
+          '**/*.test.js'
+        ],
+        rules: {
+          'jupyter/require-soft-assertions-before-snapshots': 'warn'
+        }
       }
     ],
     'recommended-legacy': {
@@ -52,7 +66,20 @@ const plugin = {
         'jupyter/token-format': 'error',
         'jupyter/no-untranslated-string': 'warn',
         'jupyter/no-schema-enum': 'warn'
-      }
+      },
+      overrides: [
+        {
+          files: [
+            '**/*.spec.ts',
+            '**/*.spec.js',
+            '**/*.test.ts',
+            '**/*.test.js'
+          ],
+          rules: {
+            'jupyter/require-soft-assertions-before-snapshots': 'warn'
+          }
+        }
+      ]
     }
   }
 };

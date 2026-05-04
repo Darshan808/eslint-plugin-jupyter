@@ -13,10 +13,11 @@ const resolvedPlugin = pluginModule.default?.rules ? pluginModule.default : plug
 const parserModule = await import('@typescript-eslint/parser');
 const resolvedParser = parserModule.default ?? parserModule;
 
-// This prevents "Definition for rule not found" errors from eslint-disable comments
+// Prevents "Definition for rule not found" errors from eslint-disable comments
 const tsPlugin = await import('@typescript-eslint/eslint-plugin');
 const resolvedTsPlugin = tsPlugin.default ?? tsPlugin;
 
+<<<<<<< forbid-enum
 const jsoncParserModule = await import('jsonc-eslint-parser');
 const resolvedJsoncParser = jsoncParserModule.default ?? jsoncParserModule;
 
@@ -52,17 +53,24 @@ export default [
       reportUnusedDisableDirectives: 'off'
     }
   },
+=======
+// Stub: satisfies ESLint's rule-name validation for jest/* disable comments
+// without importing the real plugin or enabling any jest rules.
+const noopRule = { create: () => ({}) };
+const jestStub = { rules: new Proxy({}, { get: () => noopRule }) };
+>>>>>>> main
 
-  // Notebook
-  {
+function makeProjectConfig(projectName) {
+  return {
     basePath: __dirname,
     files: [
-      'notebook/packages/*/src/**/*.ts',
-      'notebook/packages/*/src/**/*.tsx'
+      `${projectName}/packages/*/src/**/*.ts`,
+      `${projectName}/packages/*/src/**/*.tsx`
     ],
     plugins: {
       'jupyter': resolvedPlugin,
-      '@typescript-eslint': resolvedTsPlugin
+      '@typescript-eslint': resolvedTsPlugin,
+      'jest': jestStub
     },
     rules: {
       'jupyter/command-described-by': 'error',
@@ -70,51 +78,49 @@ export default [
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error',
       'jupyter/no-translation-concatenation': 'error',
-      'jupyter/token-format': 'error'
+      'jupyter/token-format': 'error',
+      'jupyter/require-soft-assertions-before-snapshots': 'error'
     },
     languageOptions: {
       parser: resolvedParser,
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
-        project: path.resolve(__dirname, 'notebook/tsconfig.eslint.json')
+        project: path.resolve(__dirname, `${projectName}/tsconfig.eslint.json`)
       }
     },
     linterOptions: {
       reportUnusedDisableDirectives: 'off'
     }
-  },
+  };
+}
 
-  // Jupyterlite
-  {
+function makeTestConfig(projectName) {
+  return {
     basePath: __dirname,
     files: [
-      'jupyterlite/packages/*/src/**/*.ts',
-      'jupyterlite/packages/*/src/**/*.tsx'
+      `${projectName}/**/*.spec.ts`,
+      `${projectName}/**/*.test.ts`
     ],
     plugins: {
       'jupyter': resolvedPlugin,
-      '@typescript-eslint': resolvedTsPlugin
+      '@typescript-eslint': resolvedTsPlugin,
+      'jest': jestStub,
     },
     rules: {
-      'jupyter/command-described-by': 'error',
-      'jupyter/no-untranslated-string': 'error',
-      'jupyter/plugin-activation-args': 'error',
-      'jupyter/plugin-description': 'error',
-      'jupyter/no-translation-concatenation': 'error',
-      'jupyter/token-format': 'error'
+      'jupyter/require-soft-assertions-before-snapshots': 'error'
     },
     languageOptions: {
       parser: resolvedParser,
       parserOptions: {
         ecmaVersion: 'latest',
-        sourceType: 'module',
-        project: path.resolve(__dirname, 'jupyterlite/tsconfig.eslint.json')
+        sourceType: 'module'
       }
     },
     linterOptions: {
       reportUnusedDisableDirectives: 'off'
     }
+<<<<<<< forbid-enum
   },
 
   // JupyterLab — settings schema JSON files
@@ -143,4 +149,14 @@ export default [
     rules: { 'jupyter/no-schema-enum': 'error' },
     languageOptions: { parser: resolvedJsoncParser }
   }
+=======
+  };
+}
+
+const projects = ['jupyterlab', 'notebook', 'jupyterlite'];
+
+export default [
+  ...projects.map(makeProjectConfig),
+  ...projects.map(makeTestConfig)
+>>>>>>> main
 ];

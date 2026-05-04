@@ -10,6 +10,7 @@ import {
   getJupyterPluginKind,
   extractParameterType,
   extractArrayTokens,
+  isNullableAnnotation,
   TokenEntry
 } from '../utils/plugin-utils';
 import { createRule } from '../utils/create-rule';
@@ -155,7 +156,9 @@ const jupyterPluginActivationArgs = createRule({
       wrongArgumentCount:
         'Expected {{ expected }} activation arguments (app + {{ tokenCount }} tokens), got {{ actual }}.',
       unresolvableTokenType:
-        'Token "{{ token }}" type could not be resolved. The package may be unbuilt or type checking may not be configured.'
+        'Token "{{ token }}" type could not be resolved. The package may be unbuilt or type checking may not be configured.',
+      optionalNotNullable:
+        'Activation argument "{{ arg }}" for optional token "{{ type }}" must be nullable (use "| null", "| undefined", or optional parameter "?").'
     },
     fixable: 'code',
     schema: [
@@ -252,6 +255,34 @@ const jupyterPluginActivationArgs = createRule({
         // Fall through
       }
       return null;
+    }
+
+    /**
+     * Returns true when the activate parameter's resolved type includes null or
+     * undefined. Falls back to a syntactic AST check when the checker is
+     * unavailable.
+     */
+    function isParamNullable(paramNode: TSESTree.Identifier): boolean {
+      if (paramNode.optional) return true; // param?: T always implies | undefined
+      if (checker) {
+        try {
+          const tsNode = services?.esTreeNodeToTSNodeMap.get(paramNode);
+          if (tsNode) {
+            const type = checker.getTypeAtLocation(tsNode);
+            if (type.isUnion()) {
+              return type.types.some(
+                t =>
+                  !!(t.flags & ts.TypeFlags.Null) ||
+                  !!(t.flags & ts.TypeFlags.Undefined)
+              );
+            }
+            return false;
+          }
+        } catch {
+          // Fall through to syntactic check
+        }
+      }
+      return isNullableAnnotation(paramNode);
     }
 
     /**
@@ -443,6 +474,15 @@ const jupyterPluginActivationArgs = createRule({
                       type: paramType,
                       expected: expectedToken.name
                     }
+                  });
+                }
+              } else if (i >= requires.length && paramNode) {
+                // Token matched and is optional — param must be nullable.
+                if (!isParamNullable(paramNode)) {
+                  context.report({
+                    node: activateInfo.node,
+                    messageId: 'optionalNotNullable',
+                    data: { arg: paramNames[i + 1], type: expectedToken.name }
                   });
                 }
               }
