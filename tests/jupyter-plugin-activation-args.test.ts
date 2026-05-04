@@ -26,7 +26,7 @@ const ruleTester = new RuleTester({
       sourceType: 'module',
       projectService: {
         allowDefaultProject: ['tests/*.ts'],
-        defaultProject: 'tsconfig.test.json'
+        defaultProject: 'tsconfig.json'
       },
       tsconfigRootDir: path.resolve(__dirname, '..')
     }

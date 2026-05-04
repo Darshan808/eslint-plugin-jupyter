@@ -9,7 +9,14 @@ module.exports = {
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }]
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: {
+        rootDir: '.',
+        noEmit: true,
+        isolatedModules: true,
+        types: ['node', 'jest']
+      }
+    }]
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
