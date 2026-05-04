@@ -27,3 +27,9 @@ export declare const IRenderMimeRegistry: Token<IRenderMimeRegistry>;
 
 export declare interface IToolbarWidgetRegistry {}
 export declare const IToolbarWidgetRegistry: Token<IToolbarWidgetRegistry>;
+
+export declare interface ISettingRegistry {}
+export declare const ISettingRegistry: Token<ISettingRegistry>;
+
+export declare interface ICommandPalette {}
+export declare const ICommandPalette: Token<ICommandPalette>;
