@@ -158,7 +158,7 @@ const jupyterPluginActivationArgs = createRule({
       unresolvableTokenType:
         'Token "{{ token }}" type could not be resolved. The package may be unbuilt or type checking may not be configured.',
       optionalNotNullable:
-        'Activation argument "{{ arg }}" for optional token "{{ type }}" must include "| null" in its type annotation.'
+        'Activation argument "{{ arg }}" for optional token "{{ type }}" must be nullable (use "| null", "| undefined", or optional parameter "?").'
     },
     fixable: 'code',
     schema: [
@@ -255,6 +255,33 @@ const jupyterPluginActivationArgs = createRule({
         // Fall through
       }
       return null;
+    }
+
+    /**
+     * Returns true when the activate parameter's resolved type includes null or
+     * undefined. Falls back to a syntactic AST check when the checker is
+     * unavailable.
+     */
+    function isParamNullable(paramNode: TSESTree.Identifier): boolean {
+      if (checker) {
+        try {
+          const tsNode = services?.esTreeNodeToTSNodeMap.get(paramNode);
+          if (tsNode) {
+            const type = checker.getTypeAtLocation(tsNode);
+            if (type.isUnion()) {
+              return type.types.some(
+                t =>
+                  !!(t.flags & ts.TypeFlags.Null) ||
+                  !!(t.flags & ts.TypeFlags.Undefined)
+              );
+            }
+            return false;
+          }
+        } catch {
+          // Fall through to syntactic check
+        }
+      }
+      return isNullableAnnotation(paramNode);
     }
 
     /**
@@ -450,7 +477,7 @@ const jupyterPluginActivationArgs = createRule({
                 }
               } else if (i >= requires.length && paramNode) {
                 // Token matched and is optional — param must be nullable.
-                if (!isNullableAnnotation(paramNode)) {
+                if (!isParamNullable(paramNode)) {
                   context.report({
                     node: activateInfo.node,
                     messageId: 'optionalNotNullable',
