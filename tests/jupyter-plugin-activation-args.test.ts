@@ -347,7 +347,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       // Aliased import: JupyterFrontEndPlugin imported under a different name
       filename: 'tests/type-aware-fixture.ts',
       code: `
-        import { JupyterFrontEndPlugin as JFEP, INotebookTracker } from './fixtures/debugger-types';
+        import { JupyterFrontEndPlugin as JFEP, INotebookTracker } from './fixtures/types';
         const plugin: JFEP<void> = {
           id: 'test-plugin',
           requires: [INotebookTracker],
@@ -361,7 +361,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       // Aliased import: Tokens under a different name
       filename: 'tests/type-aware-fixture.ts',
       code: `
-        import { JupyterFrontEndPlugin as JFEP, INotebookTracker as INT } from './fixtures/debugger-types';
+        import { JupyterFrontEndPlugin as JFEP, INotebookTracker as INT } from './fixtures/types';
         const plugin: JFEP<void> = {
           id: 'test-plugin',
           requires: [INT],
@@ -753,7 +753,7 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       // Aliased import: rule still applies and detects violations
       filename: 'tests/type-aware-fixture.ts',
       code: `
-        import { JupyterFrontEndPlugin as JFEP, INotebookTracker } from './fixtures/debugger-types';
+        import { JupyterFrontEndPlugin as JFEP, INotebookTracker } from './fixtures/types';
         const plugin: JFEP<void> = {
           id: 'test-plugin',
           requires: [INotebookTracker],
@@ -764,26 +764,6 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `,
       errors: [
         { messageId: 'appNotFirst', data: { arg: 'tracker', allowedNames: '"app", "_app", "_"' } }
-      ]
-    },
-    {
-      // Aliased import: rule still applies and detects violations
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { JupyterFrontEndPlugin as JFEP, INotebookTracker } from './fixtures/debugger-types';
-        const plugin: JFEP<void> = {
-          id: 'test-plugin',
-          requires: [INotebookTracker],
-          activate: (tracker: INotebookTracker, app: JupyterFrontEnd) => {
-            console.log('Activated');
-          }
-        };
-      `,
-      errors: [
-        {
-          messageId: 'optionalNotNullable',
-          data: { arg: 'toolbarRegistry', type: 'IToolbarWidgetRegistry' }
-        }
       ]
     },
     {
@@ -811,17 +791,3 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     }
   ]
 });
-
-/*
-      // Optional token without | null
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { IToolbarWidgetRegistry } from './fixtures/types';
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test-plugin',
-          optional: [IToolbarWidgetRegistry],
-          activate: (
-            app: JupyterFrontEnd,
-            toolbarRegistry: IToolbarWidgetRegistry,
-          ) => {
-*/
