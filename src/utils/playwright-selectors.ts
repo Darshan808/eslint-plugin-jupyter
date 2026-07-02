@@ -114,6 +114,40 @@ export function matchSelectorInteraction(
 }
 
 /**
+ * Returns the options object of a matched interaction call, i.e. the second
+ * argument of `page.click(selector, options)` or the first argument of
+ * `page.locator(selector).click(options)`.
+ */
+export function getInteractionOptions(
+  match: SelectorInteractionMatch
+): TSESTree.ObjectExpression | null {
+  const arg = match.viaLocatorChain
+    ? match.callNode.arguments[0]
+    : match.callNode.arguments[1];
+  return arg && arg.type === 'ObjectExpression' ? arg : null;
+}
+
+/**
+ * Whether a matched interaction is a right-click, i.e. carries a
+ * `{ button: 'right' }` option.
+ */
+export function isRightClick(match: SelectorInteractionMatch): boolean {
+  const options = getInteractionOptions(match);
+  if (!options) {
+    return false;
+  }
+  return options.properties.some(
+    property =>
+      property.type === 'Property' &&
+      !property.computed &&
+      property.key.type === 'Identifier' &&
+      property.key.name === 'button' &&
+      property.value.type === 'Literal' &&
+      property.value.value === 'right'
+  );
+}
+
+/**
  * Extracts a best-effort static string from a selector argument so it can be
  * matched against known patterns. String literals return their value;
  * template literals return their static parts joined by a space, so

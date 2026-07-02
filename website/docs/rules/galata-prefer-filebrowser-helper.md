@@ -20,7 +20,7 @@ The rule flags Playwright interaction calls on the `page` fixture — both direc
 - `.jp-BreadCrumbs*` classes → recommends `page.filebrowser.openHomeDirectory()`;
 - `File Browser Section` or `.jp-DirListing*` classes → recommends `page.filebrowser.open(path)`.
 
-Selectors built from string literals and template literals (their static parts) are analyzed; fully dynamic selectors are ignored. Receivers other than a variable named `page` are out of scope.
+Selectors built from string literals and template literals (their static parts) are analyzed; fully dynamic selectors are ignored. Receivers other than a variable named `page` are out of scope. Right-click interactions (`{ button: 'right' }`) are not flagged by this rule — context menu flows are covered by [galata-prefer-context-menu-helper](./galata-prefer-context-menu-helper).
 
 The recommended configuration enables this rule only for test files (`**/*.spec.{ts,js}`, `**/*.test.{ts,js}`). It should not be enabled for the Galata helper implementation itself (e.g. `galata/src/helpers/**`), which necessarily contains low-level Playwright operations.
 

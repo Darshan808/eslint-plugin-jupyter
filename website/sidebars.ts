@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'rules/index',
         'rules/command-described-by',
+        'rules/galata-prefer-context-menu-helper',
         'rules/galata-prefer-filebrowser-helper',
         'rules/galata-prefer-menu-helper',
         'rules/no-pageconfig-base-url',

@@ -49,6 +49,10 @@ ruleTester.run(
       // Non-`page` receivers are out of scope
       {
         code: `await popup.click('.jp-DirListing-item');`
+      },
+      // Right-clicks are covered by galata-prefer-context-menu-helper
+      {
+        code: `await page.click(\`.jp-DirListing-item span:has-text("\${fileName}")\`, { button: 'right' });`
       }
     ],
 
@@ -67,7 +71,7 @@ ruleTester.run(
       },
       // Template literal: static parts still match
       {
-        code: `await page.click(\`.jp-DirListing-item span:has-text("\${fileName}")\`, { button: 'right' });`,
+        code: `await page.click(\`.jp-DirListing-item span:has-text("\${fileName}")\`);`,
         errors: [{ messageId: 'preferFilebrowserHelper' }]
       },
       // Locator chain

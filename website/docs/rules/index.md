@@ -5,6 +5,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 ## Available rules
 
 - [command-described-by](./command-described-by)
+- [galata-prefer-context-menu-helper](./galata-prefer-context-menu-helper)
 - [galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)
 - [galata-prefer-menu-helper](./galata-prefer-menu-helper)
 - [no-schema-enum](./no-schema-enum)
@@ -33,6 +34,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/require-soft-assertions-before-snapshots](./require-soft-assertions-before-snapshots) | `warn` ¹ |
 | [jupyter/galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper) | `warn` ¹ |
 | [jupyter/galata-prefer-menu-helper](./galata-prefer-menu-helper) | `warn` ¹ |
+| [jupyter/galata-prefer-context-menu-helper](./galata-prefer-context-menu-helper) | `warn` ¹ |
 | [jupyter/no-schema-enum](./no-schema-enum) | `warn` ² |
 | [jupyter/no-pageconfig-base-url](./no-pageconfig-base-url) | `warn` |
 

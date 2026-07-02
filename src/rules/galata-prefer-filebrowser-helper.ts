@@ -6,6 +6,7 @@
 import { createRule } from '../utils/create-rule';
 import {
   extractStaticSelectorText,
+  isRightClick,
   matchSelectorInteraction
 } from '../utils/playwright-selectors';
 
@@ -54,6 +55,11 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
       CallExpression(node) {
         const match = matchSelectorInteraction(node);
         if (!match) {
+          return;
+        }
+
+        // Context menu flows are covered by galata-prefer-context-menu-helper
+        if (isRightClick(match)) {
           return;
         }
 
