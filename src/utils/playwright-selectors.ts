@@ -45,6 +45,8 @@ export interface SelectorInteractionMatch {
   selectorArgNode: TSESTree.Expression;
   /** true for `page.locator(sel).click()`, false for `page.click(sel)`. */
   viaLocatorChain: boolean;
+  /** Name of the interaction method, e.g. 'click', 'dblclick', 'fill'. */
+  interactionMethod: string;
 }
 
 function isPageIdentifier(node: TSESTree.Node): boolean {
@@ -88,7 +90,12 @@ export function matchSelectorInteraction(
   if (isPageIdentifier(callee.object)) {
     const selectorArgNode = firstArgument(node);
     return selectorArgNode
-      ? { callNode: node, selectorArgNode, viaLocatorChain: false }
+      ? {
+          callNode: node,
+          selectorArgNode,
+          viaLocatorChain: false,
+          interactionMethod: property.name
+        }
       : null;
   }
 
@@ -105,12 +112,46 @@ export function matchSelectorInteraction(
     ) {
       const selectorArgNode = firstArgument(inner);
       return selectorArgNode
-        ? { callNode: node, selectorArgNode, viaLocatorChain: true }
+        ? {
+            callNode: node,
+            selectorArgNode,
+            viaLocatorChain: true,
+            interactionMethod: property.name
+          }
         : null;
     }
   }
 
   return null;
+}
+
+/**
+ * Matches a nested method call on the `page` fixture, e.g.
+ * `matchPageNestedCall(node, ['keyboard', 'press'])` matches
+ * `page.keyboard.press(key)`. Returns the first argument of the call, or
+ * null when the call does not match the given path or has no usable first
+ * argument.
+ */
+export function matchPageNestedCall(
+  node: TSESTree.CallExpression,
+  path: readonly string[]
+): TSESTree.Expression | null {
+  let current: TSESTree.Node = node.callee;
+  for (let i = path.length - 1; i >= 0; i--) {
+    if (
+      current.type !== 'MemberExpression' ||
+      current.computed ||
+      current.property.type !== 'Identifier' ||
+      current.property.name !== path[i]
+    ) {
+      return null;
+    }
+    current = current.object;
+  }
+  if (!isPageIdentifier(current)) {
+    return null;
+  }
+  return firstArgument(node);
 }
 
 /**

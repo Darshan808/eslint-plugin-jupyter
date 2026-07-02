@@ -8,6 +8,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 - [galata-prefer-context-menu-helper](./galata-prefer-context-menu-helper)
 - [galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)
 - [galata-prefer-menu-helper](./galata-prefer-menu-helper)
+- [galata-prefer-notebook-cell-helper](./galata-prefer-notebook-cell-helper)
 - [no-schema-enum](./no-schema-enum)
 - [no-translation-concatenation](./no-translation-concatenation)
 - [no-pageconfig-base-url](./no-pageconfig-base-url)
@@ -35,6 +36,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper) | `warn` ¹ |
 | [jupyter/galata-prefer-menu-helper](./galata-prefer-menu-helper) | `warn` ¹ |
 | [jupyter/galata-prefer-context-menu-helper](./galata-prefer-context-menu-helper) | `warn` ¹ |
+| [jupyter/galata-prefer-notebook-cell-helper](./galata-prefer-notebook-cell-helper) | `warn` ¹ |
 | [jupyter/no-schema-enum](./no-schema-enum) | `warn` ² |
 | [jupyter/no-pageconfig-base-url](./no-pageconfig-base-url) | `warn` |
 

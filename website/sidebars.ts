@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         'rules/galata-prefer-context-menu-helper',
         'rules/galata-prefer-filebrowser-helper',
         'rules/galata-prefer-menu-helper',
+        'rules/galata-prefer-notebook-cell-helper',
         'rules/no-pageconfig-base-url',
         'rules/no-schema-enum',
         'rules/no-translation-concatenation',

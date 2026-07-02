@@ -16,6 +16,7 @@ import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
 import galataPreferMenuHelper from './rules/galata-prefer-menu-helper';
 import galataPreferContextMenuHelper from './rules/galata-prefer-context-menu-helper';
+import galataPreferNotebookCellHelper from './rules/galata-prefer-notebook-cell-helper';
 
 const plugin = {
   rules: {
@@ -31,7 +32,8 @@ const plugin = {
     'no-pageconfig-base-url': noPageconfigBaseUrl,
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
     'galata-prefer-menu-helper': galataPreferMenuHelper,
-    'galata-prefer-context-menu-helper': galataPreferContextMenuHelper
+    'galata-prefer-context-menu-helper': galataPreferContextMenuHelper,
+    'galata-prefer-notebook-cell-helper': galataPreferNotebookCellHelper
   },
   configs: {
     recommended: [
@@ -65,7 +67,8 @@ const plugin = {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
           'jupyter/galata-prefer-filebrowser-helper': 'warn',
           'jupyter/galata-prefer-menu-helper': 'warn',
-          'jupyter/galata-prefer-context-menu-helper': 'warn'
+          'jupyter/galata-prefer-context-menu-helper': 'warn',
+          'jupyter/galata-prefer-notebook-cell-helper': 'warn'
         }
       }
     ],
@@ -92,7 +95,8 @@ const plugin = {
             'jupyter/require-soft-assertions-before-snapshots': 'warn',
             'jupyter/galata-prefer-filebrowser-helper': 'warn',
             'jupyter/galata-prefer-menu-helper': 'warn',
-            'jupyter/galata-prefer-context-menu-helper': 'warn'
+            'jupyter/galata-prefer-context-menu-helper': 'warn',
+            'jupyter/galata-prefer-notebook-cell-helper': 'warn'
           }
         }
       ]
