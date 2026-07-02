@@ -68,6 +68,11 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
           return;
         }
 
+        // Main area tabs are covered by galata-prefer-sidebar-activity-helper
+        if (/\[role="main"\]/.test(selectorText)) {
+          return;
+        }
+
         for (const pattern of PATTERNS) {
           if (pattern.test.test(selectorText)) {
             context.report({

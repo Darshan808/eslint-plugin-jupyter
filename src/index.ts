@@ -17,6 +17,7 @@ import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-hel
 import galataPreferMenuHelper from './rules/galata-prefer-menu-helper';
 import galataPreferContextMenuHelper from './rules/galata-prefer-context-menu-helper';
 import galataPreferNotebookCellHelper from './rules/galata-prefer-notebook-cell-helper';
+import galataPreferSidebarActivityHelper from './rules/galata-prefer-sidebar-activity-helper';
 
 const plugin = {
   rules: {
@@ -33,7 +34,8 @@ const plugin = {
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
     'galata-prefer-menu-helper': galataPreferMenuHelper,
     'galata-prefer-context-menu-helper': galataPreferContextMenuHelper,
-    'galata-prefer-notebook-cell-helper': galataPreferNotebookCellHelper
+    'galata-prefer-notebook-cell-helper': galataPreferNotebookCellHelper,
+    'galata-prefer-sidebar-activity-helper': galataPreferSidebarActivityHelper
   },
   configs: {
     recommended: [
@@ -68,7 +70,8 @@ const plugin = {
           'jupyter/galata-prefer-filebrowser-helper': 'warn',
           'jupyter/galata-prefer-menu-helper': 'warn',
           'jupyter/galata-prefer-context-menu-helper': 'warn',
-          'jupyter/galata-prefer-notebook-cell-helper': 'warn'
+          'jupyter/galata-prefer-notebook-cell-helper': 'warn',
+          'jupyter/galata-prefer-sidebar-activity-helper': 'warn'
         }
       }
     ],
@@ -96,7 +99,8 @@ const plugin = {
             'jupyter/galata-prefer-filebrowser-helper': 'warn',
             'jupyter/galata-prefer-menu-helper': 'warn',
             'jupyter/galata-prefer-context-menu-helper': 'warn',
-            'jupyter/galata-prefer-notebook-cell-helper': 'warn'
+            'jupyter/galata-prefer-notebook-cell-helper': 'warn',
+            'jupyter/galata-prefer-sidebar-activity-helper': 'warn'
           }
         }
       ]

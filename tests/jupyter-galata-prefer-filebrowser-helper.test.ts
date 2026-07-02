@@ -53,6 +53,10 @@ ruleTester.run(
       // Right-clicks are covered by galata-prefer-context-menu-helper
       {
         code: `await page.click(\`.jp-DirListing-item span:has-text("\${fileName}")\`, { button: 'right' });`
+      },
+      // Main area tabs are covered by galata-prefer-sidebar-activity-helper
+      {
+        code: `await page.click('div[role="main"] >> text=Lorenz.ipynb');`
       }
     ],
 
