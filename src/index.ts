@@ -14,6 +14,7 @@ import noSchemaEnum from './rules/no-schema-enum';
 import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
+import galataPreferMenuHelper from './rules/galata-prefer-menu-helper';
 
 const plugin = {
   rules: {
@@ -27,7 +28,8 @@ const plugin = {
     'require-soft-assertions-before-snapshots':
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
-    'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper
+    'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
+    'galata-prefer-menu-helper': galataPreferMenuHelper
   },
   configs: {
     recommended: [
@@ -59,7 +61,8 @@ const plugin = {
         ],
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
-          'jupyter/galata-prefer-filebrowser-helper': 'warn'
+          'jupyter/galata-prefer-filebrowser-helper': 'warn',
+          'jupyter/galata-prefer-menu-helper': 'warn'
         }
       }
     ],
@@ -84,7 +87,8 @@ const plugin = {
           ],
           rules: {
             'jupyter/require-soft-assertions-before-snapshots': 'warn',
-            'jupyter/galata-prefer-filebrowser-helper': 'warn'
+            'jupyter/galata-prefer-filebrowser-helper': 'warn',
+            'jupyter/galata-prefer-menu-helper': 'warn'
           }
         }
       ]
