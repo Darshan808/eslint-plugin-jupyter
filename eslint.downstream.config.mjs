@@ -87,6 +87,32 @@ function makeTestConfig(projectName) {
       }
     },
 
+    // Galata UI tests, Flag raw Playwright selectors in test files, but not
+    // in galata/src/helpers/**, which implements the helpers themselves
+    {
+      basePath: __dirname,
+      files: [`${projectName}/galata/test/**/*.ts`],
+      ignores: [`${projectName}/galata/src/helpers/**`],
+      plugins: {
+        'jupyter': resolvedPlugin,
+        '@typescript-eslint': resolvedTsPlugin,
+        'jest': jestStub,
+      },
+      rules: {
+        'jupyter/galata-prefer-filebrowser-helper': 'error'
+      },
+      languageOptions: {
+        parser: resolvedParser,
+        parserOptions: {
+          ecmaVersion: 'latest',
+          sourceType: 'module'
+        }
+      },
+      linterOptions: {
+        reportUnusedDisableDirectives: 'off'
+      }
+    },
+
     // JupyterLab — settings schema JSON files
     {
       basePath: __dirname,
