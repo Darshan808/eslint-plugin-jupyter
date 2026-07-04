@@ -6,8 +6,7 @@
 import { TSESTree } from '@typescript-eslint/utils';
 
 /**
- * Playwright locator-producing methods whose first argument is a
- * selector/text string, e.g. `page.locator('.jp-DirListing-item')`.
+ * Playwright locator-producing methods.
  */
 export const LOCATOR_METHODS: ReadonlySet<string> = new Set([
   'locator',

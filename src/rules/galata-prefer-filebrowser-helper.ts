@@ -40,11 +40,11 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
     },
     messages: {
       preferNotebookOpenByPath:
-        'Prefer `page.notebook.openByPath(path)` (or `page.notebook.open(name)`) over raw selectors to open a notebook. The helper traverses directories, waits for the tab to become visible, and does not depend on the file browser DOM.',
+        'Prefer `page.notebook.openByPath(path)` (or `page.notebook.open(name)`) over raw selectors to open a notebook.',
       preferOpenHomeDirectory:
-        'Prefer `page.filebrowser.openHomeDirectory()` over clicking the breadcrumbs (`.jp-BreadCrumbs`) directly. The helper waits for the file browser to refresh.',
+        'Prefer `page.filebrowser.openHomeDirectory()` over clicking the breadcrumbs (`.jp-BreadCrumbs`) directly.',
       preferFilebrowserHelper:
-        'Prefer the Galata `page.filebrowser` helper (e.g. `page.filebrowser.open(path)`) over raw file browser selectors. Helpers handle nested directories and built-in waits; raw selectors break when the DOM or labels change.'
+        'Prefer the Galata `page.filebrowser` helper (e.g. `page.filebrowser.open(path)`) over raw file browser selectors.'
     },
     schema: []
   },

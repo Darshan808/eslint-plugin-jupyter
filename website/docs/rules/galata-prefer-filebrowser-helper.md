@@ -14,15 +14,7 @@ Galata UI tests often drive the file browser with raw Playwright selectors such 
 
 ## Rule details
 
-The rule flags Playwright interaction calls on the `page` fixture — both direct calls (`page.click(selector)`, `page.dblclick(selector)`, `page.waitForSelector(selector)`, …) and locator chains (`page.locator(selector).click()`, `page.getByText(text).dblclick()`, …) — when the selector or text contains a known file browser marker:
-
-- a `.ipynb` file name → recommends `page.notebook.openByPath(path)`;
-- `.jp-BreadCrumbs*` classes → recommends `page.filebrowser.openHomeDirectory()`;
-- `File Browser Section` or `.jp-DirListing*` classes → recommends `page.filebrowser.open(path)`.
-
-Selectors built from string literals and template literals (their static parts) are analyzed; fully dynamic selectors are ignored. Receivers other than a variable named `page` are out of scope.
-
-The recommended configuration enables this rule only for test files (`**/*.spec.{ts,js}`, `**/*.test.{ts,js}`). It should not be enabled for the Galata helper implementation itself (e.g. `galata/src/helpers/**`), which necessarily contains low-level Playwright operations.
+The rule flags Playwright interaction calls on the `page` fixture, both direct calls (`page.click(selector)`, …) and locator chains (`page.locator(selector).click()`, …), when the selector or text contains a known file browser marker.
 
 ## Incorrect
 
