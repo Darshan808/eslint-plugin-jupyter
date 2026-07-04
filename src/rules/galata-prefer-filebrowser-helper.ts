@@ -25,7 +25,7 @@ const PATTERNS: SelectorPattern[] = [
   { test: /\.ipynb\b/, messageId: 'preferNotebookOpenByPath' },
   { test: /jp-BreadCrumbs-home/, messageId: 'preferOpenHomeDirectory' },
   {
-    test:  /jp-DirListing-item\b|File Browser Section/,
+    test: /File Browser Section|jp-DirListing|#filebrowser\b/,
     messageId: 'preferFilebrowserHelper'
   }
 ];
