@@ -49,6 +49,9 @@ ruleTester.run(
       // Non-`page` receivers are out of scope
       {
         code: `await popup.click('.jp-DirListing-item');`
+      },
+      {
+        code: `await page.fill('.jp-DirListing-editor', 'text');`
       }
     ],
 
