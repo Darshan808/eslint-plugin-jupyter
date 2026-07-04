@@ -87,11 +87,14 @@ function makeTestConfig(projectName) {
       }
     },
 
-    // Galata UI tests, Flag raw Playwright selectors in test files, but not
-    // in galata/src/helpers/**, which implements the helpers themselves
+    // Galata UI tests (JupyterLab's galata/test, Notebook's and JupyterLite's
+    // ui-tests/test)
     {
       basePath: __dirname,
-      files: [`${projectName}/galata/test/**/*.ts`],
+      files: [
+        `${projectName}/galata/test/**/*.ts`,
+        `${projectName}/ui-tests/test/**/*.ts`
+      ],
       ignores: [`${projectName}/galata/src/helpers/**`],
       plugins: {
         'jupyter': resolvedPlugin,
