@@ -23,9 +23,9 @@ interface SelectorPattern {
 // Ordered: more specific patterns first, first match wins.
 const PATTERNS: SelectorPattern[] = [
   { test: /\.ipynb\b/, messageId: 'preferNotebookOpenByPath' },
-  { test: /jp-BreadCrumbs/, messageId: 'preferOpenHomeDirectory' },
+  { test: /jp-BreadCrumbs-home/, messageId: 'preferOpenHomeDirectory' },
   {
-    test: /File Browser Section|jp-DirListing/,
+    test: /File Browser Section|jp-DirListing|jp-BreadCrumbs/,
     messageId: 'preferFilebrowserHelper'
   }
 ];
@@ -42,7 +42,7 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
       preferNotebookOpenByPath:
         'Prefer `page.notebook.openByPath(path)` (or `page.notebook.open(name)`) over raw selectors to open a notebook.',
       preferOpenHomeDirectory:
-        'Prefer `page.filebrowser.openHomeDirectory()` over clicking the breadcrumbs (`.jp-BreadCrumbs`) directly.',
+        'Prefer `page.filebrowser.openHomeDirectory()` over clicking the home breadcrumb (`.jp-BreadCrumbs-home`) directly.',
       preferFilebrowserHelper:
         'Prefer the Galata `page.filebrowser` helper (e.g. `page.filebrowser.open(path)`) over raw file browser selectors.'
     },
