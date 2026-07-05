@@ -52,6 +52,19 @@ ruleTester.run(
       },
       {
         code: `await page.fill('.jp-DirListing-editor', 'text');`
+      },
+      // Notebook names outside the file browser (tab bar labels, main area
+      // tabs) are not file opens
+      {
+        code: `await page.locator('div.lm-TabBar-tabLabel >> text=Notebook.ipynb').click();`
+      },
+      {
+        code: `await page.click('div[role="main"] >> text=simple_notebook.ipynb', { button: 'right' });`
+      },
+      // A single click on a bare notebook name is ambiguous (could select a
+      // list entry or a tab); only double-clicks open files
+      {
+        code: `await page.click('text=Data.ipynb');`
       }
     ],
 

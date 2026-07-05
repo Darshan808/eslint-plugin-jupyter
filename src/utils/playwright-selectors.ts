@@ -44,6 +44,8 @@ export interface SelectorInteractionMatch {
   selectorArgNode: TSESTree.Expression;
   /** true for `page.locator(sel).click()`, false for `page.click(sel)`. */
   viaLocatorChain: boolean;
+  /** Name of the interaction method, e.g. 'click', 'dblclick', 'fill'. */
+  interactionMethod: string;
 }
 
 function isPageIdentifier(node: TSESTree.Node): boolean {
@@ -87,7 +89,12 @@ export function matchSelectorInteraction(
   if (isPageIdentifier(callee.object)) {
     const selectorArgNode = firstArgument(node);
     return selectorArgNode
-      ? { callNode: node, selectorArgNode, viaLocatorChain: false }
+      ? {
+          callNode: node,
+          selectorArgNode,
+          viaLocatorChain: false,
+          interactionMethod: property.name
+        }
       : null;
   }
 
@@ -104,7 +111,12 @@ export function matchSelectorInteraction(
     ) {
       const selectorArgNode = firstArgument(inner);
       return selectorArgNode
-        ? { callNode: node, selectorArgNode, viaLocatorChain: true }
+        ? {
+            callNode: node,
+            selectorArgNode,
+            viaLocatorChain: true,
+            interactionMethod: property.name
+          }
         : null;
     }
   }

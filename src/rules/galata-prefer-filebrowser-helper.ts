@@ -15,20 +15,11 @@ type MessageIds =
   | 'preferFilebrowserHelper';
 type Options = [];
 
-interface SelectorPattern {
-  test: RegExp;
-  messageId: MessageIds;
-}
-
-// Ordered: more specific patterns first, first match wins.
-const PATTERNS: SelectorPattern[] = [
-  { test: /\.ipynb\b/, messageId: 'preferNotebookOpenByPath' },
-  { test: /jp-BreadCrumbs-home/, messageId: 'preferOpenHomeDirectory' },
-  {
-    test: /File Browser Section|jp-DirListing-item|#filebrowser\b/,
-    messageId: 'preferFilebrowserHelper'
-  }
-];
+const NOTEBOOK_FILE_PATTERN = /\.ipynb\b/;
+const BREADCRUMBS_PATTERN = /jp-BreadCrumbs-home/;
+// Selectors scoped to the file browser region
+const FILEBROWSER_CONTEXT_PATTERN =
+  /File Browser Section|jp-DirListing-item|#filebrowser\b/;
 
 const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
   name: 'galata-prefer-filebrowser-helper',
@@ -62,14 +53,33 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
           return;
         }
 
-        for (const pattern of PATTERNS) {
-          if (pattern.test.test(selectorText)) {
-            context.report({
-              node: match.callNode,
-              messageId: pattern.messageId
-            });
-            return;
-          }
+        // A notebook is only being opened when the selector is scoped to the
+        // file browser, or the file name itself is double-clicked.
+        if (
+          NOTEBOOK_FILE_PATTERN.test(selectorText) &&
+          (FILEBROWSER_CONTEXT_PATTERN.test(selectorText) ||
+            match.interactionMethod === 'dblclick')
+        ) {
+          context.report({
+            node: match.callNode,
+            messageId: 'preferNotebookOpenByPath'
+          });
+          return;
+        }
+
+        if (BREADCRUMBS_PATTERN.test(selectorText)) {
+          context.report({
+            node: match.callNode,
+            messageId: 'preferOpenHomeDirectory'
+          });
+          return;
+        }
+
+        if (FILEBROWSER_CONTEXT_PATTERN.test(selectorText)) {
+          context.report({
+            node: match.callNode,
+            messageId: 'preferFilebrowserHelper'
+          });
         }
       }
     };
