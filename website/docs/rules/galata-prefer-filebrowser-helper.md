@@ -14,7 +14,9 @@ Galata UI tests often drive the file browser with raw Playwright selectors such 
 
 ## Rule details
 
-The rule flags Playwright interaction calls on the `page` fixture, both direct calls (`page.click(selector)`, …) and locator chains (`page.locator(selector).click()`, …), when the selector or text contains a known file browser marker.
+The rule flags Playwright interaction calls on the `page` fixture, both direct calls (`page.dblclick(selector)`, …) and locator chains (`page.locator(...).getByText(...).dblclick()`, including `.first()`/`.last()`/`.nth()` steps), when the selector or text contains a known file browser marker.
+
+Known limitation: locators stored in variables (`const item = page.locator(...); await item.dblclick();`) are not tracked.
 
 ## Incorrect
 
@@ -23,6 +25,7 @@ await page.dblclick('[aria-label="File Browser Section"] >> text=notebooks');
 await page.dblclick('text=Data.ipynb');
 await page.click('.jp-BreadCrumbs-home svg');
 await page.locator('.jp-DirListing-item').dblclick();
+await page.locator('#filebrowser').getByText('notebooks').dblclick();
 ```
 
 ## Correct
