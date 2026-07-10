@@ -48,18 +48,23 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
           return;
         }
 
-        const selectorText = extractStaticSelectorText(match.selectorArgNode);
-        if (selectorText === null) {
+        // Right-clicks open the context menu
+        if (match.isRightClick) {
           return;
         }
 
-        // A notebook is only being opened when the selector is scoped to the
-        // file browser, or the file name itself is double-clicked.
-        if (
-          NOTEBOOK_FILE_PATTERN.test(selectorText) &&
-          (FILEBROWSER_CONTEXT_PATTERN.test(selectorText) ||
-            match.interactionMethod === 'dblclick')
-        ) {
+        const staticParts = match.selectorArgNodes
+          .map(extractStaticSelectorText)
+          .filter((text): text is string => text !== null);
+        if (staticParts.length === 0) {
+          return;
+        }
+        const selectorText = staticParts.join(' ');
+
+        // Double-clicking is the open gesture.
+        const opensTarget = match.interactionMethod === 'dblclick';
+
+        if (opensTarget && NOTEBOOK_FILE_PATTERN.test(selectorText)) {
           context.report({
             node: match.callNode,
             messageId: 'preferNotebookOpenByPath'
@@ -75,7 +80,10 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
           return;
         }
 
-        if (FILEBROWSER_CONTEXT_PATTERN.test(selectorText)) {
+        if (
+          FILEBROWSER_CONTEXT_PATTERN.test(selectorText) &&
+          (opensTarget || match.interactionMethod === 'waitForSelector')
+        ) {
           context.report({
             node: match.callNode,
             messageId: 'preferFilebrowserHelper'

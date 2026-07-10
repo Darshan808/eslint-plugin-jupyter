@@ -37,15 +37,30 @@ export const INTERACTION_METHODS: ReadonlySet<string> = new Set([
   'press'
 ]);
 
+/**
+ * Locator methods that pass the locator through without adding a selector,
+ * e.g. `page.locator(sel).first().click()`.
+ */
+const CHAIN_PASSTHROUGH_METHODS: ReadonlySet<string> = new Set([
+  'first',
+  'last',
+  'nth'
+]);
+
 export interface SelectorInteractionMatch {
   /** The outer CallExpression performing the interaction (report anchor). */
   callNode: TSESTree.CallExpression;
-  /** The selector argument, from the direct call or the inner locator call. */
-  selectorArgNode: TSESTree.Expression;
+  /**
+   * The selector arguments, root-to-tip: one for a direct call, one per
+   * locator call in a chain (`page.locator(a).getByText(b).click()` → [a, b]).
+   */
+  selectorArgNodes: TSESTree.Expression[];
   /** true for `page.locator(sel).click()`, false for `page.click(sel)`. */
   viaLocatorChain: boolean;
   /** Name of the interaction method, e.g. 'click', 'dblclick', 'fill'. */
   interactionMethod: string;
+  /** true when the call passes `{ button: 'right' }` (context menu open). */
+  isRightClick: boolean;
 }
 
 function isPageIdentifier(node: TSESTree.Node): boolean {
@@ -60,15 +75,71 @@ function firstArgument(
 }
 
 /**
+ * True when an interaction call passes `{ button: 'right' }` option.
+ */
+export function isRightClick(node: TSESTree.CallExpression): boolean {
+  return node.arguments.some(
+    arg =>
+      arg.type === 'ObjectExpression' &&
+      arg.properties.some(
+        prop =>
+          prop.type === 'Property' &&
+          !prop.computed &&
+          ((prop.key.type === 'Identifier' && prop.key.name === 'button') ||
+            (prop.key.type === 'Literal' && prop.key.value === 'button')) &&
+          prop.value.type === 'Literal' &&
+          prop.value.value === 'right'
+      )
+  );
+}
+
+/**
+ * Walks a locator-producing chain rooted at `page`, e.g.
+ * `page.locator(a).getByText(b).first()`, and returns the selector arguments
+ * in root-to-tip order. Returns null when the chain is not rooted at `page`,
+ * contains a non-locator call, or carries no selector argument at all.
+ */
+function collectLocatorChainSelectors(
+  node: TSESTree.Node
+): TSESTree.Expression[] | null {
+  const selectors: TSESTree.Expression[] = [];
+  let current: TSESTree.Node = node;
+  for (;;) {
+    if (current.type !== 'CallExpression') {
+      return null;
+    }
+    const callee = current.callee;
+    if (
+      callee.type !== 'MemberExpression' ||
+      callee.computed ||
+      callee.property.type !== 'Identifier'
+    ) {
+      return null;
+    }
+    if (LOCATOR_METHODS.has(callee.property.name)) {
+      const arg = firstArgument(current);
+      if (arg) {
+        selectors.unshift(arg);
+      }
+    } else if (!CHAIN_PASSTHROUGH_METHODS.has(callee.property.name)) {
+      return null;
+    }
+    if (isPageIdentifier(callee.object)) {
+      return selectors.length > 0 ? selectors : null;
+    }
+    current = callee.object;
+  }
+}
+
+/**
  * Matches raw Playwright selector interactions on the Galata `page` fixture:
  *
  * - `page.<interaction>(selector, ...)` e.g. `page.dblclick('text=a.ipynb')`
- * - `page.<locatorMethod>(selector).<interaction>(...)` e.g.
- *   `page.locator('.jp-DirListing-item').click()`
+ * - `page.<locatorMethod>(selector)[...].<interaction>(...)` e.g.
+ *   `page.locator('.jp-DirListing-item').click()` or chained locators like
+ *   `page.locator('#filebrowser').getByText('notebooks').dblclick()`
  *
- * Returns null for any other shape, including Galata helper calls such as
- * `page.filebrowser.open(...)` and nested chains like
- * `page.keyboard.press(...)`.
+ * Returns null for any other shape
  */
 export function matchSelectorInteraction(
   node: TSESTree.CallExpression
@@ -91,37 +162,25 @@ export function matchSelectorInteraction(
     return selectorArgNode
       ? {
           callNode: node,
-          selectorArgNode,
+          selectorArgNodes: [selectorArgNode],
           viaLocatorChain: false,
-          interactionMethod: property.name
+          interactionMethod: property.name,
+          isRightClick: isRightClick(node)
         }
       : null;
   }
 
-  // page.locator(selector).click(...)
-  if (callee.object.type === 'CallExpression') {
-    const inner = callee.object;
-    const innerCallee = inner.callee;
-    if (
-      innerCallee.type === 'MemberExpression' &&
-      !innerCallee.computed &&
-      isPageIdentifier(innerCallee.object) &&
-      innerCallee.property.type === 'Identifier' &&
-      LOCATOR_METHODS.has(innerCallee.property.name)
-    ) {
-      const selectorArgNode = firstArgument(inner);
-      return selectorArgNode
-        ? {
-            callNode: node,
-            selectorArgNode,
-            viaLocatorChain: true,
-            interactionMethod: property.name
-          }
-        : null;
-    }
-  }
-
-  return null;
+  // page.locator(selector).getByText(...).click(...)
+  const selectorArgNodes = collectLocatorChainSelectors(callee.object);
+  return selectorArgNodes
+    ? {
+        callNode: node,
+        selectorArgNodes,
+        viaLocatorChain: true,
+        interactionMethod: property.name,
+        isRightClick: isRightClick(node)
+      }
+    : null;
 }
 
 /**

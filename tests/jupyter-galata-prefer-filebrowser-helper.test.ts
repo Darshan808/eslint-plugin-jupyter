@@ -65,6 +65,20 @@ ruleTester.run(
       // list entry or a tab); only double-clicks open files
       {
         code: `await page.click('text=Data.ipynb');`
+      },
+      // Right-clicks open the context menu, not the file.
+      {
+        code: `await page.click(\`.jp-DirListing-item span:has-text("\${testFolderName}")\`, { button: 'right' });`
+      },
+      {
+        code: `await page.locator('.jp-DirListing-item').click({ button: 'right' });`
+      },
+      // A single click on a file browser item selects it rather than opening it.
+      {
+        code: `await page.click(\`.jp-DirListing-item span:has-text("\${NOTEBOOK_NAME_1}")\`);`
+      },
+      {
+        code: `await page.locator('.jp-DirListing-item').first().click();`
       }
     ],
 
@@ -83,12 +97,31 @@ ruleTester.run(
       },
       // Template literal: static parts still match
       {
-        code: `await page.click(\`.jp-DirListing-item span:has-text("\${fileName}")\`, { button: 'right' });`,
+        code: `await page.dblclick(\`.jp-DirListing-item span:has-text("\${folderName}")\`);`,
         errors: [{ messageId: 'preferFilebrowserHelper' }]
       },
       // Locator chain
       {
         code: `await page.locator('.jp-DirListing-item').dblclick();`,
+        errors: [{ messageId: 'preferFilebrowserHelper' }]
+      },
+      // Chained locators: selector parts are combined across the chain
+      {
+        code: `await page.locator('[aria-label="File Browser Section"]').getByText('notebooks').dblclick();`,
+        errors: [{ messageId: 'preferFilebrowserHelper' }]
+      },
+      // Dynamic chain segments are ignored, static ones still match
+      {
+        code: `await page.locator('#filebrowser').getByText(folderName).dblclick();`,
+        errors: [{ messageId: 'preferFilebrowserHelper' }]
+      },
+      {
+        code: `await page.locator('.jp-DirListing-item').getByText('Lorenz.ipynb').dblclick();`,
+        errors: [{ messageId: 'preferNotebookOpenByPath' }]
+      },
+      // Passthrough chain methods (first/last/nth) are followed
+      {
+        code: `await page.locator('.jp-DirListing-item').first().dblclick();`,
         errors: [{ messageId: 'preferFilebrowserHelper' }]
       },
       {
