@@ -5,7 +5,7 @@
 
 import { createRule } from '../utils/create-rule';
 import {
-  extractStaticSelectorText,
+  combineStaticSelectorText,
   matchSelectorInteraction
 } from '../utils/playwright-selectors';
 
@@ -20,6 +20,12 @@ const BREADCRUMBS_PATTERN = /jp-BreadCrumbs-home/;
 // Selectors scoped to the file browser region
 const FILEBROWSER_CONTEXT_PATTERN =
   /File Browser Section|jp-DirListing-item|#filebrowser\b/;
+// A dotted file name inside a text match: `text=lorenz.py`,
+// `:has-text("bar.vl.json")`. The dot must sit between word
+// characters and only inside the text portion (which ends at `>>`), so CSS
+// selectors like `span.lm-Menu-itemLabel` or `text=Close >> button.jp-Button`
+// are not mistaken for file names.
+const FILE_TEXT_PATTERN = /(?:text=|has-text\()["']?[^>"')]*\w\.\w/;
 
 const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
   name: 'galata-prefer-filebrowser-helper',
@@ -53,13 +59,10 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
           return;
         }
 
-        const staticParts = match.selectorArgNodes
-          .map(extractStaticSelectorText)
-          .filter((text): text is string => text !== null);
-        if (staticParts.length === 0) {
+        const selectorText = combineStaticSelectorText(match);
+        if (selectorText === null) {
           return;
         }
-        const selectorText = staticParts.join(' ');
 
         // Double-clicking is the open gesture.
         const opensTarget = match.interactionMethod === 'dblclick';
@@ -80,9 +83,14 @@ const galataPreferFilebrowserHelper = createRule<Options, MessageIds>({
           return;
         }
 
+        // Double-clicked file browser items and file names are opens; a
+        // waitForSelector on the file browser has helper waits instead.
         if (
-          FILEBROWSER_CONTEXT_PATTERN.test(selectorText) &&
-          (opensTarget || match.interactionMethod === 'waitForSelector')
+          (opensTarget &&
+            (FILEBROWSER_CONTEXT_PATTERN.test(selectorText) ||
+              FILE_TEXT_PATTERN.test(selectorText))) ||
+          (match.interactionMethod === 'waitForSelector' &&
+            FILEBROWSER_CONTEXT_PATTERN.test(selectorText))
         ) {
           context.report({
             node: match.callNode,

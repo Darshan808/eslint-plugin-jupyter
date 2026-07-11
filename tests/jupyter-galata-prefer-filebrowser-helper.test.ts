@@ -79,6 +79,13 @@ ruleTester.run(
       },
       {
         code: `await page.locator('.jp-DirListing-item').first().click();`
+      },
+      // Dots in CSS positions are class selectors, not file names
+      {
+        code: `await page.dblclick('span.lm-Menu-itemLabel');`
+      },
+      {
+        code: `await page.dblclick('text=Close >> button.jp-Button');`
       }
     ],
 
@@ -136,6 +143,15 @@ ruleTester.run(
       {
         code: `await page.getByText('Data.ipynb').dblclick();`,
         errors: [{ messageId: 'preferNotebookOpenByPath' }]
+      },
+      // Double-clicking any dotted file name in a text match is a file open
+      {
+        code: `await page.dblclick('text=jupyterlab.md');`,
+        errors: [{ messageId: 'preferFilebrowserHelper' }]
+      },
+      {
+        code: `await page.dblclick('.jp-Content span:has-text("lorenz.py")');`,
+        errors: [{ messageId: 'preferFilebrowserHelper' }]
       }
     ]
   }

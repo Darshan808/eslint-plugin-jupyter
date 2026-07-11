@@ -47,6 +47,28 @@ const CHAIN_PASSTHROUGH_METHODS: ReadonlySet<string> = new Set([
   'nth'
 ]);
 
+/**
+ * Locator methods whose argument is matched against element text rather
+ * than being a CSS selector.
+ */
+const TEXT_MATCH_METHODS: ReadonlySet<string> = new Set([
+  'getByText',
+  'getByTitle',
+  'getByLabel',
+  'getByPlaceholder',
+  'getByAltText'
+]);
+
+export interface SelectorPart {
+  /**
+   * The method that received the argument: a locator method for chains, or
+   * the interaction method itself for direct calls (`page.click(sel)`).
+   */
+  method: string;
+  /** The selector or text argument. */
+  argNode: TSESTree.Expression;
+}
+
 export interface SelectorInteractionMatch {
   /** The outer CallExpression performing the interaction (report anchor). */
   callNode: TSESTree.CallExpression;
@@ -54,7 +76,7 @@ export interface SelectorInteractionMatch {
    * The selector arguments, root-to-tip: one for a direct call, one per
    * locator call in a chain (`page.locator(a).getByText(b).click()` → [a, b]).
    */
-  selectorArgNodes: TSESTree.Expression[];
+  selectorParts: SelectorPart[];
   /** true for `page.locator(sel).click()`, false for `page.click(sel)`. */
   viaLocatorChain: boolean;
   /** Name of the interaction method, e.g. 'click', 'dblclick', 'fill'. */
@@ -101,8 +123,8 @@ export function isRightClick(node: TSESTree.CallExpression): boolean {
  */
 function collectLocatorChainSelectors(
   node: TSESTree.Node
-): TSESTree.Expression[] | null {
-  const selectors: TSESTree.Expression[] = [];
+): SelectorPart[] | null {
+  const selectors: SelectorPart[] = [];
   let current: TSESTree.Node = node;
   for (;;) {
     if (current.type !== 'CallExpression') {
@@ -119,7 +141,7 @@ function collectLocatorChainSelectors(
     if (LOCATOR_METHODS.has(callee.property.name)) {
       const arg = firstArgument(current);
       if (arg) {
-        selectors.unshift(arg);
+        selectors.unshift({ method: callee.property.name, argNode: arg });
       }
     } else if (!CHAIN_PASSTHROUGH_METHODS.has(callee.property.name)) {
       return null;
@@ -162,7 +184,7 @@ export function matchSelectorInteraction(
     return selectorArgNode
       ? {
           callNode: node,
-          selectorArgNodes: [selectorArgNode],
+          selectorParts: [{ method: property.name, argNode: selectorArgNode }],
           viaLocatorChain: false,
           interactionMethod: property.name,
           isRightClick: isRightClick(node)
@@ -171,11 +193,11 @@ export function matchSelectorInteraction(
   }
 
   // page.locator(selector).getByText(...).click(...)
-  const selectorArgNodes = collectLocatorChainSelectors(callee.object);
-  return selectorArgNodes
+  const selectorParts = collectLocatorChainSelectors(callee.object);
+  return selectorParts
     ? {
         callNode: node,
-        selectorArgNodes,
+        selectorParts,
         viaLocatorChain: true,
         interactionMethod: property.name,
         isRightClick: isRightClick(node)
@@ -200,4 +222,25 @@ export function extractStaticSelectorText(
     return node.quasis.map(quasi => quasi.value.cooked ?? '').join(' ');
   }
   return null;
+}
+
+/**
+ * Joins the statically extractable selector parts of a match into a single
+ * pattern-matchable string. Arguments of text-matching locators (`getByText`,
+ * `getByTitle`, …) are normalized to the `text=` selector form, so patterns
+ * written against `text=` selectors also match the locator-method shape.
+ * Returns null when no part is static.
+ */
+export function combineStaticSelectorText(
+  match: SelectorInteractionMatch
+): string | null {
+  const parts: string[] = [];
+  for (const { method, argNode } of match.selectorParts) {
+    const text = extractStaticSelectorText(argNode);
+    if (text === null) {
+      continue;
+    }
+    parts.push(TEXT_MATCH_METHODS.has(method) ? `text=${text}` : text);
+  }
+  return parts.length > 0 ? parts.join(' ') : null;
 }

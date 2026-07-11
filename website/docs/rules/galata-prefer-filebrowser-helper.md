@@ -33,7 +33,7 @@ await page.locator('#filebrowser').getByText('notebooks').dblclick();
 ```ts
 await page.notebook.openByPath('notebooks/Data.ipynb');
 await page.filebrowser.openHomeDirectory();
-await page.filebrowser.open('data/bar.vl.json');
+await page.filebrowser.open('data/bar.json');
 ```
 
 ## Options
