@@ -13,6 +13,8 @@ import noUntranslatedString from './rules/no-untranslated-string';
 import noSchemaEnum from './rules/no-schema-enum';
 import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
+import requireSignalCleanup from './rules/require-signal-cleanup';
+import requireSignalThisArg from './rules/require-signal-this-arg';
 
 const plugin = {
   rules: {
@@ -25,7 +27,9 @@ const plugin = {
     'no-schema-enum': noSchemaEnum,
     'require-soft-assertions-before-snapshots':
       requireSoftAssertionsBeforeSnapshots,
-    'no-pageconfig-base-url': noPageconfigBaseUrl
+    'no-pageconfig-base-url': noPageconfigBaseUrl,
+    'require-signal-cleanup': requireSignalCleanup,
+    'require-signal-this-arg': requireSignalThisArg
   },
   configs: {
     recommended: [
@@ -38,7 +42,9 @@ const plugin = {
           'jupyter/no-translation-concatenation': 'error',
           'jupyter/token-format': 'error',
           'jupyter/no-untranslated-string': 'warn',
-          'jupyter/no-pageconfig-base-url': 'warn'
+          'jupyter/no-pageconfig-base-url': 'warn',
+          'jupyter/require-signal-cleanup': 'warn',
+          'jupyter/require-signal-this-arg': 'error'
         }
       },
       {
@@ -69,7 +75,9 @@ const plugin = {
         'jupyter/token-format': 'error',
         'jupyter/no-untranslated-string': 'warn',
         'jupyter/no-schema-enum': 'warn',
-        'jupyter/no-pageconfig-base-url': 'warn'
+        'jupyter/no-pageconfig-base-url': 'warn',
+        'jupyter/require-signal-cleanup': 'warn',
+        'jupyter/require-signal-this-arg': 'error'
       },
       overrides: [
         {
