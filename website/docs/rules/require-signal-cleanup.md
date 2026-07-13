@@ -4,11 +4,11 @@ Require classes that connect to Lumino signals with `this` as the receiver to sh
 
 ## Why
 
-Lumino's `ISignal.connect(callback, thisArg)` subscribes forever: the connection is only removed by a matching `.disconnect()` call, by `Signal.clearData(thisArg)`, or when the process ends. There is no automatic cleanup. When an object connects to a signal owned by a longer-lived object and is later discarded without disconnecting, the connection keeps the object alive (a memory leak) and its callback keeps firing on a logically dead instance. These regressions are hard to spot in review and usually surface months later in a memory profiler.
+Lumino's `ISignal.connect(callback, thisArg)` subscribes forever: the connection is only removed by a matching `.disconnect()` call, by `Signal.clearData(thisArg)`, or when the process ends. There is no automatic cleanup. When an object connects to a signal owned by a longer-lived object and is later discarded without disconnecting, the connection keeps the object alive (a memory leak) and its callback keeps firing on a logically dead instance.
 
 ## Rule details
 
-The rule inspects every `signal.connect(callback, this)` call — two arguments, with `this` as the receiver — made inside a class, and reports it when the class shows **no cleanup evidence anywhere in its body**. Any one of the following silences the whole class:
+The rule inspects every `signal.connect(callback, this)` call - two arguments, with `this` as the receiver, made inside a class, and reports it when the class shows **no cleanup evidence anywhere in its body**. Any one of the following silences the whole class:
 
 - a call to `Signal.clearData(...)`, `Signal.disconnectReceiver(...)`, `Signal.disconnectAll(...)`, `Signal.disconnectSender(...)`, or `Signal.disconnectBetween(...)` (including via a renamed import of `Signal` from `@lumino/signaling`)
 - any `.disconnect(...)` call (covers `dispose()` teardown as well as disconnect-before-reconnect idioms such as a `stopObserving()` helper)
@@ -20,10 +20,9 @@ The rule is deliberately conservative and skips:
 - classes with an `extends` clause — a base class such as Lumino's `Widget` already calls `Signal.clearData(this)` in its inherited `dispose()`
 - `.connect()` calls outside any class (module scope, plugin `activate()` functions) — these are typically app-lifetime connections with nothing to leak into
 - calls where the second argument is not `this` — another object's lifecycle cannot be traced from here
-- single-argument `.connect(callback)` calls — see [require-signal-this-arg](./require-signal-this-arg)
+- single-argument `.connect(callback)` calls — see [require-signal-this-arg](../require-signal-this-arg)
 
-When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored. Without type information the rule still applies, because a two-argument `.connect(callback, this)` call is a distinctive Lumino signature.
-
+When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored.
 ## Incorrect
 
 ```ts
@@ -93,7 +92,7 @@ class NotebookPanelHeader extends Widget {
 The analysis is intentionally scoped to a single class in a single file:
 
 - Cleanup performed by another class (for example the signal's sender disposing itself and clearing its own connections) is invisible; if the receiver class shows no cleanup of its own, it is still reported.
-- Conversely, a class that cleans up correctly but whose `dispose()` is never called by its owner (a cross-file bug) is **not** reported — that cannot be detected file-locally.
+- Conversely, a class that cleans up correctly but whose `dispose()` is never called by its owner (a cross-file bug) is **not** reported.
 - Any single piece of cleanup evidence silences the entire class, so a class that disconnects one signal but leaks another is not reported. The rule detects "no cleanup at all", not incomplete cleanup.
 
 ## Options
