@@ -11,6 +11,8 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 - [no-untranslated-string](./no-untranslated-string)
 - [plugin-activation-args](./plugin-activation-args)
 - [plugin-description](./plugin-description)
+- [require-signal-cleanup](./require-signal-cleanup)
+- [require-signal-this-arg](./require-signal-this-arg)
 - [require-soft-assertions-before-snapshots](./require-soft-assertions-before-snapshots)
 - [token-format](./token-format)
 
@@ -31,6 +33,8 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/require-soft-assertions-before-snapshots](./require-soft-assertions-before-snapshots) | `warn` ¹ |
 | [jupyter/no-schema-enum](./no-schema-enum) | `warn` ² |
 | [jupyter/no-pageconfig-base-url](./no-pageconfig-base-url) | `warn` |
+| [jupyter/require-signal-cleanup](./require-signal-cleanup) | `warn` |
+| [jupyter/require-signal-this-arg](./require-signal-this-arg) | `error` |
 
 ¹ Applied only to `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.  
 ² Applied only to `**/schema/*.json` files
