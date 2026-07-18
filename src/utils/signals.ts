@@ -268,6 +268,88 @@ export function resolveClassMember(
   return null;
 }
 
+export interface UnboundThisMethodConnect {
+  /** The `this.X` callback argument node. */
+  arg: TSESTree.MemberExpression;
+  /** Member name, without the `#` prefix. */
+  name: string;
+  isPrivate: boolean;
+}
+
+/**
+ * Detects the "unbound method" connect shape: a single-argument
+ * `signal.connect(this.X)` where `X` resolves in the enclosing class to a
+ * regular method (or function-expression property) whose body actually uses
+ * `this` — the case where the callback breaks at runtime without a thisArg.
+ * Returns null for every other callback shape (arrow properties, methods not
+ * using `this`, unresolved members, inline callbacks, free variables, ...).
+ *
+ * Shared by `require-signal-this-arg` (reports exactly this case) and
+ * `prefer-signal-this-arg` (reports everything but this case), so the two
+ * rules always partition cleanly.
+ */
+export function resolveUnboundThisMethodConnect(
+  node: TSESTree.CallExpression
+): UnboundThisMethodConnect | null {
+  if (node.arguments.length !== 1) {
+    return null;
+  }
+  const arg = node.arguments[0];
+  if (
+    arg.type !== 'MemberExpression' ||
+    arg.object.type !== 'ThisExpression' ||
+    arg.computed
+  ) {
+    return null;
+  }
+  const property = arg.property;
+  if (property.type !== 'Identifier' && property.type !== 'PrivateIdentifier') {
+    return null;
+  }
+  const isPrivate = property.type === 'PrivateIdentifier';
+  const name = property.name;
+
+  const enclosingClass = getEnclosingClass(node);
+  if (!enclosingClass) {
+    return null;
+  }
+
+  const member = resolveClassMember(enclosingClass, name, {
+    isPrivate,
+    isStatic: isStaticContext(node)
+  });
+  if (!member) {
+    // Not found in this class (possibly inherited).
+    return null;
+  }
+
+  let fn: TSESTree.FunctionExpression;
+  if (member.type === 'PropertyDefinition') {
+    if (!member.value || member.value.type !== 'FunctionExpression') {
+      // Arrow-function properties are lexically bound and safe; other
+      // values are not resolvable callbacks.
+      return null;
+    }
+    fn = member.value;
+  } else {
+    if (member.kind !== 'method') {
+      // Getters/setters are evaluated, not referenced.
+      return null;
+    }
+    if (member.value.type !== 'FunctionExpression') {
+      // Abstract or overload signature — no body to inspect.
+      return null;
+    }
+    fn = member.value;
+  }
+
+  if (!methodUsesThis(fn)) {
+    return null;
+  }
+
+  return { arg, name, isPrivate };
+}
+
 /**
  * Scans an entire class body for any evidence that signal connections are
  * cleaned up somewhere: `Signal.clearData(...)`-style static cleanup calls,

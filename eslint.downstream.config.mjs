@@ -45,7 +45,8 @@ function makeProjectConfig(projectName) {
       'jupyter/token-format': 'error',
       'jupyter/require-soft-assertions-before-snapshots': 'error',
       'jupyter/require-signal-cleanup': 'error',
-      'jupyter/require-signal-this-arg': 'error'
+      'jupyter/require-signal-this-arg': 'error',
+      'jupyter/prefer-signal-this-arg': 'error'
     },
     languageOptions: {
       parser: resolvedParser,

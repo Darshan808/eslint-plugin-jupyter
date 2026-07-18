@@ -22,6 +22,8 @@ The rule skips:
 - members not found in the enclosing class (possibly inherited) — skipped conservatively
 - calls that already pass a second argument
 
+This rule only reports the shapes that break at runtime. Callbacks that work without a `thisArg` but leave the connection unclearable by `Signal.clearData(this)` are covered by the companion rule [prefer-signal-this-arg](./prefer-signal-this-arg); no call is reported by both rules.
+
 When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored.
 
 ## Incorrect
@@ -55,10 +57,12 @@ class NotebookWatcher {
 ```
 
 ```ts
-// Arrow-function property: `this` is captured lexically
+// Arrow-function property: `this` is captured lexically, so there is no
+// runtime bug. Still pass the thisArg so Signal.clearData(this) can remove
+// the connection (see prefer-signal-this-arg).
 class NotebookWatcher {
   constructor(model: IModel) {
-    model.changed.connect(this._onChanged);
+    model.changed.connect(this._onChanged, this);
   }
 
   private _onChanged = (): void => {
@@ -68,12 +72,13 @@ class NotebookWatcher {
 ```
 
 ```ts
-// Wrapping in an arrow also binds `this` lexically
+// Wrapping in an arrow also binds `this` lexically — again, pass the
+// thisArg for cleanup.
 class NotebookWatcher {
   constructor(model: IModel) {
     model.changed.connect((sender, args) => {
       this.handleChange(sender, args);
-    });
+    }, this);
   }
 }
 ```

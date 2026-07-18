@@ -9,24 +9,26 @@ import * as ts from 'typescript';
 import { createRule } from '../utils/create-rule';
 import {
   classifySignalReceiver,
+  getEnclosingClass,
   isConnectCall,
+  isDisposedSignalWiring,
   looksLikeSignalByName,
   resolveUnboundThisMethodConnect
 } from '../utils/signals';
 
-const requireSignalThisArg = createRule({
-  name: 'require-signal-this-arg',
+const preferSignalThisArg = createRule({
+  name: 'prefer-signal-this-arg',
   meta: {
     type: 'suggestion',
     hasSuggestions: true,
     docs: {
       description:
-        'Require a thisArg when connecting a class method that references `this` to a Lumino signal',
-      url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/require-signal-this-arg/'
+        'Prefer passing a thisArg when connecting to a Lumino signal so the connection can be cleaned up',
+      url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/prefer-signal-this-arg/'
     },
     messages: {
-      missingThisArg:
-        'Callback "{{ name }}" references "this" but is connected without a thisArg, so "this" will not be bound to this instance when the signal fires. Pass "this" as the second argument to connect().',
+      preferThisArg:
+        'Signal connected without a thisArg. Without a receiver, "Signal.clearData(this)" and "disconnect(callback, this)" cannot remove this connection, so it may leak when this object is discarded. Pass "this" as the second argument to connect().',
       addThisArg: 'Add "this" as the second argument'
     },
     schema: []
@@ -50,10 +52,23 @@ const requireSignalThisArg = createRule({
           return;
         }
 
-        const unbound = resolveUnboundThisMethodConnect(node);
-        if (!unbound) {
-          // Any other callback shape has no runtime `this` bug; the
-          // warning-level prefer-signal-this-arg rule covers those.
+        if (!getEnclosingClass(node)) {
+          // No `this` to pass; module scope and plugin activate() functions
+          // are app-lifetime connections anyway.
+          return;
+        }
+
+        if (isDisposedSignalWiring(node)) {
+          // `x.disposed.connect(() => ...)` is the disposal-wiring idiom:
+          // the sender is torn down right as it fires, so the connection is
+          // cleaned up sender-side.
+          return;
+        }
+
+        if (resolveUnboundThisMethodConnect(node)) {
+          // A bare method reference that uses `this` is a runtime bug, not
+          // just a cleanup concern — reported at error level by
+          // require-signal-this-arg instead.
           return;
         }
 
@@ -75,16 +90,14 @@ const requireSignalThisArg = createRule({
           return;
         }
 
+        const callback = node.arguments[0];
         context.report({
-          node: unbound.arg,
-          messageId: 'missingThisArg',
-          data: {
-            name: unbound.isPrivate ? `#${unbound.name}` : unbound.name
-          },
+          node: callback,
+          messageId: 'preferThisArg',
           suggest: [
             {
               messageId: 'addThisArg',
-              fix: fixer => fixer.insertTextAfter(unbound.arg, ', this')
+              fix: fixer => fixer.insertTextAfter(callback, ', this')
             }
           ]
         });
@@ -93,4 +106,4 @@ const requireSignalThisArg = createRule({
   }
 });
 
-export = requireSignalThisArg;
+export = preferSignalThisArg;

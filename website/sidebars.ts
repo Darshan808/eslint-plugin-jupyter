@@ -26,6 +26,7 @@ const sidebars: SidebarsConfig = {
         'rules/no-untranslated-string',
         'rules/plugin-activation-args',
         'rules/plugin-description',
+        'rules/prefer-signal-this-arg',
         'rules/require-signal-cleanup',
         'rules/require-signal-this-arg',
         'rules/require-soft-assertions-before-snapshots',

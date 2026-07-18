@@ -15,6 +15,7 @@ import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertion
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import requireSignalCleanup from './rules/require-signal-cleanup';
 import requireSignalThisArg from './rules/require-signal-this-arg';
+import preferSignalThisArg from './rules/prefer-signal-this-arg';
 
 const plugin = {
   rules: {
@@ -29,7 +30,8 @@ const plugin = {
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
     'require-signal-cleanup': requireSignalCleanup,
-    'require-signal-this-arg': requireSignalThisArg
+    'require-signal-this-arg': requireSignalThisArg,
+    'prefer-signal-this-arg': preferSignalThisArg
   },
   configs: {
     recommended: [
@@ -44,7 +46,8 @@ const plugin = {
           'jupyter/no-untranslated-string': 'warn',
           'jupyter/no-pageconfig-base-url': 'warn',
           'jupyter/require-signal-cleanup': 'warn',
-          'jupyter/require-signal-this-arg': 'error'
+          'jupyter/require-signal-this-arg': 'error',
+          'jupyter/prefer-signal-this-arg': 'warn'
         }
       },
       {
@@ -77,7 +80,8 @@ const plugin = {
         'jupyter/no-schema-enum': 'warn',
         'jupyter/no-pageconfig-base-url': 'warn',
         'jupyter/require-signal-cleanup': 'warn',
-        'jupyter/require-signal-this-arg': 'error'
+        'jupyter/require-signal-this-arg': 'error',
+        'jupyter/prefer-signal-this-arg': 'warn'
       },
       overrides: [
         {
