@@ -4,7 +4,7 @@ Prefer passing a `thisArg` when connecting to a Lumino signal so the connection 
 
 ## Why
 
-The Jupyterlab documentation recommends making signal connections with the pattern `.connect(this._onFoo, this)` wherever possible. The `thisArg` is stored as the connection's **receiver**, and both `signal.disconnect(callback, thisArg)` and `Signal.clearData(thisArg)` match connections by receiver. A connection registered without a `thisArg` has no receiver, so `Signal.clearData(this)` in a `dispose()` method silently fails to remove it — the connection can outlive the object and leak, even when the callback itself works fine at runtime.
+The JupyterLab documentation recommends making signal connections with the pattern `.connect(this._onFoo, this)` wherever possible. The `thisArg` is stored as the connection's **receiver**, and both `signal.disconnect(callback, thisArg)` and `Signal.clearData(thisArg)` match connections by receiver. A connection registered without a `thisArg` has no receiver, so `Signal.clearData(this)` in a `dispose()` method silently fails to remove it — the connection can outlive the object and leak, even when the callback itself works fine at runtime.
 
 This rule is the companion to [require-signal-this-arg](../require-signal-this-arg). The two rules partition the missing-`thisArg` cases:
 
