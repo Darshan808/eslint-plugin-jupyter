@@ -22,7 +22,7 @@ The rule skips:
 - members not found in the enclosing class (possibly inherited) — skipped conservatively
 - calls that already pass a second argument
 
-This rule only reports the shapes that break at runtime. Callbacks that work without a `thisArg` but leave the connection unclearable by `Signal.clearData(this)` are covered by the companion rule [prefer-signal-this-arg](./prefer-signal-this-arg); no call is reported by both rules.
+This rule only reports the shapes that break at runtime. Callbacks that work without a `thisArg` but leave the connection unclearable by `Signal.clearData(this)` are covered by the companion rule [prefer-signal-this-arg](../prefer-signal-this-arg); no call is reported by both rules.
 
 When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored.
 
