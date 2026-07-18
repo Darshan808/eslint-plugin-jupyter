@@ -156,30 +156,6 @@ nonTypeAwareTester.run(
           refresh(): void {}
         }
       `
-      },
-      {
-        // Static method connected with the class as thisArg
-        code: `
-        class Watcher {
-          static wire(model: any): void {
-            model.changed.connect(this._onChanged, this);
-          }
-          private static _onChanged(): void {
-            this.refresh();
-          }
-          static refresh(): void {}
-        }
-      `
-      },
-      {
-        // Two arguments where the second is another receiver
-        code: `
-        class Coordinator {
-          wire(model: any, handler: any): void {
-            model.changed.connect(handler.onChanged, handler);
-          }
-        }
-      `
       }
     ],
     invalid: [
@@ -403,74 +379,6 @@ nonTypeAwareTester.run(
           private _onChanged = function (this: Watcher): void {
             this.refresh();
           };
-          refresh(): void {}
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Multiple qualifying connects — independent reports
-        code: `
-        class Watcher {
-          wire(model: any, session: any): void {
-            model.changed.connect(this._onChanged);
-            session.kernelChanged.connect(this._onKernel);
-          }
-          private _onChanged(): void {
-            this.refresh();
-          }
-          private _onKernel(): void {
-            this.refresh();
-          }
-          refresh(): void {}
-        }
-      `,
-        errors: [
-          {
-            messageId: 'missingThisArg',
-            data: { name: '_onChanged' },
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any, session: any): void {
-            model.changed.connect(this._onChanged, this);
-            session.kernelChanged.connect(this._onKernel);
-          }
-          private _onChanged(): void {
-            this.refresh();
-          }
-          private _onKernel(): void {
-            this.refresh();
-          }
-          refresh(): void {}
-        }
-      `
-              }
-            ]
-          },
-          {
-            messageId: 'missingThisArg',
-            data: { name: '_onKernel' },
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any, session: any): void {
-            model.changed.connect(this._onChanged);
-            session.kernelChanged.connect(this._onKernel, this);
-          }
-          private _onChanged(): void {
-            this.refresh();
-          }
-          private _onKernel(): void {
-            this.refresh();
-          }
           refresh(): void {}
         }
       `

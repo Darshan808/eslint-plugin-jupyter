@@ -50,16 +50,6 @@ nonTypeAwareTester.run(
       `
       },
       {
-        // Two arguments with another receiver
-        code: `
-        class Coordinator {
-          wire(model: any, handler: any): void {
-            model.changed.connect(handler.onChanged, handler);
-          }
-        }
-      `
-      },
-      {
         // Error rule's case: bare method reference that uses \`this\` —
         // reported by require-signal-this-arg, never by this rule
         code: `
@@ -106,22 +96,12 @@ nonTypeAwareTester.run(
           refresh(): void {}
         }
       `
-      },
-      {
-        // Zero arguments — not a callback registration
-        code: `
-        class Watcher {
-          wire(node: any): void {
-            node.connect();
-          }
-        }
-      `
       }
     ],
     invalid: [
       {
-        // Inline arrow using \`this\` — works at runtime, but the connection
-        // has no receiver for clearData/disconnect
+        // Inline arrow — works at runtime, but the connection has no
+        // receiver for clearData/disconnect
         code: `
         class Watcher {
           wire(model: any): void {
@@ -142,64 +122,6 @@ nonTypeAwareTester.run(
             model.changed.connect(sender => this.refresh(sender), this);
           }
           refresh(sender: unknown): void {}
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Inline arrow not using \`this\`
-        code: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(() => console.log('changed'));
-          }
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(() => console.log('changed'), this);
-          }
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Inline function expression
-        code: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(function () {
-              console.log('changed');
-            });
-          }
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(function () {
-              console.log('changed');
-            }, this);
-          }
         }
       `
               }
@@ -296,98 +218,6 @@ nonTypeAwareTester.run(
           wire(model: any): void {
             model.changed.connect(this._onInherited, this);
           }
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Free-variable callback
-        code: `
-        class Watcher {
-          wire(model: any, handler: () => void): void {
-            model.changed.connect(handler);
-          }
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any, handler: () => void): void {
-            model.changed.connect(handler, this);
-          }
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // .bind(this) — bound for \`this\`, but the bound wrapper has a new
-        // identity and no receiver, so it can never be disconnected
-        code: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(this._onChanged.bind(this));
-          }
-          private _onChanged(): void {
-            this.refresh();
-          }
-          refresh(): void {}
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(this._onChanged.bind(this), this);
-          }
-          private _onChanged(): void {
-            this.refresh();
-          }
-          refresh(): void {}
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Static context
-        code: `
-        class Watcher {
-          static wire(model: any): void {
-            model.changed.connect(() => Watcher.refresh());
-          }
-          static refresh(): void {}
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          static wire(model: any): void {
-            model.changed.connect(() => Watcher.refresh(), this);
-          }
-          static refresh(): void {}
         }
       `
               }

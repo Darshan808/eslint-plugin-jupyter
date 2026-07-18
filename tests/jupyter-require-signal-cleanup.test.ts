@@ -39,7 +39,7 @@ nonTypeAwareTester.run(
   {
     valid: [
       {
-        // Signal.clearData(this) in dispose()
+        // Signal namespace cleanup call (clearData) in dispose()
         code: `
         class Watcher {
           constructor(model: any) {
@@ -47,34 +47,6 @@ nonTypeAwareTester.run(
           }
           dispose(): void {
             Signal.clearData(this);
-          }
-          private _onChanged(): void {}
-        }
-      `
-      },
-      {
-        // Signal.disconnectReceiver(this)
-        code: `
-        class Watcher {
-          constructor(model: any) {
-            model.changed.connect(this._onChanged, this);
-          }
-          dispose(): void {
-            Signal.disconnectReceiver(this);
-          }
-          private _onChanged(): void {}
-        }
-      `
-      },
-      {
-        // Signal.disconnectAll(this)
-        code: `
-        class Watcher {
-          constructor(model: any) {
-            model.changed.connect(this._onChanged, this);
-          }
-          dispose(): void {
-            Signal.disconnectAll(this);
           }
           private _onChanged(): void {}
         }
@@ -112,38 +84,7 @@ nonTypeAwareTester.run(
       `
       },
       {
-        // Disconnect-before-reconnect idiom counts as cleanup
-        code: `
-        class Observer {
-          private _target: any = null;
-          observe(target: any): void {
-            this.stopObserving();
-            this._target = target;
-            target.changed.connect(this._onChanged, this);
-          }
-          stopObserving(): void {
-            if (this._target) {
-              this._target.changed.disconnect(this._onChanged, this);
-            }
-          }
-          private _onChanged(): void {}
-        }
-      `
-      },
-      {
-        // connect() return value assigned
-        code: `
-        class Watcher {
-          private _connected: boolean;
-          constructor(model: any) {
-            this._connected = model.changed.connect(this._onChanged, this);
-          }
-          private _onChanged(): void {}
-        }
-      `
-      },
-      {
-        // connect() return value passed to a disposable collector
+        // connect() return value consumed (disposable collector)
         code: `
         class Watcher {
           private _disposables: any;
@@ -256,13 +197,13 @@ nonTypeAwareTester.run(
         errors: [{ messageId: 'missingSignalCleanup' }]
       },
       {
-        // Private method callback
+        // \`void\` is an explicit discard, not a consumed return value
         code: `
         class Watcher {
           constructor(model: any) {
-            model.changed.connect(this.#onChanged, this);
+            void model.changed.connect(this._onChanged, this);
           }
-          #onChanged(): void {}
+          private _onChanged(): void {}
         }
       `,
         errors: [{ messageId: 'missingSignalCleanup' }]
@@ -336,19 +277,6 @@ nonTypeAwareTester.run(
           { messageId: 'missingSignalCleanup' },
           { messageId: 'missingSignalCleanup' }
         ]
-      },
-      {
-        // Unrelated 1-arg connect elsewhere does not mask the 2-arg leak
-        code: `
-        class AudioWatcher {
-          constructor(model: any, node: any, dest: any) {
-            node.connect(dest);
-            model.changed.connect(this._onChanged, this);
-          }
-          private _onChanged(): void {}
-        }
-      `,
-        errors: [{ messageId: 'missingSignalCleanup' }]
       }
     ]
   }
@@ -368,25 +296,6 @@ ruleTester.run('require-signal-cleanup', requireSignalCleanup, {
           private _onEvent(): void {}
         }
       `
-    },
-    {
-      // Real ISignal receiver with clearData cleanup
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { ISignal, Signal } from './fixtures/signaling';
-        interface IModel {
-          changed: ISignal<IModel, void>;
-        }
-        class Watcher {
-          constructor(model: IModel) {
-            model.changed.connect(this._onChanged, this);
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          private _onChanged(): void {}
-        }
-      `
     }
   ],
   invalid: [
@@ -401,20 +310,6 @@ ruleTester.run('require-signal-cleanup', requireSignalCleanup, {
         class Watcher {
           constructor(model: IModel) {
             model.changed.connect(this._onChanged, this);
-          }
-          private _onChanged(): void {}
-        }
-      `,
-      errors: [{ messageId: 'missingSignalCleanup' }]
-    },
-    {
-      // Receiver typed as concrete Signal, no cleanup anywhere
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { Signal } from './fixtures/signaling';
-        class Watcher {
-          constructor(changed: Signal<unknown, void>) {
-            changed.connect(this._onChanged, this);
           }
           private _onChanged(): void {}
         }

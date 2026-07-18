@@ -125,14 +125,30 @@ export function isDisposedSignalWiring(node: TSESTree.CallExpression): boolean {
 
 /**
  * Checks if the return value of a `.connect(...)` call is consumed (assigned,
- * passed as an argument, etc.) rather than discarded as a bare statement.
+ * passed as an argument, etc.) rather than discarded — either as a bare
+ * statement or through an explicit `void` discard.
  */
 export function isConnectReturnValueConsumed(
   node: TSESTree.CallExpression
 ): boolean {
-  let parent = node.parent;
-  if (parent?.type === 'ChainExpression') {
-    parent = parent.parent;
+  // Unwrap syntactic wrappers so we can decide whether the value is
+  // ultimately discarded.
+  let expr: TSESTree.Node = node;
+  let parent = expr.parent;
+  while (
+    parent &&
+    (parent.type === 'ChainExpression' ||
+      parent.type === 'TSAsExpression' ||
+      parent.type === 'TSSatisfiesExpression' ||
+      parent.type === 'TSNonNullExpression')
+  ) {
+    expr = parent;
+    parent = expr.parent;
+  }
+  // `void expr;` still discards the value.
+  if (parent?.type === 'UnaryExpression' && parent.operator === 'void') {
+    expr = parent;
+    parent = expr.parent;
   }
   return parent !== undefined && parent.type !== 'ExpressionStatement';
 }
@@ -477,22 +493,48 @@ function classifyTsType(
     }
     return 'unknown';
   }
-  const symbol = type.aliasSymbol ?? type.getSymbol();
-  if (!symbol) {
+  const rawSymbol = type.aliasSymbol ?? type.getSymbol();
+  if (!rawSymbol) {
     return 'unknown';
+  }
+  // Follow import/re-export aliases so we classify the original declaration.
+  let symbol = rawSymbol;
+  if (rawSymbol.flags & ts.SymbolFlags.Alias) {
+    try {
+      symbol = checker.getAliasedSymbol(rawSymbol);
+    } catch {
+      symbol = rawSymbol;
+    }
   }
   const name = symbol.getName();
   if (name === 'ISignal' || name === 'Signal') {
+    // Unrelated libraries also export types named Signal; require either a
+    // @lumino/signaling declaration or the Lumino signal surface
+    // (connect + disconnect members) before classifying as a signal.
+    if (
+      isDeclaredInLuminoSignaling(symbol) ||
+      (type.getProperty('connect') !== undefined &&
+        type.getProperty('disconnect') !== undefined)
+    ) {
+      return 'signal';
+    }
+    return 'not-signal';
+  }
+  if (isDeclaredInLuminoSignaling(symbol)) {
     return 'signal';
   }
+  return 'not-signal';
+}
+
+function isDeclaredInLuminoSignaling(symbol: ts.Symbol): boolean {
   for (const declaration of symbol.getDeclarations() ?? []) {
     const fileName = declaration.getSourceFile().fileName;
     if (
       fileName.includes('lumino/signaling') ||
       fileName.includes('lumino\\signaling')
     ) {
-      return 'signal';
+      return true;
     }
   }
-  return 'not-signal';
+  return false;
 }
