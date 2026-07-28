@@ -73,5 +73,9 @@
   },
   "engines": {
     "node": ">=16.0.0"
-  }
+  },
+  "pre-commit": [
+    "lint",
+    "test"
+  ]
 }
