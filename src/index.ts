@@ -13,6 +13,8 @@ import noUntranslatedString from './rules/no-untranslated-string';
 import noSchemaEnum from './rules/no-schema-enum';
 import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
+import requireDisposableOwnership from './rules/require-disposable-ownership';
+import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 
 const plugin = {
@@ -27,6 +29,8 @@ const plugin = {
     'require-soft-assertions-before-snapshots':
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
+    'require-disposable-ownership': requireDisposableOwnership,
+    'require-disposable-transfer': requireDisposableTransfer,
     'incorrect-translator-usage': incorrectTranslatorUsage
   },
   configs: {
@@ -41,6 +45,8 @@ const plugin = {
           'jupyter/token-format': 'error',
           'jupyter/no-untranslated-string': 'warn',
           'jupyter/no-pageconfig-base-url': 'warn',
+          'jupyter/require-disposable-ownership': 'warn',
+          'jupyter/require-disposable-transfer': 'warn',
           'jupyter/incorrect-translator-usage': 'warn'
         }
       },
@@ -68,6 +74,8 @@ const plugin = {
         'jupyter/no-untranslated-string': 'warn',
         'jupyter/no-schema-enum': 'warn',
         'jupyter/no-pageconfig-base-url': 'warn',
+        'jupyter/require-disposable-ownership': 'warn',
+        'jupyter/require-disposable-transfer': 'warn',
         'jupyter/incorrect-translator-usage': 'warn'
       },
       overrides: [

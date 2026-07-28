@@ -46,6 +46,8 @@ function makeProjectConfig(projectName) {
       'jupyter/no-translation-concatenation': 'error',
       'jupyter/token-format': 'error',
       'jupyter/require-soft-assertions-before-snapshots': 'error',
+      'jupyter/require-disposable-ownership': 'error',
+      'jupyter/require-disposable-transfer': 'error',
       'jupyter/incorrect-translator-usage': 'error'
     },
     languageOptions: {
@@ -58,6 +60,35 @@ function makeProjectConfig(projectName) {
     },
     linterOptions: {
       reportUnusedDisableDirectives: 'off'
+    }
+  };
+}
+
+function makeExtensionAdoptionConfig(projectName) {
+  return {
+    basePath: __dirname,
+    files: [
+      `${projectName}/packages/*-extension/src/**/*.ts`,
+      `${projectName}/packages/*-extension/src/**/*.tsx`
+    ],
+    rules: {
+      'jupyter/require-disposable-ownership': 'warn',
+      'jupyter/require-disposable-transfer': 'warn'
+    }
+  };
+}
+
+function makeDisposableTestSeverityConfig(projectName) {
+  return {
+    basePath: __dirname,
+    files: [
+      `${projectName}/**/*.spec.ts`,
+      `${projectName}/**/*.test.ts`,
+      `${projectName}/packages/*/src/testutils.ts`
+    ],
+    rules: {
+      'jupyter/require-disposable-ownership': 'warn',
+      'jupyter/require-disposable-transfer': 'warn'
     }
   };
 }
@@ -120,5 +151,7 @@ const projects = ['jupyterlab', 'notebook', 'jupyterlite'];
 
 export default [
   ...projects.map(makeProjectConfig),
+  ...projects.map(makeExtensionAdoptionConfig),
+  ...projects.map(makeDisposableTestSeverityConfig),
   ...projects.flatMap(makeTestConfig)
 ];
