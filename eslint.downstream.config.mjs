@@ -118,6 +118,35 @@ function makeTestConfig(projectName) {
       }
     },
 
+    // Galata UI tests (JupyterLab's galata/test, Notebook's and JupyterLite's
+    // ui-tests/test)
+    {
+      basePath: __dirname,
+      files: [
+        `${projectName}/galata/test/**/*.ts`,
+        `${projectName}/ui-tests/test/**/*.ts`
+      ],
+      ignores: [`${projectName}/galata/src/helpers/**`],
+      plugins: {
+        'jupyter': resolvedPlugin,
+        '@typescript-eslint': resolvedTsPlugin,
+        'jest': jestStub,
+      },
+      rules: {
+        'jupyter/galata-prefer-filebrowser-helper': 'error'
+      },
+      languageOptions: {
+        parser: resolvedParser,
+        parserOptions: {
+          ecmaVersion: 'latest',
+          sourceType: 'module'
+        }
+      },
+      linterOptions: {
+        reportUnusedDisableDirectives: 'off'
+      }
+    },
+
     // JupyterLab — settings schema JSON files
     {
       basePath: __dirname,
