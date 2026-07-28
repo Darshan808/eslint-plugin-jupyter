@@ -28,7 +28,7 @@ const plugin = {
     'require-soft-assertions-before-snapshots':
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
-    'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper
+    'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
     'incorrect-translator-usage': incorrectTranslatorUsage
   },
   configs: {
