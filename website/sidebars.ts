@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'rules/index',
         'rules/command-described-by',
+        'rules/galata-prefer-filebrowser-helper',
         'rules/incorrect-translator-usage',
         'rules/no-pageconfig-base-url',
         'rules/no-schema-enum',
@@ -30,6 +31,8 @@ const sidebars: SidebarsConfig = {
         'rules/prefer-signal-this-arg',
         'rules/require-signal-cleanup',
         'rules/require-signal-this-arg',
+        'rules/require-disposable-ownership',
+        'rules/require-disposable-transfer',
         'rules/require-soft-assertions-before-snapshots',
         'rules/token-format'
       ]

@@ -9,7 +9,9 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const pluginModule = await import(path.resolve(__dirname, 'lib/index.js'));
-const resolvedPlugin = pluginModule.default?.rules ? pluginModule.default : pluginModule;
+const resolvedPlugin = pluginModule.default?.rules
+  ? pluginModule.default
+  : pluginModule;
 const parserModule = await import('@typescript-eslint/parser');
 const resolvedParser = parserModule.default ?? parserModule;
 
@@ -31,10 +33,10 @@ function makeProjectConfig(projectName) {
       `${projectName}/packages/*/src/**/*.tsx`
     ],
     plugins: {
-      'jupyter': resolvedPlugin,
+      jupyter: resolvedPlugin,
       '@typescript-eslint': resolvedTsPlugin,
-      'jest': jestStub,
-      'regexp': regexStub
+      jest: jestStub,
+      regexp: regexStub
     },
     rules: {
       'jupyter/command-described-by': 'error',
@@ -47,6 +49,8 @@ function makeProjectConfig(projectName) {
       'jupyter/require-signal-cleanup': 'error',
       'jupyter/require-signal-this-arg': 'error',
       'jupyter/prefer-signal-this-arg': 'error',
+      'jupyter/require-disposable-ownership': 'error',
+      'jupyter/require-disposable-transfer': 'error',
       'jupyter/incorrect-translator-usage': 'error'
     },
     languageOptions: {
@@ -63,21 +67,76 @@ function makeProjectConfig(projectName) {
   };
 }
 
+function makeExtensionAdoptionConfig(projectName) {
+  return {
+    basePath: __dirname,
+    files: [
+      `${projectName}/packages/*-extension/src/**/*.ts`,
+      `${projectName}/packages/*-extension/src/**/*.tsx`
+    ],
+    rules: {
+      'jupyter/require-disposable-ownership': 'warn',
+      'jupyter/require-disposable-transfer': 'warn'
+    }
+  };
+}
+
+function makeDisposableTestSeverityConfig(projectName) {
+  return {
+    basePath: __dirname,
+    files: [
+      `${projectName}/**/*.spec.ts`,
+      `${projectName}/**/*.test.ts`,
+      `${projectName}/packages/*/src/testutils.ts`
+    ],
+    rules: {
+      'jupyter/require-disposable-ownership': 'warn',
+      'jupyter/require-disposable-transfer': 'warn'
+    }
+  };
+}
+
 function makeTestConfig(projectName) {
   return [
     {
       basePath: __dirname,
+      files: [`${projectName}/**/*.spec.ts`, `${projectName}/**/*.test.ts`],
+      plugins: {
+        jupyter: resolvedPlugin,
+        '@typescript-eslint': resolvedTsPlugin,
+        jest: jestStub
+      },
+      rules: {
+        'jupyter/require-soft-assertions-before-snapshots': 'error'
+      },
+      languageOptions: {
+        parser: resolvedParser,
+        parserOptions: {
+          ecmaVersion: 'latest',
+          sourceType: 'module'
+        }
+      },
+      linterOptions: {
+        reportUnusedDisableDirectives: 'off'
+      }
+    },
+
+    // Galata UI tests (JupyterLab's galata/test, Notebook's and JupyterLite's
+    // ui-tests/test)
+    {
+      basePath: __dirname,
       files: [
-        `${projectName}/**/*.spec.ts`,
-        `${projectName}/**/*.test.ts`
+        `${projectName}/galata/test/**/*.ts`,
+        `${projectName}/ui-tests/test/**/*.ts`
       ],
+      ignores: [`${projectName}/galata/src/helpers/**`],
       plugins: {
         'jupyter': resolvedPlugin,
         '@typescript-eslint': resolvedTsPlugin,
         'jest': jestStub,
       },
       rules: {
-        'jupyter/require-soft-assertions-before-snapshots': 'error'
+        'jupyter/galata-prefer-filebrowser-helper': 'error'
       },
       languageOptions: {
         parser: resolvedParser,
@@ -95,7 +154,7 @@ function makeTestConfig(projectName) {
     {
       basePath: __dirname,
       files: ['jupyterlab/packages/*/schema/*.json'],
-      plugins: { 'jupyter': resolvedPlugin },
+      plugins: { jupyter: resolvedPlugin },
       rules: { 'jupyter/no-schema-enum': 'error' },
       languageOptions: { parser: resolvedJsoncParser }
     },
@@ -104,7 +163,7 @@ function makeTestConfig(projectName) {
     {
       basePath: __dirname,
       files: ['notebook/packages/*/schema/*.json'],
-      plugins: { 'jupyter': resolvedPlugin },
+      plugins: { jupyter: resolvedPlugin },
       rules: { 'jupyter/no-schema-enum': 'error' },
       languageOptions: { parser: resolvedJsoncParser }
     },
@@ -113,7 +172,7 @@ function makeTestConfig(projectName) {
     {
       basePath: __dirname,
       files: ['jupyterlite/packages/*/schema/*.json'],
-      plugins: { 'jupyter': resolvedPlugin },
+      plugins: { jupyter: resolvedPlugin },
       rules: { 'jupyter/no-schema-enum': 'error' },
       languageOptions: { parser: resolvedJsoncParser }
     }
@@ -124,5 +183,7 @@ const projects = ['jupyterlab', 'notebook', 'jupyterlite'];
 
 export default [
   ...projects.map(makeProjectConfig),
+  ...projects.map(makeExtensionAdoptionConfig),
+  ...projects.map(makeDisposableTestSeverityConfig),
   ...projects.flatMap(makeTestConfig)
-]
+];

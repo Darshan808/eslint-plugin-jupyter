@@ -33,9 +33,9 @@ Requires [`jsonc-eslint-parser`](https://github.com/ota-meshi/jsonc-eslint-parse
     "defaultZoom": {
       "type": "string",
       "oneOf": [
-        { "const": "fit-to-width",  "title": "Fit to width"  },
+        { "const": "fit-to-width", "title": "Fit to width" },
         { "const": "fit-to-height", "title": "Fit to height" },
-        { "const": "100%",          "title": "100%"          }
+        { "const": "100%", "title": "100%" }
       ]
     }
   }

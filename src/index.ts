@@ -16,6 +16,9 @@ import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import requireSignalCleanup from './rules/require-signal-cleanup';
 import requireSignalThisArg from './rules/require-signal-this-arg';
 import preferSignalThisArg from './rules/prefer-signal-this-arg';
+import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
+import requireDisposableOwnership from './rules/require-disposable-ownership';
+import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 
 const plugin = {
@@ -33,6 +36,9 @@ const plugin = {
     'require-signal-cleanup': requireSignalCleanup,
     'require-signal-this-arg': requireSignalThisArg,
     'prefer-signal-this-arg': preferSignalThisArg,
+    'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
+    'require-disposable-ownership': requireDisposableOwnership,
+    'require-disposable-transfer': requireDisposableTransfer,
     'incorrect-translator-usage': incorrectTranslatorUsage
   },
   configs: {
@@ -50,6 +56,8 @@ const plugin = {
           'jupyter/require-signal-cleanup': 'warn',
           'jupyter/require-signal-this-arg': 'error',
           'jupyter/prefer-signal-this-arg': 'warn',
+          'jupyter/require-disposable-ownership': 'warn',
+          'jupyter/require-disposable-transfer': 'warn',
           'jupyter/incorrect-translator-usage': 'warn'
         }
       },
@@ -61,14 +69,10 @@ const plugin = {
         }
       },
       {
-        files: [
-          '**/*.spec.ts',
-          '**/*.spec.js',
-          '**/*.test.ts',
-          '**/*.test.js'
-        ],
+        files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
         rules: {
-          'jupyter/require-soft-assertions-before-snapshots': 'warn'
+          'jupyter/require-soft-assertions-before-snapshots': 'warn',
+          'jupyter/galata-prefer-filebrowser-helper': 'warn'
         }
       }
     ],
@@ -85,6 +89,8 @@ const plugin = {
         'jupyter/require-signal-cleanup': 'warn',
         'jupyter/require-signal-this-arg': 'error',
         'jupyter/prefer-signal-this-arg': 'warn',
+        'jupyter/require-disposable-ownership': 'warn',
+        'jupyter/require-disposable-transfer': 'warn',
         'jupyter/incorrect-translator-usage': 'warn'
       },
       overrides: [
@@ -96,7 +102,8 @@ const plugin = {
             '**/*.test.js'
           ],
           rules: {
-            'jupyter/require-soft-assertions-before-snapshots': 'warn'
+            'jupyter/require-soft-assertions-before-snapshots': 'warn',
+            'jupyter/galata-prefer-filebrowser-helper': 'warn'
           }
         }
       ]

@@ -48,7 +48,7 @@ ruleTester.run('token-format', tokenFormat, {
     {
       // Unrelated new expressions are not checked
       code: `new SomeOtherClass('@test/pkg:kebab-case', 'desc')`
-    },
+    }
   ],
 
   invalid: [

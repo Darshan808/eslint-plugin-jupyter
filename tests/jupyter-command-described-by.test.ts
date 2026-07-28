@@ -73,7 +73,7 @@ ruleTester.run('command-described-by', commandDescribedBy, {
     },
     {
       code: `
-                test.addCommand('test:execute', 
+                test.addCommand('test:execute',
                   (args) => {
                       console.log(args.value);
                   }

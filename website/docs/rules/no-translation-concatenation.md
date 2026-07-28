@@ -20,13 +20,13 @@ The rule reports any `+` binary expression passed as an argument to a translatio
 ## Incorrect
 
 ```ts
-this.trans.__("Hello " + userName);
+this.trans.__('Hello ' + userName);
 ```
 
 ## Correct
 
 ```ts
-this.trans.__("Hello %1", userName);
+this.trans.__('Hello %1', userName);
 ```
 
 ## Options

@@ -47,9 +47,7 @@ function isSetAttributeCall(node: TSESTree.CallExpression): boolean {
 }
 
 function isShowDialogCall(node: TSESTree.CallExpression): boolean {
-  return (
-    node.callee.type === 'Identifier' && node.callee.name === 'showDialog'
-  );
+  return node.callee.type === 'Identifier' && node.callee.name === 'showDialog';
 }
 
 function isDialogConstructor(node: TSESTree.NewExpression): boolean {
@@ -266,7 +264,8 @@ const noUntranslatedString = createRule({
 
         // *.title.label = STRING  or  *.title.caption = STRING
         if (
-          (left.property.name === 'label' || left.property.name === 'caption') &&
+          (left.property.name === 'label' ||
+            left.property.name === 'caption') &&
           left.object.type === 'MemberExpression' &&
           !left.object.computed &&
           left.object.property.type === 'Identifier' &&
@@ -301,7 +300,10 @@ const noUntranslatedString = createRule({
 
       // Raw text between JSX tags: <span>Untranslated text</span>
       JSXText(node) {
-        if (node.value.trim().length > 0 && (enforcePunctuation || hasLetters(node.value))) {
+        if (
+          node.value.trim().length > 0 &&
+          (enforcePunctuation || hasLetters(node.value))
+        ) {
           context.report({
             node,
             messageId: 'untranslatedJsxText'
@@ -332,7 +334,10 @@ const noUntranslatedString = createRule({
         }
         if (isRawStringNode(node.expression)) {
           const value = getRawStringValue(node.expression);
-          if (value !== null && (enforcePunctuation ? value.trim().length > 0 : hasLetters(value))) {
+          if (
+            value !== null &&
+            (enforcePunctuation ? value.trim().length > 0 : hasLetters(value))
+          ) {
             context.report({
               node: node.expression,
               messageId: 'untranslatedJsxText'
