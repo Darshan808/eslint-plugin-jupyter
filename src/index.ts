@@ -14,6 +14,7 @@ import noSchemaEnum from './rules/no-schema-enum';
 import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
+import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 
 const plugin = {
   rules: {
@@ -28,6 +29,7 @@ const plugin = {
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper
+    'incorrect-translator-usage': incorrectTranslatorUsage
   },
   configs: {
     recommended: [
@@ -40,7 +42,8 @@ const plugin = {
           'jupyter/no-translation-concatenation': 'error',
           'jupyter/token-format': 'error',
           'jupyter/no-untranslated-string': 'warn',
-          'jupyter/no-pageconfig-base-url': 'warn'
+          'jupyter/no-pageconfig-base-url': 'warn',
+          'jupyter/incorrect-translator-usage': 'warn'
         }
       },
       {
@@ -72,7 +75,8 @@ const plugin = {
         'jupyter/token-format': 'error',
         'jupyter/no-untranslated-string': 'warn',
         'jupyter/no-schema-enum': 'warn',
-        'jupyter/no-pageconfig-base-url': 'warn'
+        'jupyter/no-pageconfig-base-url': 'warn',
+        'jupyter/incorrect-translator-usage': 'warn'
       },
       overrides: [
         {
