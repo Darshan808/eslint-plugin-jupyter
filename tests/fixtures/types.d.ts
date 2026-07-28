@@ -10,7 +10,7 @@
 declare class Token<T> {}
 declare class JupyterFrontEnd {}
 declare class JupyterFrontEndPlugin<T> {}
-export { JupyterFrontEndPlugin }
+export { JupyterFrontEndPlugin };
 export declare class ServiceManagerPlugin<T> {}
 
 export declare namespace IDebugger {

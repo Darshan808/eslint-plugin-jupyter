@@ -33,10 +33,7 @@ const tokenFormat = createRule({
   create(context) {
     return {
       NewExpression(node) {
-        if (
-          node.callee.type !== 'Identifier' ||
-          node.callee.name !== 'Token'
-        ) {
+        if (node.callee.type !== 'Identifier' || node.callee.name !== 'Token') {
           return;
         }
 

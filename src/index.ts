@@ -14,6 +14,8 @@ import noSchemaEnum from './rules/no-schema-enum';
 import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
+import requireDisposableOwnership from './rules/require-disposable-ownership';
+import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 
 const plugin = {
@@ -29,6 +31,8 @@ const plugin = {
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
+    'require-disposable-ownership': requireDisposableOwnership,
+    'require-disposable-transfer': requireDisposableTransfer,
     'incorrect-translator-usage': incorrectTranslatorUsage
   },
   configs: {
@@ -43,6 +47,8 @@ const plugin = {
           'jupyter/token-format': 'error',
           'jupyter/no-untranslated-string': 'warn',
           'jupyter/no-pageconfig-base-url': 'warn',
+          'jupyter/require-disposable-ownership': 'warn',
+          'jupyter/require-disposable-transfer': 'warn',
           'jupyter/incorrect-translator-usage': 'warn'
         }
       },
@@ -54,12 +60,7 @@ const plugin = {
         }
       },
       {
-        files: [
-          '**/*.spec.ts',
-          '**/*.spec.js',
-          '**/*.test.ts',
-          '**/*.test.js'
-        ],
+        files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
           'jupyter/galata-prefer-filebrowser-helper': 'warn'
@@ -76,6 +77,8 @@ const plugin = {
         'jupyter/no-untranslated-string': 'warn',
         'jupyter/no-schema-enum': 'warn',
         'jupyter/no-pageconfig-base-url': 'warn',
+        'jupyter/require-disposable-ownership': 'warn',
+        'jupyter/require-disposable-transfer': 'warn',
         'jupyter/incorrect-translator-usage': 'warn'
       },
       overrides: [

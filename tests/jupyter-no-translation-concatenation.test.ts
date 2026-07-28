@@ -25,9 +25,11 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
     { code: `props.trans.__("Hello %1", x)` },
     { code: `trans.__('Total %1', a + b)` },
     // Pure string literal concatenation is static — translation tools handle it
-    { code: `trans.__('Part 1 of long message.\\n' + 'Part 2 of long message.\\n')` },
+    {
+      code: `trans.__('Part 1 of long message.\\n' + 'Part 2 of long message.\\n')`
+    },
     { code: `this.props.trans.__("a" + "b")` },
-    { code: `props.trans.__("a" + "b")` },
+    { code: `props.trans.__("a" + "b")` }
   ],
 
   invalid: [
