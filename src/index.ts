@@ -16,6 +16,7 @@ import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import requireSignalCleanup from './rules/require-signal-cleanup';
 import requireSignalThisArg from './rules/require-signal-this-arg';
 import preferSignalThisArg from './rules/prefer-signal-this-arg';
+import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 
 const plugin = {
   rules: {
@@ -32,6 +33,7 @@ const plugin = {
     'require-signal-cleanup': requireSignalCleanup,
     'require-signal-this-arg': requireSignalThisArg,
     'prefer-signal-this-arg': preferSignalThisArg
+    'incorrect-translator-usage': incorrectTranslatorUsage
   },
   configs: {
     recommended: [
@@ -48,6 +50,7 @@ const plugin = {
           'jupyter/require-signal-cleanup': 'warn',
           'jupyter/require-signal-this-arg': 'error',
           'jupyter/prefer-signal-this-arg': 'warn'
+          'jupyter/incorrect-translator-usage': 'warn'
         }
       },
       {
@@ -82,6 +85,7 @@ const plugin = {
         'jupyter/require-signal-cleanup': 'warn',
         'jupyter/require-signal-this-arg': 'error',
         'jupyter/prefer-signal-this-arg': 'warn'
+        'jupyter/incorrect-translator-usage': 'warn'
       },
       overrides: [
         {

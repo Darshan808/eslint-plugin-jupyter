@@ -47,6 +47,7 @@ function makeProjectConfig(projectName) {
       'jupyter/require-signal-cleanup': 'error',
       'jupyter/require-signal-this-arg': 'error',
       'jupyter/prefer-signal-this-arg': 'error'
+      'jupyter/incorrect-translator-usage': 'error'
     },
     languageOptions: {
       parser: resolvedParser,

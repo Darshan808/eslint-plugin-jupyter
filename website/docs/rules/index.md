@@ -5,6 +5,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 ## Available rules
 
 - [command-described-by](./command-described-by)
+- [incorrect-translator-usage](./incorrect-translator-usage)
 - [no-schema-enum](./no-schema-enum)
 - [no-translation-concatenation](./no-translation-concatenation)
 - [no-pageconfig-base-url](./no-pageconfig-base-url)
@@ -37,6 +38,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/require-signal-cleanup](./require-signal-cleanup) | `warn` |
 | [jupyter/require-signal-this-arg](./require-signal-this-arg) | `error` |
 | [jupyter/prefer-signal-this-arg](./prefer-signal-this-arg) | `warn` |
+| [jupyter/incorrect-translator-usage](./incorrect-translator-usage) | `warn` |
 
 ¹ Applied only to `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.  
 ² Applied only to `**/schema/*.json` files
