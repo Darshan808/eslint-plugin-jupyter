@@ -93,7 +93,7 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
     },
 
     // --- Dialog button builders: translated label ---
-    { code: `Dialog.okButton({ label: trans.__('Build') });` },
+    { code: `Dialog.okButton({ label: trans.__('Build') });` }
   ],
 
   invalid: [
@@ -105,7 +105,9 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
           execute: () => {}
         });
       `,
-      errors: [{ messageId: 'untranslatedCommandProp', data: { prop: 'label' } }]
+      errors: [
+        { messageId: 'untranslatedCommandProp', data: { prop: 'label' } }
+      ]
     },
     // --- addCommand: raw string in caption ---
     {
@@ -139,7 +141,9 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
           execute: () => {}
         });
       `,
-      errors: [{ messageId: 'untranslatedCommandProp', data: { prop: 'label' } }]
+      errors: [
+        { messageId: 'untranslatedCommandProp', data: { prop: 'label' } }
+      ]
     },
     // --- addCommand: template literal ---
     {
@@ -149,7 +153,9 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
           execute: () => {}
         });
       `,
-      errors: [{ messageId: 'untranslatedCommandProp', data: { prop: 'label' } }]
+      errors: [
+        { messageId: 'untranslatedCommandProp', data: { prop: 'label' } }
+      ]
     },
     // --- setAttribute: raw string with aria-label ---
     {
@@ -190,16 +196,12 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
     // --- title.label: raw string ---
     {
       code: `this.title.label = 'Source';`,
-      errors: [
-        { messageId: 'untranslatedTitleProp', data: { prop: 'label' } }
-      ]
+      errors: [{ messageId: 'untranslatedTitleProp', data: { prop: 'label' } }]
     },
     // --- title.label: arbitrary receiver ---
     {
       code: `widget.title.label = 'My Panel';`,
-      errors: [
-        { messageId: 'untranslatedTitleProp', data: { prop: 'label' } }
-      ]
+      errors: [{ messageId: 'untranslatedTitleProp', data: { prop: 'label' } }]
     },
     // --- showDialog: raw string title ---
     {
@@ -227,7 +229,7 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
     {
       code: `Dialog.okButton({ label: 'Build' });`,
       errors: [{ messageId: 'untranslatedDialogButtonLabel' }]
-    },
+    }
   ]
 });
 
@@ -247,7 +249,9 @@ jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
   valid: [
     // --- JSX: translated expression ---
     { code: `const el = <span>{trans.__('Error message:')}</span>;` },
-    { code: `const el = (\n  <div>\n    <span>{trans.__('Label')}</span>\n  </div>\n);` },
+    {
+      code: `const el = (\n  <div>\n    <span>{trans.__('Label')}</span>\n  </div>\n);`
+    },
     { code: `<div className={'normal-class-string'} />` },
     { code: `<div id={'my-id'} />` },
     { code: `<span aria-label={trans.__('Close')} />` },
@@ -288,27 +292,31 @@ jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
 });
 
 // enforcePunctuation option tests
-jsxRuleTester.run('no-untranslated-string (JSX, enforcePunctuation)', noUntranslatedString, {
-  valid: [
-    // Empty strings still ignored even with enforcePunctuation
-    { code: `<span>{''}</span>`, options: [{ enforcePunctuation: true }] }
-  ],
-  invalid: [
-    // Punctuation-only JSX text flagged when enforcePunctuation: true
-    {
-      code: `<div>,</div>`,
-      options: [{ enforcePunctuation: true }],
-      errors: [{ messageId: 'untranslatedJsxText' }]
-    },
-    {
-      code: `<span>{' - '}</span>`,
-      options: [{ enforcePunctuation: true }],
-      errors: [{ messageId: 'untranslatedJsxText' }]
-    },
-    {
-      code: `<span>{'.'}</span>`,
-      options: [{ enforcePunctuation: true }],
-      errors: [{ messageId: 'untranslatedJsxText' }]
-    }
-  ]
-});
+jsxRuleTester.run(
+  'no-untranslated-string (JSX, enforcePunctuation)',
+  noUntranslatedString,
+  {
+    valid: [
+      // Empty strings still ignored even with enforcePunctuation
+      { code: `<span>{''}</span>`, options: [{ enforcePunctuation: true }] }
+    ],
+    invalid: [
+      // Punctuation-only JSX text flagged when enforcePunctuation: true
+      {
+        code: `<div>,</div>`,
+        options: [{ enforcePunctuation: true }],
+        errors: [{ messageId: 'untranslatedJsxText' }]
+      },
+      {
+        code: `<span>{' - '}</span>`,
+        options: [{ enforcePunctuation: true }],
+        errors: [{ messageId: 'untranslatedJsxText' }]
+      },
+      {
+        code: `<span>{'.'}</span>`,
+        options: [{ enforcePunctuation: true }],
+        errors: [{ messageId: 'untranslatedJsxText' }]
+      }
+    ]
+  }
+);

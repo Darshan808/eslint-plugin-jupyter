@@ -19,7 +19,7 @@ The rule checks calls that match `*.addCommand(...)` patterns and reports when:
 ```ts
 app.commands.addCommand(CommandIDs.test, {
   label: 'Test Command',
-  execute: (args) => {
+  execute: args => {
     console.log(args.value);
   }
 });
@@ -30,7 +30,7 @@ app.commands.addCommand(CommandIDs.test, {
 ```ts
 app.commands.addCommand(CommandIDs.test, {
   label: 'Test Command',
-  execute: (args) => {
+  execute: args => {
     console.log(args.value);
   },
   describedBy: {

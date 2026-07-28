@@ -52,12 +52,7 @@ const plugin = {
         }
       },
       {
-        files: [
-          '**/*.spec.ts',
-          '**/*.spec.js',
-          '**/*.test.ts',
-          '**/*.test.js'
-        ],
+        files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn'
         }
