@@ -32,7 +32,7 @@ const plugin = {
     'no-pageconfig-base-url': noPageconfigBaseUrl,
     'require-signal-cleanup': requireSignalCleanup,
     'require-signal-this-arg': requireSignalThisArg,
-    'prefer-signal-this-arg': preferSignalThisArg
+    'prefer-signal-this-arg': preferSignalThisArg,
     'incorrect-translator-usage': incorrectTranslatorUsage
   },
   configs: {
@@ -49,7 +49,7 @@ const plugin = {
           'jupyter/no-pageconfig-base-url': 'warn',
           'jupyter/require-signal-cleanup': 'warn',
           'jupyter/require-signal-this-arg': 'error',
-          'jupyter/prefer-signal-this-arg': 'warn'
+          'jupyter/prefer-signal-this-arg': 'warn',
           'jupyter/incorrect-translator-usage': 'warn'
         }
       },
@@ -84,7 +84,7 @@ const plugin = {
         'jupyter/no-pageconfig-base-url': 'warn',
         'jupyter/require-signal-cleanup': 'warn',
         'jupyter/require-signal-this-arg': 'error',
-        'jupyter/prefer-signal-this-arg': 'warn'
+        'jupyter/prefer-signal-this-arg': 'warn',
         'jupyter/incorrect-translator-usage': 'warn'
       },
       overrides: [
