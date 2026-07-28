@@ -53,10 +53,9 @@ function findActivateFunction(
     activateValue.type === 'ArrowFunctionExpression' ||
     activateValue.type === 'FunctionExpression'
   ) {
-    const params = activateValue.params
-      .filter(
-        (param): param is TSESTree.Identifier => param.type === 'Identifier'
-      )
+    const params = activateValue.params.filter(
+      (param): param is TSESTree.Identifier => param.type === 'Identifier'
+    );
 
     const paramNames = params.map(param => param.name);
 

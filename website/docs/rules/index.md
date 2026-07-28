@@ -38,7 +38,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/no-pageconfig-base-url](./no-pageconfig-base-url)                                     | `warn`   |
 | [jupyter/incorrect-translator-usage](./incorrect-translator-usage)                             | `warn`   |
 
-¹ Applied only to `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.  
+¹ Applied only to `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.
 ² Applied only to `**/schema/*.json` files
 
 These defaults are the same in both `jupyterPlugin.configs.recommended` (flat config) and `plugin:@jupyter/eslint-plugin/recommended-legacy`.

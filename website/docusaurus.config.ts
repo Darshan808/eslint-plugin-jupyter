@@ -43,7 +43,8 @@ const { url, baseUrl } = canonical
 
 const config: Config = {
   title: 'ESLint Plugin Jupyter',
-  tagline: 'ESLint rules for Jupyter core and extensions with early error catching and best practices enforcement',
+  tagline:
+    'ESLint rules for Jupyter core and extensions with early error catching and best practices enforcement',
   favicon: '/jupyter_logo.svg',
   url,
   baseUrl,

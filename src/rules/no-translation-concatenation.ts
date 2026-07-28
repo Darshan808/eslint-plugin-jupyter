@@ -34,7 +34,12 @@ function findConcatenation(
   }
   const record = node as unknown as Record<string, unknown>;
   for (const key of Object.keys(record)) {
-    if (key === 'type' || key === 'loc' || key === 'range' || key === 'parent') {
+    if (
+      key === 'type' ||
+      key === 'loc' ||
+      key === 'range' ||
+      key === 'parent'
+    ) {
       continue;
     }
     const child = record[key];

@@ -33,13 +33,16 @@ const ruleTester = new RuleTester({
   }
 });
 
-nonTypeAwareTester.run('plugin-activation-args (non-type-aware)', pluginActivationArgs, {
-  valid: [],
-  invalid: [
-    // This same case is in valid cases for the type-aware tester
-    {
-      filename: 'tests/type-aware-fixture.ts',
-      code: `
+nonTypeAwareTester.run(
+  'plugin-activation-args (non-type-aware)',
+  pluginActivationArgs,
+  {
+    valid: [],
+    invalid: [
+      // This same case is in valid cases for the type-aware tester
+      {
+        filename: 'tests/type-aware-fixture.ts',
+        code: `
         import { IDebuggerSidebar, IDebugger } from './fixtures/types';
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test-plugin',
@@ -49,15 +52,16 @@ nonTypeAwareTester.run('plugin-activation-args (non-type-aware)', pluginActivati
           }
         };
       `,
-      errors: [
-        {
-          messageId: 'unresolvableTokenType',
-          data: { token: 'IDebuggerSidebar' }
-        }
-      ]
-    },
-  ]
-});
+        errors: [
+          {
+            messageId: 'unresolvableTokenType',
+            data: { token: 'IDebuggerSidebar' }
+          }
+        ]
+      }
+    ]
+  }
+);
 
 ruleTester.run('plugin-activation-args', pluginActivationArgs, {
   valid: [
@@ -287,9 +291,9 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       `
     },
     {
-    // Namespace pattern with optional token
-    filename: 'tests/type-aware-fixture.ts',
-    code: `
+      // Namespace pattern with optional token
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
       import { IDebugger, IDebuggerSidebar } from './fixtures/types';
       const plugin: JupyterFrontEndPlugin<void> = {
         id: 'test-plugin',
@@ -307,8 +311,8 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
     },
     {
       // Cross-file: token and interface declared in a separate .d.ts.
-    filename: 'tests/type-aware-fixture.ts',
-    code: `
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
       import { IDebugger, IDebuggerSidebar, INotebookTracker } from './fixtures/types';
       declare class JupyterFrontEnd {}
       declare class JupyterFrontEndPlugin<T> {}
@@ -704,7 +708,11 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'incorrectType',
-          data: { arg: 'tracker', type: 'IDocumentTracker', expected: 'INotebookTracker' }
+          data: {
+            arg: 'tracker',
+            type: 'IDocumentTracker',
+            expected: 'INotebookTracker'
+          }
         }
       ]
     },
@@ -723,14 +731,14 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         {
           messageId: 'unresolvableTokenType',
-          data: { token: 'INotebookTracker'}
+          data: { token: 'INotebookTracker' }
         }
       ]
     },
     {
-    // Namespace pattern but wrong order
-    filename: 'tests/type-aware-fixture.ts',
-    code: `
+      // Namespace pattern but wrong order
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
       import { IDebugger, IDebuggerSidebar, INotebookTracker } from './fixtures/types';
       const plugin: JupyterFrontEndPlugin<void> = {
         id: 'test-plugin',
@@ -763,7 +771,10 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         };
       `,
       errors: [
-        { messageId: 'appNotFirst', data: { arg: 'tracker', allowedNames: '"app", "_app", "_"' } }
+        {
+          messageId: 'appNotFirst',
+          data: { arg: 'tracker', allowedNames: '"app", "_app", "_"' }
+        }
       ]
     },
     {

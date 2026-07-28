@@ -11,6 +11,7 @@ npm install --save-dev @jupyter/eslint-plugin
 ## Configuration
 
 ### Flat Config (Recommended)
+
 The plugin is designed for ESLint's flat config format, which was set to the default in [ESLint 9.0.0](https://eslint.org/blog/2024/04/eslint-v9.0.0-released/).
 
 #### Minimal Setup
