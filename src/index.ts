@@ -14,6 +14,7 @@ import noSchemaEnum from './rules/no-schema-enum';
 import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
+import galataPreferMenuHelper from './rules/galata-prefer-menu-helper';
 import requireDisposableOwnership from './rules/require-disposable-ownership';
 import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
@@ -31,6 +32,7 @@ const plugin = {
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
+    'galata-prefer-menu-helper': galataPreferMenuHelper,
     'require-disposable-ownership': requireDisposableOwnership,
     'require-disposable-transfer': requireDisposableTransfer,
     'incorrect-translator-usage': incorrectTranslatorUsage
@@ -63,7 +65,8 @@ const plugin = {
         files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
-          'jupyter/galata-prefer-filebrowser-helper': 'warn'
+          'jupyter/galata-prefer-filebrowser-helper': 'warn',
+          'jupyter/galata-prefer-menu-helper': 'warn'
         }
       }
     ],
@@ -91,7 +94,8 @@ const plugin = {
           ],
           rules: {
             'jupyter/require-soft-assertions-before-snapshots': 'warn',
-            'jupyter/galata-prefer-filebrowser-helper': 'warn'
+            'jupyter/galata-prefer-filebrowser-helper': 'warn',
+            'jupyter/galata-prefer-menu-helper': 'warn'
           }
         }
       ]
