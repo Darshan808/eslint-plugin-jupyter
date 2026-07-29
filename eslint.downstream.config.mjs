@@ -133,7 +133,8 @@ function makeTestConfig(projectName) {
         'jest': jestStub,
       },
       rules: {
-        'jupyter/galata-prefer-filebrowser-helper': 'error'
+        'jupyter/galata-prefer-filebrowser-helper': 'error',
+        'jupyter/galata-prefer-menu-helper': 'error'
       },
       languageOptions: {
         parser: resolvedParser,
