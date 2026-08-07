@@ -97,16 +97,6 @@ export function isDisconnectCall(
 }
 
 /**
- * Checks if a node represents `this.dispose()`.
- */
-export function isThisDisposeCall(node: TSESTree.CallExpression): boolean {
-  return (
-    isMemberCallNamed(node, ['dispose']) &&
-    (node.callee as TSESTree.MemberExpression).object.type === 'ThisExpression'
-  );
-}
-
-/**
  * Checks if a node represents `<expr>.disposed.connect(...)` — disposal
  * cleanup wired through a `disposed`-style signal.
  */
@@ -121,36 +111,6 @@ export function isDisposedSignalWiring(node: TSESTree.CallExpression): boolean {
     object.property.type === 'Identifier' &&
     object.property.name === 'disposed'
   );
-}
-
-/**
- * Checks if the return value of a `.connect(...)` call is consumed (assigned,
- * passed as an argument, etc.) rather than discarded — either as a bare
- * statement or through an explicit `void` discard.
- */
-export function isConnectReturnValueConsumed(
-  node: TSESTree.CallExpression
-): boolean {
-  // Unwrap syntactic wrappers so we can decide whether the value is
-  // ultimately discarded.
-  let expr: TSESTree.Node = node;
-  let parent = expr.parent;
-  while (
-    parent &&
-    (parent.type === 'ChainExpression' ||
-      parent.type === 'TSAsExpression' ||
-      parent.type === 'TSSatisfiesExpression' ||
-      parent.type === 'TSNonNullExpression')
-  ) {
-    expr = parent;
-    parent = expr.parent;
-  }
-  // `void expr;` still discards the value.
-  if (parent?.type === 'UnaryExpression' && parent.operator === 'void') {
-    expr = parent;
-    parent = expr.parent;
-  }
-  return parent !== undefined && parent.type !== 'ExpressionStatement';
 }
 
 const SIGNAL_CLEANUP_STATICS = [
@@ -368,10 +328,8 @@ export function resolveUnboundThisMethodConnect(
 
 /**
  * Scans an entire class body for any evidence that signal connections are
- * cleaned up somewhere: `Signal.clearData(...)`-style static cleanup calls,
- * `.disconnect(...)` calls (or configured additional cleanup methods),
- * `this.dispose()` calls, `.disposed.connect(...)` wiring, or a `.connect()`
- * whose return value is consumed (e.g. added to a DisposableSet). Nested
+ * cleaned up somewhere: `Signal.clearData(...)`-style static cleanup calls or
+ * `.disconnect(...)` calls (or configured additional cleanup methods). Nested
  * classes are opaque — their cleanup does not count for the outer class.
  */
 export function classHasCleanupEvidence(
@@ -387,10 +345,7 @@ export function classHasCleanupEvidence(
     if (node.type === 'CallExpression') {
       if (
         isSignalNamespaceCleanupCall(node, signalLocalNames) ||
-        isDisconnectCall(node, extraMethodNames) ||
-        isThisDisposeCall(node) ||
-        isDisposedSignalWiring(node) ||
-        (isConnectCall(node) && isConnectReturnValueConsumed(node))
+        isDisconnectCall(node, extraMethodNames)
       ) {
         found = true;
         return 'stop';
@@ -399,6 +354,150 @@ export function classHasCleanupEvidence(
     return undefined;
   });
   return found;
+}
+
+const RECEIVER_CLEANUP_STATICS = [
+  'clearData',
+  'disconnectReceiver',
+  'disconnectAll'
+];
+
+/**
+ * Scans a class body for cleanup calls that match connections **by
+ * receiver**: `Signal.clearData(this)` / `Signal.disconnectReceiver(this)` /
+ * `Signal.disconnectAll(this)` / `Signal.disconnectBetween(sender, this)`
+ * (under any local `Signal` alias), or a two-argument
+ * `.disconnect(callback, this)` call. A class using these relies on its
+ * connections having been registered with `this` as the thisArg. Nested
+ * classes are opaque.
+ */
+export function classUsesReceiverBasedCleanup(
+  classNode: ClassLike,
+  signalLocalNames: ReadonlySet<string>
+): boolean {
+  let found = false;
+  walkFrom(classNode.body, node => {
+    if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
+      return 'skip-children';
+    }
+    if (node.type === 'CallExpression') {
+      const receiverIndex = isSignalNamespaceCleanupCall(node, signalLocalNames)
+        ? isMemberCallNamed(node, RECEIVER_CLEANUP_STATICS)
+          ? 0
+          : isMemberCallNamed(node, ['disconnectBetween'])
+            ? 1
+            : -1
+        : isDisconnectCall(node) && node.arguments.length === 2
+          ? 1
+          : -1;
+      if (
+        receiverIndex >= 0 &&
+        node.arguments[receiverIndex]?.type === 'ThisExpression'
+      ) {
+        found = true;
+        return 'stop';
+      }
+    }
+    return undefined;
+  });
+  return found;
+}
+
+/**
+ * Checks whether the class body contains a one-argument
+ * `.disconnect(<same callback reference>)` for the given connect callback.
+ */
+export function classHasMatchingBareDisconnect(
+  classNode: ClassLike,
+  callbackArg: TSESTree.CallExpressionArgument
+): boolean {
+  let matches: (arg: TSESTree.Node) => boolean;
+  if (callbackArg.type === 'Identifier') {
+    const name = callbackArg.name;
+    matches = arg => arg.type === 'Identifier' && arg.name === name;
+  } else if (
+    callbackArg.type === 'MemberExpression' &&
+    callbackArg.object.type === 'ThisExpression' &&
+    !callbackArg.computed &&
+    (callbackArg.property.type === 'Identifier' ||
+      callbackArg.property.type === 'PrivateIdentifier')
+  ) {
+    const property = callbackArg.property;
+    matches = arg =>
+      arg.type === 'MemberExpression' &&
+      arg.object.type === 'ThisExpression' &&
+      !arg.computed &&
+      arg.property.type === property.type &&
+      (arg.property as TSESTree.Identifier | TSESTree.PrivateIdentifier)
+        .name === property.name;
+  } else {
+    return false;
+  }
+
+  let found = false;
+  walkFrom(classNode.body, node => {
+    if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
+      return 'skip-children';
+    }
+    if (
+      node.type === 'CallExpression' &&
+      isDisconnectCall(node) &&
+      node.arguments.length === 1 &&
+      matches(node.arguments[0])
+    ) {
+      found = true;
+      return 'stop';
+    }
+    return undefined;
+  });
+  return found;
+}
+
+/**
+ * Type-aware check: does this class (transitively) extend Lumino's `Widget`
+ * (any class declared in `@lumino/widgets`)? Those base classes call
+ * `Signal.clearData(this)` from `dispose()`, so subclasses rely on
+ * receiver-based cleanup. Returns false when type information is
+ * unavailable or resolution fails.
+ */
+export function classExtendsLuminoWidget(
+  classNode: ClassLike,
+  checker: ts.TypeChecker | null,
+  services: ParserServices | null
+): boolean {
+  if (
+    !classNode.superClass ||
+    !checker ||
+    !services ||
+    !services.esTreeNodeToTSNodeMap
+  ) {
+    return false;
+  }
+  try {
+    const tsNode = services.esTreeNodeToTSNodeMap.get(classNode);
+    if (!tsNode) {
+      return false;
+    }
+    const seen = new Set<ts.Type>();
+    const queue: ts.Type[] = [checker.getTypeAtLocation(tsNode)];
+    while (queue.length > 0) {
+      const type = queue.pop()!;
+      if (seen.has(type)) {
+        continue;
+      }
+      seen.add(type);
+      const symbol = type.getSymbol();
+      if (symbol && isDeclaredInLuminoPackage(symbol, 'widgets')) {
+        return true;
+      }
+      if (type.isClassOrInterface()) {
+        queue.push(...checker.getBaseTypes(type));
+      }
+    }
+  } catch {
+    // Fall through: treat resolution failures as "not a Widget".
+  }
+  return false;
 }
 
 /**
@@ -512,7 +611,7 @@ function classifyTsType(
     // @lumino/signaling declaration or the Lumino signal surface
     // (connect + disconnect members) before classifying as a signal.
     if (
-      isDeclaredInLuminoSignaling(symbol) ||
+      isDeclaredInLuminoPackage(symbol, 'signaling') ||
       (type.getProperty('connect') !== undefined &&
         type.getProperty('disconnect') !== undefined)
     ) {
@@ -520,18 +619,21 @@ function classifyTsType(
     }
     return 'not-signal';
   }
-  if (isDeclaredInLuminoSignaling(symbol)) {
+  if (isDeclaredInLuminoPackage(symbol, 'signaling')) {
     return 'signal';
   }
   return 'not-signal';
 }
 
-function isDeclaredInLuminoSignaling(symbol: ts.Symbol): boolean {
+function isDeclaredInLuminoPackage(
+  symbol: ts.Symbol,
+  packageName: string
+): boolean {
   for (const declaration of symbol.getDeclarations() ?? []) {
     const fileName = declaration.getSourceFile().fileName;
     if (
-      fileName.includes('lumino/signaling') ||
-      fileName.includes('lumino\\signaling')
+      fileName.includes(`lumino/${packageName}`) ||
+      fileName.includes(`lumino\\${packageName}`)
     ) {
       return true;
     }

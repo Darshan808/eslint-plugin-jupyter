@@ -26,7 +26,7 @@ const requireSignalCleanup = createRule({
     },
     messages: {
       missingSignalCleanup:
-        'Signal connected with "this" as the receiver, but this class shows no cleanup path (Signal.clearData(this), a ".disconnect()" call, consuming the connect() return value, or ".disposed.connect()" wiring). The connection can outlive the object and leak or fire after disposal.'
+        'Signal connected with "this" as the receiver, but this class shows no cleanup path (no Signal.clearData(this) and no ".disconnect()" call anywhere in the class). The connections can outlive the object and leak or fire after disposal.'
     },
     schema: [
       {
@@ -69,11 +69,15 @@ const requireSignalCleanup = createRule({
     let signalLocalNames: ReadonlySet<string> = new Set(['Signal']);
     // Classes already scanned for cleanup evidence in this file.
     const cleanupEvidenceCache = new Map<TSESTree.Node, boolean>();
+    // Classes already reported — the finding is per class, so report it only
+    // on the first offending connect call.
+    const reportedClasses = new Set<TSESTree.Node>();
 
     return {
       Program(node: TSESTree.Program): void {
         signalLocalNames = collectSignalNamespaceLocalNames(node);
         cleanupEvidenceCache.clear();
+        reportedClasses.clear();
       },
 
       CallExpression(node: TSESTree.CallExpression): void {
@@ -112,6 +116,11 @@ const requireSignalCleanup = createRule({
         if (hasEvidence) {
           return;
         }
+        if (reportedClasses.has(enclosingClass)) {
+          // The missing cleanup path is a property of the class, not of the
+          // individual connection — one report per class is enough.
+          return;
+        }
 
         const classification = classifySignalReceiver(
           node.callee.object,
@@ -125,6 +134,7 @@ const requireSignalCleanup = createRule({
         // `.connect(callback, this)` call is a distinctive Lumino signature
         // even when the receiver type cannot be resolved.
 
+        reportedClasses.add(enclosingClass);
         context.report({
           node,
           messageId: 'missingSignalCleanup'

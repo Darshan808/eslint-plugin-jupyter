@@ -49,6 +49,8 @@
     }
   },
   "devDependencies": {
+    "@lumino/signaling": "^2.1.6",
+    "@lumino/widgets": "^2.9.0",
     "@types/eslint": "^9.6.1",
     "@types/estree": "^1.0.8",
     "@types/jest": "^30.0.0",
