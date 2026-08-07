@@ -1,41 +1,58 @@
 # `require-signal-cleanup`
 
-Require classes that connect to Lumino signals with `this` as the receiver to show a cleanup path.
+Require a cleanup path for a `signal.connect(callback, this)` whose sender is a proven application-lifetime service.
+
+:::info Requires type information
+
+This rule proves that a sender outlives its receiver by resolving the sender's type. Without [type-aware linting](https://typescript-eslint.io/getting-started/typed-linting/) configured it reports nothing at all.
+
+:::
 
 ## Why
 
-Lumino's `ISignal.connect(callback, thisArg)` subscribes forever: the connection is only removed by a matching `.disconnect()` call, by `Signal.clearData(thisArg)`, or when the process ends. There is no automatic cleanup. When an object connects to a signal owned by a longer-lived object and is later discarded without disconnecting, the connection keeps the object alive (a memory leak) and its callback keeps firing on a logically dead instance.
+Lumino's `ISignal.connect(callback, thisArg)` subscribes forever: the connection is only removed by a matching `.disconnect()`, by `Signal.clearData(thisArg)`, or when the process ends. There is no automatic cleanup.
+
+But a missing disconnect is only a bug when the **sender outlives the receiver**. If a class connects to a signal on an object it owns and disposes, the whole connection graph is collected together and nothing leaks — no teardown is needed. The leak happens in the other direction: a short-lived object connects to a long-lived one, is discarded, and the long-lived sender's connection table keeps it alive forever while its callback keeps firing on a logically dead instance.
+
+So the rule does not ask "is there cleanup here?". It asks "is this sender provably longer-lived than the receiver?", and stays quiet whenever it cannot prove one.
 
 ## Rule details
 
-The rule inspects every `signal.connect(callback, this)` call - two arguments, with `this` as the receiver, made inside a class, and reports it when the class shows **no cleanup evidence anywhere in its body**. Either of the following silences the whole class:
+The rule inspects `signal.connect(callback, this)` calls — two arguments, with `this` as the receiver, inside a class — and reports one only when **all** of the following hold:
 
-- a call to `Signal.clearData(...)`, `Signal.disconnectReceiver(...)`, `Signal.disconnectAll(...)`, `Signal.disconnectSender(...)`, or `Signal.disconnectBetween(...)` (including via a renamed import of `Signal` from `@lumino/signaling`)
-- any `.disconnect(...)` call (covers `dispose()` teardown, disconnect-before-reconnect idioms such as a `stopObserving()` helper)
+1. The class has **no `extends` clause**. A base class such as Lumino's `Widget` already calls `Signal.clearData(this)` from its inherited `dispose()`, and that cleanup is invisible from the subclass body.
+2. The class has a **disposal protocol**: it `implements` something ending in `Disposable`, or declares a non-static `dispose` or `isDisposed` member. Without one it is almost always a plugin-scope singleton whose lifetime already matches the services it connects to — and there is nowhere to put a disconnect anyway.
+3. The signal is not named `disposed`. That signal fires as its own sender is torn down, so the connection dies with it; flagging it would contradict the fix the rule recommends.
+4. The class shows **no cleanup evidence anywhere in its body** (see below).
+5. The sender's type resolves to an entry in the **long-lived service allowlist** (see [Options](#options)), and no hop between that entry and the signal is a Lumino `Widget` — `shell.currentWidget.title.changed` is a widget reached through a service, not an application-lifetime sender.
 
-The finding is a property of the class, not of the individual connection, so it is **reported once per class**, on the first offending `connect()` call.
+Any of these counts as cleanup evidence and silences the whole class:
 
-The rule is deliberately conservative and skips:
+- a call to `Signal.clearData(...)`, `Signal.disconnectReceiver(...)`, `Signal.disconnectAll(...)`, `Signal.disconnectSender(...)`, or `Signal.disconnectBetween(...)` (including through a renamed import of `Signal` from `@lumino/signaling`)
+- any `.disconnect(...)` call — covers `dispose()` teardown as well as disconnect-before-reconnect idioms
+- a call to any method listed in `additionalCleanupMethods`
 
-- classes with an `extends` clause — a base class such as Lumino's `Widget` already calls `Signal.clearData(this)` in its inherited `dispose()`, and that cleanup is invisible from the subclass body. Skipping every subclass is broader than strictly necessary (a base class that does not clean up is missed too), but it keeps the rule free of false positives on the very common `extends Widget` shape.
-- `.connect()` calls outside any class (module scope, plugin `activate()` functions) — these are typically app-lifetime connections with nothing to leak into
-- calls where the second argument is not `this` — another object's lifecycle cannot be traced from here
-- single-argument `.connect(callback)` calls — see [require-signal-this-arg](../require-signal-this-arg) and [prefer-signal-this-arg](../prefer-signal-this-arg)
-
-When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored.
+Single-argument `.connect(callback)` calls are not this rule's domain; see [require-signal-this-arg](./require-signal-this-arg) and [prefer-signal-this-arg](./prefer-signal-this-arg).
 
 ## Incorrect
 
 ```ts
-class NotebookWatcher {
-  constructor(sessionContext: ISessionContext) {
-    // No dispose(), no clearData, no disconnect anywhere in the class:
-    // this connection outlives the watcher.
-    sessionContext.kernelChanged.connect(this._onKernelChanged, this);
+class SettingsWatcher implements IDisposable {
+  constructor(registry: ISettingRegistry) {
+    // ISettingRegistry lives for the whole application session. Nothing in
+    // this class ever removes the connection, so every SettingsWatcher ever
+    // created stays reachable from the registry.
+    registry.pluginChanged.connect(this._onChanged, this);
   }
 
-  private _onKernelChanged(): void {
-    // ...
+  readonly isDisposed = false;
+
+  dispose(): void {
+    // ...but no disconnect and no clearData.
+  }
+
+  private _onChanged(): void {
+    /* ... */
   }
 }
 ```
@@ -43,69 +60,99 @@ class NotebookWatcher {
 ## Correct
 
 ```ts
-class NotebookWatcher implements IDisposable {
-  constructor(sessionContext: ISessionContext) {
-    sessionContext.kernelChanged.connect(this._onKernelChanged, this);
+// Receiver-based cleanup removes every connection made with `this`
+class SettingsWatcher implements IDisposable {
+  constructor(registry: ISettingRegistry) {
+    registry.pluginChanged.connect(this._onChanged, this);
   }
 
   dispose(): void {
     Signal.clearData(this);
   }
 
-  private _onKernelChanged(): void {
-    // ...
+  private _onChanged(): void {
+    /* ... */
   }
 }
 ```
 
 ```ts
-// Cleanup wired through a disposed signal
-class NotebookWatcher {
-  constructor(model: IModel, content: Widget) {
-    model.changed.connect(this._onChanged, this);
-    content.disposed.connect(() => {
-      model.changed.disconnect(this._onChanged, this);
-    });
+// An explicit matching disconnect
+class SettingsWatcher implements IDisposable {
+  constructor(private _registry: ISettingRegistry) {
+    _registry.pluginChanged.connect(this._onChanged, this);
+  }
+
+  dispose(): void {
+    this._registry.pluginChanged.disconnect(this._onChanged, this);
   }
 
   private _onChanged(): void {
-    // ...
+    /* ... */
   }
 }
 ```
 
 ```ts
 // Inherited cleanup: Widget.dispose() calls Signal.clearData(this)
-class NotebookPanelHeader extends Widget {
-  constructor(model: IModel) {
+class SettingsPanel extends Widget {
+  constructor(registry: ISettingRegistry) {
     super();
-    model.changed.connect(this._onChanged, this);
+    registry.pluginChanged.connect(this._onChanged, this);
   }
 
   private _onChanged(): void {
-    // ...
+    /* ... */
   }
+}
+```
+
+```ts
+// The sender is owned and disposed here, so it dies with the receiver
+class Host implements IDisposable {
+  constructor() {
+    this._editor = createEditor();
+    this._editor.ready.connect(this._onReady, this);
+  }
+
+  dispose(): void {
+    this._editor.dispose();
+  }
+
+  private _onReady(): void {
+    /* ... */
+  }
+
+  private _editor: IEditor;
 }
 ```
 
 ## Known limitations
 
-The analysis is intentionally scoped to a single class in a single file:
+The rule deliberately trades recall for precision — it is designed to report only connections it can prove leak, and to stay silent everywhere else:
 
-- Cleanup performed by another class (for example the signal's sender disposing itself and clearing its own connections) is invisible; if the receiver class shows no cleanup of its own, it is still reported.
-- Conversely, a class that cleans up correctly but whose `dispose()` is never called by its owner (a cross-file bug) is **not** reported.
-- Any single piece of cleanup evidence silences the entire class, so a class that disconnects one signal but leaks another is not reported. The rule detects "no cleanup at all", not incomplete cleanup.
-- Classes with an `extends` clause are always skipped, even when the base class does not clean up.
+- **Every subclass is skipped**, including ones whose base class does not clean up.
+- **Classes without a disposal protocol are skipped**, so a genuinely leaking class that simply has no `dispose()` is missed.
+- **Only allowlisted service types are reported.** A sender that is long-lived in your application but absent from `longLivedTypes` is silent; add it to the option.
+- Any single piece of cleanup evidence silences the entire class, so a class that disconnects one signal but leaks another is not reported.
+- Cleanup performed by another class, or in another file, is invisible; conversely a class that cleans up correctly but whose `dispose()` is never called by its owner is not reported.
 
 ## Options
 
-- `additionalCleanupMethods` (`string[]`, default `[]`): additional method names (besides `disconnect`) that count as cleanup evidence when called anywhere in the class. Use this to whitelist project-specific teardown idioms:
+- `longLivedTypes` (`string[]`): type names treated as application-lifetime services. **Replaces** the built-in list when provided. The default is:
+
+  `CommandRegistry`, `IDebugger`, `IDocumentManager`, `ILSPConnection`, `ILabShell`, `ILanguageServerManager`, `IRenderMimeRegistry`, `ISettingRegistry`, `IShell`, `IStateDB`, `IThemeManager`, `ServiceManager`
+
+- `additionalCleanupMethods` (`string[]`, default `[]`): additional method names (besides `disconnect`) that count as cleanup evidence when called anywhere in the class. Use this to whitelist project-specific teardown idioms.
 
 ```json
 {
   "jupyter/require-signal-cleanup": [
     "warn",
-    { "additionalCleanupMethods": ["_stopObserving"] }
+    {
+      "longLivedTypes": ["ISettingRegistry", "IMyAppService"],
+      "additionalCleanupMethods": ["_stopObserving"]
+    }
   ]
 }
 ```

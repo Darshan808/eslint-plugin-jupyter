@@ -33,17 +33,46 @@ const ruleTester = new RuleTester({
   }
 });
 
+/** Declarations shared by the type-aware cases. */
+const PRELUDE = `
+        import { ISignal } from '@lumino/signaling';
+        import { Widget } from '@lumino/widgets';
+        interface ISettingRegistry {
+          readonly pluginChanged: ISignal<ISettingRegistry, string>;
+        }
+        interface IThemeManager {
+          readonly themeChanged: ISignal<IThemeManager, void>;
+        }
+        interface IShell {
+          readonly currentChanged: ISignal<IShell, void>;
+          readonly currentWidget: Widget;
+        }
+        interface INotebookModel {
+          readonly contentChanged: ISignal<INotebookModel, void>;
+        }
+        interface IEditor {
+          readonly model: INotebookModel;
+          readonly ready: ISignal<IEditor, void>;
+          dispose(): void;
+        }
+        declare const Signal: {
+          clearData(obj: unknown): void;
+        };
+`;
+
+// Neither of this rule's two sender-lifetime proofs works without a type
+// checker: the service allowlist is type-gated, and the model/view rule is
+// gated on the receiver extending Lumino's Widget. A syntax-only run is silent.
 nonTypeAwareTester.run(
-  'prefer-signal-this-arg (non-type-aware)',
+  'prefer-signal-this-arg (no type information)',
   preferSignalThisArg,
   {
     valid: [
       {
-        // thisArg already passed
         code: `
         class Watcher {
           wire(model: any): void {
-            model.changed.connect(this._onChanged, this);
+            model.changed.connect(() => this._onChanged());
           }
           dispose(): void {
             Signal.clearData(this);
@@ -53,333 +82,202 @@ nonTypeAwareTester.run(
       `
       },
       {
-        // No receiver-based cleanup anywhere in the class: adding a thisArg
-        // would change disconnect matching for no benefit — do not flag
         code: `
         class Watcher {
           wire(model: any): void {
-            model.changed.connect(sender => this.refresh(sender));
-          }
-          refresh(sender: unknown): void {}
-        }
-      `
-      },
-      {
-        // Error rule's case: bare method reference that uses \`this\` —
-        // reported by require-signal-this-arg, never by this rule
-        code: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(this._onChanged);
+            model.changed.connect(this._onChanged.bind(this));
           }
           dispose(): void {
             Signal.clearData(this);
           }
-          private _onChanged(): void {
-            this.refresh();
-          }
-          refresh(): void {}
-        }
-      `
-      },
-      {
-        // No enclosing class (plugin activate) — no \`this\` to pass
-        code: `
-        const plugin = {
-          id: 'test',
-          activate: (app: any, settings: any) => {
-            settings.changed.connect(() => console.log('changed'));
-          }
-        };
-      `
-      },
-      {
-        // Disposal-wiring idiom on a disposed signal
-        code: `
-        class Watcher {
-          constructor(content: any) {
-            content.disposed.connect(() => this.dispose());
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-        }
-      `
-      },
-      {
-        // A matching one-argument disconnect(callback) is a working
-        // teardown — Lumino matches (signal, slot, thisArg) exactly, so
-        // adding \`, this\` to the connect would break it
-        code: `
-        class Factory {
-          createNew(widget: any, context: any): void {
-            const updateTitle = () => {
-              this.setTitle(context.localPath);
-            };
-            context.pathChanged.connect(updateTitle);
-            widget.disposed.connect(() => {
-              context.pathChanged.disconnect(updateTitle);
-            });
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          setTitle(title: string): void {}
-        }
-      `
-      },
-      {
-        // Same guard for \`this.x\` member callbacks
-        code: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(this._onChanged);
-          }
-          unwire(model: any): void {
-            model.changed.disconnect(this._onChanged);
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          private _onChanged = (): void => {
-            this.refresh();
-          };
-          refresh(): void {}
-        }
-      `
-      },
-      {
-        // Unknown receiver type and no signal-like name — skip
-        code: `
-        class Watcher {
-          wire(node: any): void {
-            node.connect(() => this.refresh());
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          refresh(): void {}
+          private _onChanged(): void {}
         }
       `
       }
     ],
-    invalid: [
-      {
-        // Inline arrow in a class that cleans up with Signal.clearData(this):
-        // the connection has no receiver, so clearData cannot remove it
-        code: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(sender => this.refresh(sender));
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          refresh(sender: unknown): void {}
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(sender => this.refresh(sender), this);
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          refresh(sender: unknown): void {}
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Arrow-function property in a class that disconnects by receiver
-        // elsewhere — this connection is inconsistent with that strategy
-        code: `
-        class Watcher {
-          private _model: any;
-          wire(model: any): void {
-            this._model = model;
-            model.changed.connect(this._onChanged);
-          }
-          dispose(): void {
-            this._model.changed.disconnect(this._onOther, this);
-          }
-          private _onChanged = (): void => {
-            this.refresh();
-          };
-          private _onOther(): void {}
-          refresh(): void {}
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          private _model: any;
-          wire(model: any): void {
-            this._model = model;
-            model.changed.connect(this._onChanged, this);
-          }
-          dispose(): void {
-            this._model.changed.disconnect(this._onOther, this);
-          }
-          private _onChanged = (): void => {
-            this.refresh();
-          };
-          private _onOther(): void {}
-          refresh(): void {}
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Method that never uses \`this\`, class cleans up via clearData
-        code: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(this._onChanged);
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          private _onChanged(): void {
-            console.log('changed');
-          }
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher {
-          wire(model: any): void {
-            model.changed.connect(this._onChanged, this);
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          private _onChanged(): void {
-            console.log('changed');
-          }
-        }
-      `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        // Member not found in the class (possibly inherited), class cleans
-        // up via clearData
-        code: `
-        class Watcher extends Base {
-          wire(model: any): void {
-            model.changed.connect(this._onInherited);
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-        }
-      `,
-        errors: [
-          {
-            messageId: 'preferThisArg',
-            suggestions: [
-              {
-                messageId: 'addThisArg',
-                output: `
-        class Watcher extends Base {
-          wire(model: any): void {
-            model.changed.connect(this._onInherited, this);
-          }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-        }
-      `
-              }
-            ]
-          }
-        ]
-      }
-    ]
+    invalid: []
   }
 );
 
 ruleTester.run('prefer-signal-this-arg', preferSignalThisArg, {
   valid: [
     {
-      // Receiver type resolves to a non-signal — do not flag
+      // A thisArg is already passed.
       filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { Signal } from '@lumino/signaling';
-        import { NotASignal } from './fixtures/not-a-signal';
-        class Wiring {
-          wire(node: NotASignal): void {
-            node.connect(() => this.refresh());
+      code: `${PRELUDE}
+        class Watcher {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(this._onChanged, this);
           }
           dispose(): void {
             Signal.clearData(this);
           }
-          refresh(): void {}
+          private _onChanged(): void {}
         }
       `
     },
     {
-      // Non-Widget base and no receiver-based cleanup of its own — the
-      // class does not rely on receiver matching, so do not flag
+      // Nothing in this class matches connections by receiver and it is not a
+      // Widget, so adding `, this` would not make the connection removable.
+      // Whatever the lifetimes are, a thisArg is not the fix.
       filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { ISignal } from '@lumino/signaling';
-        interface IModel {
-          updates: ISignal<IModel, void>;
-        }
-        class Base {}
-        class Watcher extends Base {
-          wire(model: IModel): void {
-            model.updates.connect(() => this.refresh());
+      code: `${PRELUDE}
+        class Watcher {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(() => this._onChanged());
           }
-          refresh(): void {}
+          private _onChanged(): void {}
         }
       `
+    },
+    {
+      // A paired one-argument disconnect() already removes this connection.
+      // Lumino matches on the exact (signal, slot, thisArg) triple, so adding
+      // `, this` here would silently break the existing teardown.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            this._registry = registry;
+            registry.pluginChanged.connect(this._onChanged);
+          }
+          unwire(): void {
+            this._registry.pluginChanged.disconnect(this._onChanged);
+          }
+          private _onChanged(): void {}
+          private _registry!: ISettingRegistry;
+        }
+      `
+    },
+    {
+      // The sender is a widget reached through a service; widgets are not
+      // application-lifetime.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(shell: IShell): void {
+            shell.currentWidget.title.changed.connect(() => this._onChanged());
+          }
+          private _onChanged(): void {}
+        }
+      `
+    },
+    {
+      // The class's own signal: Signal.clearData(this) on the sender side
+      // already removes every connection to it.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(): void {
+            this.stateChanged.connect(() => this._onChanged());
+          }
+          readonly stateChanged!: ISignal<Watcher, void>;
+          private _onChanged(): void {}
+        }
+      `
+    },
+    {
+      // A sender the class constructs and disposes dies with the receiver.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        declare function createEditor(): IEditor;
+        class Host extends Widget {
+          constructor() {
+            super();
+            this._editor = createEditor();
+            this._editor.ready.connect(() => this._onReady());
+          }
+          dispose(): void {
+            this._editor.dispose();
+            super.dispose();
+          }
+          private _onReady(): void {}
+          private _editor: IEditor;
+        }
+      `
+    },
+    {
+      // `disposed` fires as the sender is torn down; cleaned up sender-side.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        interface IDisposableService {
+          readonly disposed: ISignal<IDisposableService, void>;
+        }
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry & IDisposableService): void {
+            registry.disposed.connect(() => this._onDisposed());
+          }
+          private _onDisposed(): void {}
+        }
+      `
+    },
+    {
+      // A bare method reference that uses `this` is a runtime bug, not just a
+      // cleanup concern — require-signal-this-arg owns that case.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(this._onChanged);
+          }
+          private _onChanged(): void {
+            this.update();
+          }
+        }
+      `
+    },
+    {
+      // No enclosing class: there is no `this` to pass.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        function activate(registry: ISettingRegistry): void {
+          registry.pluginChanged.connect(() => console.log('changed'));
+        }
+      `
+    },
+    {
+      // The receiver is not a signal at all.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { NotASignal } from './fixtures/not-a-signal';
+        class Wiring {
+          constructor(node: NotASignal) {
+            node.connect(() => this._onEvent());
+          }
+          dispose(): void {
+            (Signal as any).clearData(this);
+          }
+          private _onEvent(): void {}
+        }
+        declare const Signal: unknown;
+      `
+    },
+    {
+      // longLivedTypes replaces the built-in list.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(() => this._onChanged());
+          }
+          private _onChanged(): void {}
+        }
+      `,
+      options: [{ longLivedTypes: ['IMyOwnService'] }]
     }
   ],
   invalid: [
     {
-      // Receiver typed as ISignal — flagged even without a signal-like name
+      // An allowlisted application-lifetime service, connected from a Widget
+      // whose inherited dispose() calls Signal.clearData(this) — cleanup that
+      // only works if a thisArg is passed.
       filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { ISignal, Signal } from '@lumino/signaling';
-        interface IModel {
-          updates: ISignal<IModel, void>;
-        }
-        class Watcher {
-          wire(model: IModel): void {
-            model.updates.connect(() => this.refresh());
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(() => this._onChanged());
           }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          refresh(): void {}
+          private _onChanged(): void {}
         }
       `,
       errors: [
@@ -388,19 +286,12 @@ ruleTester.run('prefer-signal-this-arg', preferSignalThisArg, {
           suggestions: [
             {
               messageId: 'addThisArg',
-              output: `
-        import { ISignal, Signal } from '@lumino/signaling';
-        interface IModel {
-          updates: ISignal<IModel, void>;
-        }
-        class Watcher {
-          wire(model: IModel): void {
-            model.updates.connect(() => this.refresh(), this);
+              output: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(() => this._onChanged(), this);
           }
-          dispose(): void {
-            Signal.clearData(this);
-          }
-          refresh(): void {}
+          private _onChanged(): void {}
         }
       `
             }
@@ -409,43 +300,124 @@ ruleTester.run('prefer-signal-this-arg', preferSignalThisArg, {
       ]
     },
     {
-      // Extends Lumino's Widget: the inherited dispose() calls
-      // Signal.clearData(this), so unreceivered connections leak
+      // Explicit Signal.clearData(this) is receiver-based cleanup too — no
+      // need for the class to be a Widget.
       filename: 'tests/type-aware-fixture.ts',
-      code: `
-        import { ISignal } from '@lumino/signaling';
-        import { Widget } from '@lumino/widgets';
-        interface IModel {
-          updates: ISignal<IModel, void>;
-        }
-        class Panel extends Widget {
-          wire(model: IModel): void {
-            model.updates.connect(() => this.update());
+      code: `${PRELUDE}
+        class Watcher {
+          wire(themes: IThemeManager): void {
+            themes.themeChanged.connect(() => this._onThemeChanged());
           }
+          dispose(): void {
+            Signal.clearData(this);
+          }
+          private _onThemeChanged(): void {}
+        }
+      `,
+      errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
+    },
+    {
+      // A model outlives the views built on it (JupyterLab recycles views over
+      // a stable model), so a Widget connecting to one needs a thisArg.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class View extends Widget {
+          constructor(model: INotebookModel) {
+            super();
+            this._model = model;
+            this._model.contentChanged.connect(() => this._onChanged());
+          }
+          private _onChanged(): void {}
+          private _model: INotebookModel;
+        }
+      `,
+      errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
+    },
+    {
+      // Owning a *view* does not own the model hanging off it.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        declare function createEditor(): IEditor;
+        class Host extends Widget {
+          constructor() {
+            super();
+            this._editor = createEditor();
+            this._editor.model.contentChanged.connect(() => this._onChanged());
+          }
+          dispose(): void {
+            this._editor.dispose();
+            super.dispose();
+          }
+          private _onChanged(): void {}
+          private _editor: IEditor;
+        }
+      `,
+      errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
+    },
+    {
+      // `.bind()` produces a fresh function on every call, so no disconnect()
+      // can ever match it. The suggestion drops the bind and passes `this`.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(this._onChanged.bind(this));
+          }
+          private _onChanged(): void {}
         }
       `,
       errors: [
         {
-          messageId: 'preferThisArg',
+          messageId: 'boundCallback',
           suggestions: [
             {
-              messageId: 'addThisArg',
-              output: `
-        import { ISignal } from '@lumino/signaling';
-        import { Widget } from '@lumino/widgets';
-        interface IModel {
-          updates: ISignal<IModel, void>;
-        }
-        class Panel extends Widget {
-          wire(model: IModel): void {
-            model.updates.connect(() => this.update(), this);
+              messageId: 'unbindAndAddThisArg',
+              output: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(this._onChanged, this);
           }
+          private _onChanged(): void {}
         }
       `
             }
           ]
         }
       ]
+    },
+    {
+      // A method reference that does not use `this` is outside
+      // require-signal-this-arg's domain, but still unremovable without a
+      // receiver.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Watcher extends Widget {
+          wire(registry: ISettingRegistry): void {
+            registry.pluginChanged.connect(this._onChanged);
+          }
+          private _onChanged(): void {
+            console.log('changed');
+          }
+        }
+      `,
+      errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
+    },
+    {
+      // A custom longLivedTypes entry is honoured.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        interface IMyOwnService {
+          readonly changed: ISignal<IMyOwnService, void>;
+        }
+        class Watcher extends Widget {
+          wire(service: IMyOwnService): void {
+            service.changed.connect(() => this._onChanged());
+          }
+          private _onChanged(): void {}
+        }
+      `,
+      options: [{ longLivedTypes: ['IMyOwnService'] }],
+      errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
     }
   ]
 });

@@ -14,19 +14,28 @@ import {
   getEnclosingClass,
   isConnectCall
 } from '../utils/signals';
+import {
+  ClassOwnershipFacts,
+  DEFAULT_LONG_LIVED_TYPES,
+  analyzeSender,
+  buildSenderChain,
+  classHasDisposalProtocol,
+  collectClassOwnershipFacts,
+  isSelfTerminatingSignal
+} from '../utils/signal-lifetime';
 
 const requireSignalCleanup = createRule({
   name: 'require-signal-cleanup',
   meta: {
-    type: 'suggestion',
+    type: 'problem',
     docs: {
       description:
-        'Require classes that connect to Lumino signals with `this` as the receiver to show a cleanup path',
+        'Require a cleanup path for Lumino signal connections whose sender outlives the connecting class',
       url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/require-signal-cleanup/'
     },
     messages: {
-      missingSignalCleanup:
-        'Signal connected with "this" as the receiver, but this class shows no cleanup path (no Signal.clearData(this) and no ".disconnect()" call anywhere in the class). The connections can outlive the object and leak or fire after disposal.'
+      serviceOutlivesReceiver:
+        'This connection to "{{ sender }}" is never removed, and "{{ typeName }}" is an application-lifetime service, so it will outlive this class and keep every instance alive. Disconnect it during teardown, or call Signal.clearData(this).'
     },
     schema: [
       {
@@ -40,6 +49,14 @@ const requireSignalCleanup = createRule({
             default: [],
             description:
               'Additional method names (besides "disconnect") that count as cleanup evidence when called anywhere in the class'
+          },
+          longLivedTypes: {
+            type: 'array',
+            items: {
+              type: 'string'
+            },
+            description:
+              'Type names treated as application-lifetime services. Replaces the built-in list when provided.'
           }
         },
         additionalProperties: false
@@ -48,13 +65,17 @@ const requireSignalCleanup = createRule({
   },
   defaultOptions: [
     {
-      additionalCleanupMethods: [] as string[]
+      additionalCleanupMethods: [] as string[],
+      longLivedTypes: undefined as string[] | undefined
     }
   ],
 
   create(context, [options]) {
     const additionalCleanupMethods: string[] =
       options.additionalCleanupMethods || [];
+    const longLivedTypes = new Set(
+      options.longLivedTypes ?? DEFAULT_LONG_LIVED_TYPES
+    );
 
     let services: ParserServices | null = null;
     let checker: ts.TypeChecker | null = null;
@@ -66,31 +87,30 @@ const requireSignalCleanup = createRule({
       services = null;
     }
 
+    const sourceCode = context.sourceCode;
+    let program: TSESTree.Program | null = null;
     let signalLocalNames: ReadonlySet<string> = new Set(['Signal']);
-    // Classes already scanned for cleanup evidence in this file.
     const cleanupEvidenceCache = new Map<TSESTree.Node, boolean>();
-    // Classes already reported — the finding is per class, so report it only
-    // on the first offending connect call.
-    const reportedClasses = new Set<TSESTree.Node>();
+    const ownershipCache = new Map<TSESTree.Node, ClassOwnershipFacts>();
 
     return {
       Program(node: TSESTree.Program): void {
+        program = node;
         signalLocalNames = collectSignalNamespaceLocalNames(node);
         cleanupEvidenceCache.clear();
-        reportedClasses.clear();
+        ownershipCache.clear();
       },
 
       CallExpression(node: TSESTree.CallExpression): void {
-        if (!isConnectCall(node)) {
+        if (!isConnectCall(node) || !program) {
           return;
         }
         if (node.arguments.length < 2) {
-          // No thisArg, there is no receiver object to trace cleanup for.
+          // No thisArg — see require-signal-this-arg / prefer-signal-this-arg.
           return;
         }
         if (node.arguments[1].type !== 'ThisExpression') {
-          // Receiver is some other object; its lifecycle is not traceable
-          // from this class.
+          // Receiver is some other object; its lifetime is not traceable here.
           return;
         }
 
@@ -99,8 +119,23 @@ const requireSignalCleanup = createRule({
           return;
         }
         if (enclosingClass.superClass) {
-          // A base class such as Lumino's Widget may already clean up via
-          // its inherited dispose()
+          // The base class may clean up in an inherited dispose() that is
+          // invisible from here — Lumino's Widget.dispose() calls
+          // Signal.clearData(this), which removes exactly this connection.
+          return;
+        }
+        if (!classHasDisposalProtocol(enclosingClass)) {
+          // No dispose(), no isDisposed, no `implements IDisposable`: almost
+          // always a plugin-scope singleton whose lifetime matches the
+          // services it connects to, and with nowhere to put a disconnect.
+          return;
+        }
+
+        const chain = buildSenderChain(node.callee.object);
+        if (isSelfTerminatingSignal(chain)) {
+          // `x.disposed.connect(cb, this)` fires as its sender is torn down
+          // and is cleaned up sender-side. It is the pattern this rule
+          // recommends, so it must never be flagged.
           return;
         }
 
@@ -116,11 +151,6 @@ const requireSignalCleanup = createRule({
         if (hasEvidence) {
           return;
         }
-        if (reportedClasses.has(enclosingClass)) {
-          // The missing cleanup path is a property of the class, not of the
-          // individual connection — one report per class is enough.
-          return;
-        }
 
         const classification = classifySignalReceiver(
           node.callee.object,
@@ -130,15 +160,44 @@ const requireSignalCleanup = createRule({
         if (classification === 'not-signal') {
           return;
         }
-        // 'signal' and 'unknown' both flag: a 2-argument
-        // `.connect(callback, this)` call is a distinctive Lumino signature
-        // even when the receiver type cannot be resolved.
 
-        reportedClasses.add(enclosingClass);
-        context.report({
-          node,
-          messageId: 'missingSignalCleanup'
+        let facts = ownershipCache.get(enclosingClass);
+        if (!facts) {
+          facts = collectClassOwnershipFacts(
+            enclosingClass,
+            sourceCode,
+            signalLocalNames
+          );
+          ownershipCache.set(enclosingClass, facts);
+        }
+
+        const analysis = analyzeSender(node.callee.object, {
+          classNode: enclosingClass,
+          facts,
+          sourceCode,
+          scope: sourceCode.getScope(node),
+          checker,
+          services,
+          longLivedTypes
         });
+
+        // Only positively proven long-lived senders are reported. `self`,
+        // `owned` and `unknown` all stay silent: absence of cleanup is not
+        // evidence of a leak when the sender dies with the receiver.
+        //
+        // `long-lived-model` cannot occur here: it is gated on the receiver
+        // extending Lumino's Widget, and every such class is already skipped
+        // above by the `superClass` check.
+        if (analysis.lifetime === 'long-lived-service') {
+          context.report({
+            node,
+            messageId: 'serviceOutlivesReceiver',
+            data: {
+              sender: analysis.senderText,
+              typeName: analysis.typeName ?? 'service'
+            }
+          });
+        }
       }
     };
   }

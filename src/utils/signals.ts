@@ -16,14 +16,14 @@ type ConnectCallExpression = TSESTree.CallExpression & {
   callee: TSESTree.MemberExpression;
 };
 
-type WalkAction = 'skip-children' | 'stop' | undefined;
+export type WalkAction = 'skip-children' | 'stop' | undefined;
 
 /**
  * Iterative AST walk from `root`, visiting every node. The visitor may return
  * 'skip-children' to avoid descending into a node, or 'stop' to abort the
  * whole walk.
  */
-function walkFrom(
+export function walkFrom(
   root: TSESTree.Node,
   visit: (node: TSESTree.Node) => WalkAction
 ): void {
@@ -404,56 +404,6 @@ export function classUsesReceiverBasedCleanup(
 }
 
 /**
- * Checks whether the class body contains a one-argument
- * `.disconnect(<same callback reference>)` for the given connect callback.
- */
-export function classHasMatchingBareDisconnect(
-  classNode: ClassLike,
-  callbackArg: TSESTree.CallExpressionArgument
-): boolean {
-  let matches: (arg: TSESTree.Node) => boolean;
-  if (callbackArg.type === 'Identifier') {
-    const name = callbackArg.name;
-    matches = arg => arg.type === 'Identifier' && arg.name === name;
-  } else if (
-    callbackArg.type === 'MemberExpression' &&
-    callbackArg.object.type === 'ThisExpression' &&
-    !callbackArg.computed &&
-    (callbackArg.property.type === 'Identifier' ||
-      callbackArg.property.type === 'PrivateIdentifier')
-  ) {
-    const property = callbackArg.property;
-    matches = arg =>
-      arg.type === 'MemberExpression' &&
-      arg.object.type === 'ThisExpression' &&
-      !arg.computed &&
-      arg.property.type === property.type &&
-      (arg.property as TSESTree.Identifier | TSESTree.PrivateIdentifier)
-        .name === property.name;
-  } else {
-    return false;
-  }
-
-  let found = false;
-  walkFrom(classNode.body, node => {
-    if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
-      return 'skip-children';
-    }
-    if (
-      node.type === 'CallExpression' &&
-      isDisconnectCall(node) &&
-      node.arguments.length === 1 &&
-      matches(node.arguments[0])
-    ) {
-      found = true;
-      return 'stop';
-    }
-    return undefined;
-  });
-  return found;
-}
-
-/**
  * Type-aware check: does this class (transitively) extend Lumino's `Widget`
  * (any class declared in `@lumino/widgets`)? Those base classes call
  * `Signal.clearData(this)` from `dispose()`, so subclasses rely on
@@ -478,24 +428,57 @@ export function classExtendsLuminoWidget(
     if (!tsNode) {
       return false;
     }
-    const seen = new Set<ts.Type>();
-    const queue: ts.Type[] = [checker.getTypeAtLocation(tsNode)];
-    while (queue.length > 0) {
-      const type = queue.pop()!;
-      if (seen.has(type)) {
-        continue;
-      }
-      seen.add(type);
-      const symbol = type.getSymbol();
-      if (symbol && isDeclaredInLuminoPackage(symbol, 'widgets')) {
-        return true;
-      }
-      if (type.isClassOrInterface()) {
-        queue.push(...checker.getBaseTypes(type));
-      }
-    }
+    return typeExtendsLuminoWidget(checker.getTypeAtLocation(tsNode), checker);
   } catch {
     // Fall through: treat resolution failures as "not a Widget".
+    return false;
+  }
+}
+
+/**
+ * Type-aware check: does `type` (transitively) extend a class declared in
+ * `@lumino/widgets`? Used both for "does the receiver class inherit
+ * `Widget.dispose()`'s `Signal.clearData(this)`" and for rejecting widget-typed
+ * hops when walking a sender expression (a widget reached through a long-lived
+ * service is not itself long-lived).
+ */
+export function typeExtendsLuminoWidget(
+  type: ts.Type,
+  checker: ts.TypeChecker
+): boolean {
+  const seen = new Set<ts.Type>();
+  const queue: ts.Type[] = [type];
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    if (seen.has(current)) {
+      continue;
+    }
+    seen.add(current);
+    if (current.isUnion() || current.isIntersection()) {
+      queue.push(...current.types);
+      continue;
+    }
+    const symbol = current.getSymbol();
+    if (symbol && isDeclaredInLuminoPackage(symbol, 'widgets')) {
+      return true;
+    }
+    const objectFlags = (current as ts.ObjectType).objectFlags ?? 0;
+    if (objectFlags & ts.ObjectFlags.Reference) {
+      // `class StaticNotebook extends WindowedList<NotebookViewModel>` gives a
+      // type *reference*, which is not `isClassOrInterface()`. Descend into
+      // the generic target so the base chain stays walkable.
+      const target = (current as ts.TypeReference).target;
+      if (target && target !== current) {
+        queue.push(target);
+      }
+    }
+    if (current.isClassOrInterface()) {
+      try {
+        queue.push(...checker.getBaseTypes(current));
+      } catch {
+        // Unresolvable base list — stop descending this branch.
+      }
+    }
   }
   return false;
 }

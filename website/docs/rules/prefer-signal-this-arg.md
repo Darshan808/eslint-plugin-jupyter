@@ -1,15 +1,23 @@
 # `prefer-signal-this-arg`
 
-Pass a `thisArg` when connecting to a Lumino signal that is cleaned up with `Signal.clearData(this)` or with `signal.disconnect(callback, thisArg)`.
+Pass a `thisArg` when connecting to a Lumino signal whose sender is proven to outlive the connecting class.
+
+:::info Requires type information
+
+This rule proves that a sender outlives its receiver by resolving the sender's type. Without [type-aware linting](https://typescript-eslint.io/getting-started/typed-linting/) configured it reports nothing at all.
+
+:::
 
 ## Why
 
-The [JupyterLab signal patterns](https://jupyterlab.readthedocs.io/en/latest/developer/patterns.html#signals) recommend making connections with `.connect(this._onFoo, this)` wherever possible. The `thisArg` is stored as the connection's **receiver**, and both `signal.disconnect(callback, thisArg)` and `Signal.clearData(thisArg)` match connections by receiver. A connection registered without a `thisArg` has no receiver, so `Signal.clearData(this)` in a `dispose()` method silently fails to remove it — the connection can outlive the object and leak, even when the callback itself works fine at runtime.
+The [JupyterLab signal patterns](https://jupyterlab.readthedocs.io/en/latest/developer/patterns.html#signals) recommend making connections with `.connect(this._onFoo, this)` wherever possible. The `thisArg` is stored as the connection's **receiver**, and both `signal.disconnect(callback, thisArg)` and `Signal.clearData(thisArg)` match connections by receiver. A connection registered without a `thisArg` has no receiver, so `Signal.clearData(this)` in a `dispose()` method silently fails to remove it — the connection outlives the object and leaks, even though the callback itself works fine at runtime.
 
-This rule is the companion to [require-signal-this-arg](../require-signal-this-arg). The two rules partition the missing-`thisArg` cases:
+That only matters when the **sender outlives the receiver**. A connection to an object the class owns and disposes is collected along with it whether or not a receiver was recorded. So the rule reports a missing `thisArg` only where the sender is provably longer-lived and the class's own cleanup strategy is receiver-based — the exact combination where the cleanup that exists cannot work.
 
-- a bare class-method reference whose body uses `this` is a **runtime bug** (the method's `this` is unbound when the signal fires) — flagged by `require-signal-this-arg`, recommended at `error`;
-- every other one-argument `.connect(callback)` inside a class that cleans up by receiver is a **cleanup concern only** — flagged by this rule, recommended at `warn`.
+This rule is the companion to [require-signal-this-arg](./require-signal-this-arg). The two rules partition the missing-`thisArg` cases:
+
+- a bare class-method reference whose body uses `this` is a **runtime bug** (the method's `this` is unbound when the signal fires) — flagged by `require-signal-this-arg`;
+- every other one-argument `.connect(callback)` where the sender outlives the receiver is a **cleanup concern only** — flagged by this rule.
 
 No call is ever reported by both rules.
 
@@ -17,54 +25,58 @@ No call is ever reported by both rules.
 
 The rule reports a one-argument `signal.connect(callback)` call only when **all** of the following hold:
 
-1. the call is inside a class;
-2. the class relies on **receiver-based cleanup**, shown by any of:
-   - a `Signal.clearData(this)`, `Signal.disconnectReceiver(this)`, `Signal.disconnectAll(this)`, or `Signal.disconnectBetween(sender, this)` call anywhere in the class body (under any local alias of `Signal`),
-   - a two-argument `.disconnect(callback, this)` call anywhere in the class body,
-   - (with type information) a base class declared in `@lumino/widgets` — Lumino's `Widget.dispose()` calls `Signal.clearData(this)`, so subclasses inherit the receiver-based strategy;
-3. the callback is not already torn down by a matching one-argument `.disconnect(callback)` in the same class;
-4. it is not the runtime-bug case owned by `require-signal-this-arg`.
+1. The call is inside a class.
+2. The signal is not named `disposed` — that signal fires as its own sender is torn down, so the connection is cleaned up sender-side.
+3. It is not the runtime-bug case owned by `require-signal-this-arg`.
+4. The callback shape is one a `thisArg` could actually help: an inline arrow or function expression, a method or property reference, or a `.bind(this)` call. Opaque callbacks are skipped.
+5. There is no matching one-argument `.disconnect(callback)` anywhere in the file — Lumino matches connections by the exact `(signal, slot, thisArg)` triple, so adding `, this` would silently break a teardown that currently works.
+6. **The fix is viable**: the class already relies on receiver-based cleanup, shown either by a `Signal.clearData(this)` / `Signal.disconnectReceiver(this)` / `Signal.disconnectAll(this)` / `Signal.disconnectBetween(sender, this)` call or a two-argument `.disconnect(callback, this)` in the class body, or by the class extending a Lumino `Widget` (whose `dispose()` calls `Signal.clearData(this)`). Without one, adding a `thisArg` would change disconnect matching and buy nothing.
+7. **The sender is proven long-lived**, by one of two arguments:
+   - **an application-lifetime service** — the sender's type resolves to an entry in the allowlist (see [Options](#options)), with no Lumino `Widget` hop between that entry and the signal (`shell.currentWidget.title.changed` is a widget reached _through_ a service, not a long-lived sender);
+   - **a model behind a view** — the receiver extends a Lumino `Widget` and some segment of the sender path is model-like by name (`model`, `sharedModel`, `context`) or by type (a name ending in `Model` or `Context`). JupyterLab routinely recycles views over a stable model: notebook windowing, "New View for Notebook", output-area reuse.
 
-Callback shapes covered by (4)'s complement include inline arrow functions and function expressions, arrow-function class properties, class methods that never reference `this`, members not found in the enclosing class, free-variable callbacks, and `.bind(this)` calls.
+Everything the rule cannot place — a sender it cannot type, one the class constructs and disposes itself, the class's own signals — is silence.
 
-A **suggestion** (editor quick-fix, not an autofix) is offered to append `, this` as the second argument. It is a suggestion rather than a fix because it changes how the connection is matched at disconnect time and should be reviewed together with the class's teardown.
-
-The rule skips:
-
-- calls that already pass a second argument
-- calls outside any class - there is no `this` to pass, and these are typically app-lifetime connections
-- classes with no receiver-based cleanup — adding a `thisArg` there changes disconnect matching without buying anything
-- callbacks with a matching one-argument `.disconnect(callback)` — that teardown already works and would break
-- `x.disposed.connect(...)` wiring — the disposal idiom fires exactly as its sender is torn down, so it is cleaned up sender-side (and it is the pattern [require-signal-cleanup](../require-signal-cleanup) recommends)
-- the error-level case owned by `require-signal-this-arg`
-
-When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored.
+A **suggestion** (editor quick-fix, not an autofix) is offered to append `, this`, or for `.bind(this)` callbacks to drop the bind and pass `this` instead. These are suggestions rather than fixes because they change how the connection is matched at disconnect time and should be reviewed alongside the class's teardown.
 
 ## Incorrect
 
 ```ts
-class NotebookWatcher {
-  constructor(model: IModel) {
-    // Works at runtime (arrow binds `this` lexically), but this connection
-    // has no receiver — Signal.clearData(this) cannot remove it.
-    model.changed.connect(sender => {
-      this.handleChange(sender);
-    });
-  }
-
-  dispose(): void {
-    Signal.clearData(this); // does NOT clear the connection above
+class SettingsPanel extends Widget {
+  constructor(registry: ISettingRegistry) {
+    super();
+    // ISettingRegistry outlives this widget, and the inherited
+    // Widget.dispose() cleans up by receiver — which this connection has none
+    // of, so it survives disposal.
+    registry.pluginChanged.connect(() => this.update());
   }
 }
 ```
 
 ```ts
-// Inherited receiver-based cleanup: Widget.dispose() calls
-// Signal.clearData(this), so a connection without a thisArg leaks.
-class NotebookPanelHeader extends Widget {
-  constructor(model: IModel) {
+class NotebookView extends Widget {
+  constructor(model: INotebookModel) {
     super();
-    model.changed.connect(() => this.update());
+    this._model = model;
+    // The model outlives the views built on it.
+    this._model.contentChanged.connect(() => this.update());
+  }
+
+  private _model: INotebookModel;
+}
+```
+
+```ts
+class SourcesBody extends Widget {
+  constructor(service: IDebugger) {
+    super();
+    // `.bind()` returns a fresh function every call, so no disconnect() can
+    // ever match this connection — only a thisArg can remove it.
+    service.model.currentFrameChanged.connect(this._onFrameChanged.bind(this));
+  }
+
+  private _onFrameChanged(): void {
+    /* ... */
   }
 }
 ```
@@ -72,15 +84,10 @@ class NotebookPanelHeader extends Widget {
 ## Correct
 
 ```ts
-class NotebookWatcher {
-  constructor(model: IModel) {
-    model.changed.connect(sender => {
-      this.handleChange(sender);
-    }, this);
-  }
-
-  dispose(): void {
-    Signal.clearData(this); // clears the connection
+class SettingsPanel extends Widget {
+  constructor(registry: ISettingRegistry) {
+    super();
+    registry.pluginChanged.connect(() => this.update(), this);
   }
 }
 ```
@@ -103,18 +110,56 @@ class TableOfContentsFactory {
 ```
 
 ```ts
-// Disposal wiring on a `disposed` signal is cleaned up sender-side
+// The sender is constructed and disposed here, so it dies with the receiver
+// and the missing thisArg costs nothing.
+class Host extends Widget {
+  constructor() {
+    super();
+    this._editor = createEditor();
+    this._editor.ready.connect(() => this.update());
+  }
+
+  dispose(): void {
+    this._editor.dispose();
+    super.dispose();
+  }
+
+  private _editor: IEditor;
+}
+```
+
+```ts
+// Disposal wiring on a `disposed` signal is cleaned up sender-side.
 class NotebookWatcher {
   constructor(content: Widget) {
     content.disposed.connect(() => this.dispose());
   }
 
   dispose(): void {
-    // ...
+    /* ... */
   }
 }
 ```
 
+## Known limitations
+
+The rule is tuned for precision over recall — it reports only what it can prove and stays silent otherwise:
+
+- **Only allowlisted service types count** as application-lifetime. A service that is long-lived in your application but absent from `longLivedTypes` is silent; add it to the option.
+- **The model/view argument requires the receiver to extend a Lumino `Widget`.** Classes that behave like views without being widgets (document adapters, controllers) are not covered by it.
+- Cleanup that happens in another file — an owner disconnecting on the receiver's behalf — is invisible, and a matching one-argument disconnect elsewhere in the _project_ (rather than the same file) will not be seen.
+
 ## Options
 
-This rule has no options.
+- `longLivedTypes` (`string[]`): type names treated as application-lifetime services. **Replaces** the built-in list when provided. The default is:
+
+  `CommandRegistry`, `IDebugger`, `IDocumentManager`, `ILSPConnection`, `ILabShell`, `ILanguageServerManager`, `IRenderMimeRegistry`, `ISettingRegistry`, `IShell`, `IStateDB`, `IThemeManager`, `ServiceManager`
+
+```json
+{
+  "jupyter/prefer-signal-this-arg": [
+    "warn",
+    { "longLivedTypes": ["ISettingRegistry", "IMyAppService"] }
+  ]
+}
+```
