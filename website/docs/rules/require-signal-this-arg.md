@@ -6,7 +6,7 @@ Require a `thisArg` when connecting a class method that references `this` to a L
 
 Lumino's `ISignal.connect(callback, thisArg)` invokes the callback with `thisArg` as its receiver. When a class method is passed as a bare function reference, `signal.connect(this._onChanged)`, nothing binds `this` inside the callback to the instance, so any `this.` access in the method body throws or reads the wrong object when the signal fires.
 
-A matching `thisArg` also matters for cleanup: `signal.disconnect(callback, thisArg)` and `Signal.clearData(thisArg)` only remove connections whose receiver matches.
+A matching `thisArg` also matters for cleanup: `signal.disconnect(callback, thisArg)` and `Signal.clearData(thisArg)` only remove connections whose receiver matches. See the [JupyterLab signal patterns](https://jupyterlab.readthedocs.io/en/latest/developer/patterns.html#signals) for the recommended `.connect(this._onFoo, this)` idiom.
 
 ## Rule details
 
@@ -22,7 +22,9 @@ The rule skips:
 - members not found in the enclosing class (possibly inherited) — skipped conservatively
 - calls that already pass a second argument
 
-This rule only reports the shapes that break at runtime. Callbacks that work without a `thisArg` but leave the connection unclearable by `Signal.clearData(this)` are covered by the companion rule [prefer-signal-this-arg](../prefer-signal-this-arg); no call is reported by both rules.
+This rule only reports the shapes that break at runtime. Callbacks that work without a `thisArg` but leave the connection unclearable by the class's receiver-based cleanup are covered by the companion rule [prefer-signal-this-arg](../prefer-signal-this-arg); no call is reported by both rules.
+
+If the reported callback is also torn down by a matching one-argument `signal.disconnect(this._onChanged)`, update that call to `disconnect(this._onChanged, this)` as well — Lumino matches connections on the exact `(signal, slot, thisArg)` triple.
 
 When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored.
 
@@ -58,7 +60,7 @@ class NotebookWatcher {
 
 ```ts
 // Arrow-function property: `this` is captured lexically, so there is no
-// runtime bug. Still pass the thisArg so Signal.clearData(this) can remove
+// runtime bug. Passing the thisArg anyway lets Signal.clearData(this) remove
 // the connection (see prefer-signal-this-arg).
 class NotebookWatcher {
   constructor(model: IModel) {
@@ -72,8 +74,8 @@ class NotebookWatcher {
 ```
 
 ```ts
-// Wrapping in an arrow also binds `this` lexically — again, pass the
-// thisArg for cleanup.
+// Wrapping in an arrow also binds `this` lexically — again, the thisArg is
+// what makes the connection removable by Signal.clearData(this).
 class NotebookWatcher {
   constructor(model: IModel) {
     model.changed.connect((sender, args) => {

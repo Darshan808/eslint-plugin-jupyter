@@ -8,21 +8,22 @@ Lumino's `ISignal.connect(callback, thisArg)` subscribes forever: the connection
 
 ## Rule details
 
-The rule inspects every `signal.connect(callback, this)` call - two arguments, with `this` as the receiver, made inside a class, and reports it when the class shows **no cleanup evidence anywhere in its body**. Any one of the following silences the whole class:
+The rule inspects every `signal.connect(callback, this)` call - two arguments, with `this` as the receiver, made inside a class, and reports it when the class shows **no cleanup evidence anywhere in its body**. Either of the following silences the whole class:
 
 - a call to `Signal.clearData(...)`, `Signal.disconnectReceiver(...)`, `Signal.disconnectAll(...)`, `Signal.disconnectSender(...)`, or `Signal.disconnectBetween(...)` (including via a renamed import of `Signal` from `@lumino/signaling`)
-- any `.disconnect(...)` call (covers `dispose()` teardown as well as disconnect-before-reconnect idioms such as a `stopObserving()` helper)
-- consuming the return value of a `.connect(...)` call (for example adding it to a disposable collection)
-- wiring cleanup through a `disposed`-style signal (`x.disposed.connect(...)`) or delegating via a `this.dispose()` call
+- any `.disconnect(...)` call (covers `dispose()` teardown, disconnect-before-reconnect idioms such as a `stopObserving()` helper)
+
+The finding is a property of the class, not of the individual connection, so it is **reported once per class**, on the first offending `connect()` call.
 
 The rule is deliberately conservative and skips:
 
-- classes with an `extends` clause — a base class such as Lumino's `Widget` already calls `Signal.clearData(this)` in its inherited `dispose()`
+- classes with an `extends` clause — a base class such as Lumino's `Widget` already calls `Signal.clearData(this)` in its inherited `dispose()`, and that cleanup is invisible from the subclass body. Skipping every subclass is broader than strictly necessary (a base class that does not clean up is missed too), but it keeps the rule free of false positives on the very common `extends Widget` shape.
 - `.connect()` calls outside any class (module scope, plugin `activate()` functions) — these are typically app-lifetime connections with nothing to leak into
 - calls where the second argument is not `this` — another object's lifecycle cannot be traced from here
-- single-argument `.connect(callback)` calls — see [require-signal-this-arg](../require-signal-this-arg)
+- single-argument `.connect(callback)` calls — see [require-signal-this-arg](../require-signal-this-arg) and [prefer-signal-this-arg](../prefer-signal-this-arg)
 
 When type information is available, receivers whose type does not resolve to Lumino's `ISignal`/`Signal` are ignored.
+
 ## Incorrect
 
 ```ts
@@ -94,6 +95,7 @@ The analysis is intentionally scoped to a single class in a single file:
 - Cleanup performed by another class (for example the signal's sender disposing itself and clearing its own connections) is invisible; if the receiver class shows no cleanup of its own, it is still reported.
 - Conversely, a class that cleans up correctly but whose `dispose()` is never called by its owner (a cross-file bug) is **not** reported.
 - Any single piece of cleanup evidence silences the entire class, so a class that disconnects one signal but leaks another is not reported. The rule detects "no cleanup at all", not incomplete cleanup.
+- Classes with an `extends` clause are always skipped, even when the base class does not clean up.
 
 ## Options
 
