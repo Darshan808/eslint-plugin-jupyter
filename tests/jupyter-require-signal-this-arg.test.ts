@@ -397,7 +397,7 @@ ruleTester.run('require-signal-this-arg', requireSignalThisArg, {
       // Receiver type resolves to a non-signal — do not flag
       filename: 'tests/type-aware-fixture.ts',
       code: `
-        import { NotASignal } from './fixtures/signaling';
+        import { NotASignal } from './fixtures/not-a-signal';
         class Wiring {
           wire(node: NotASignal): void {
             node.connect(this._onEvent);
@@ -415,7 +415,7 @@ ruleTester.run('require-signal-this-arg', requireSignalThisArg, {
       // Receiver typed as ISignal — flagged even without a signal-like name
       filename: 'tests/type-aware-fixture.ts',
       code: `
-        import { ISignal } from './fixtures/signaling';
+        import { ISignal } from '@lumino/signaling';
         interface IModel {
           updates: ISignal<IModel, void>;
         }
@@ -437,7 +437,7 @@ ruleTester.run('require-signal-this-arg', requireSignalThisArg, {
             {
               messageId: 'addThisArg',
               output: `
-        import { ISignal } from './fixtures/signaling';
+        import { ISignal } from '@lumino/signaling';
         interface IModel {
           updates: ISignal<IModel, void>;
         }

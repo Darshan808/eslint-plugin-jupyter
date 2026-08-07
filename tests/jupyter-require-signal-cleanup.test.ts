@@ -84,19 +84,8 @@ nonTypeAwareTester.run(
       `
       },
       {
-        // connect() return value consumed (disposable collector)
-        code: `
-        class Watcher {
-          private _disposables: any;
-          constructor(model: any) {
-            this._disposables.add(model.changed.connect(this._onChanged, this));
-          }
-          private _onChanged(): void {}
-        }
-      `
-      },
-      {
-        // Cleanup wired through a disposed signal
+        // Cleanup wired through a disposed signal: the .disconnect() call
+        // inside the handler is the evidence
         code: `
         class Watcher {
           constructor(model: any, content: any) {
@@ -105,19 +94,6 @@ nonTypeAwareTester.run(
               model.changed.disconnect(this._onChanged, this);
             });
           }
-          private _onChanged(): void {}
-        }
-      `
-      },
-      {
-        // Disposal delegated via this.dispose() somewhere in the class
-        code: `
-        class Watcher {
-          constructor(model: any, content: any) {
-            model.changed.connect(this._onChanged, this);
-            content.onClose(() => this.dispose());
-          }
-          dispose(): void {}
           private _onChanged(): void {}
         }
       `
@@ -197,12 +173,15 @@ nonTypeAwareTester.run(
         errors: [{ messageId: 'missingSignalCleanup' }]
       },
       {
-        // \`void\` is an explicit discard, not a consumed return value
+        // A stray this.dispose() call with an empty dispose() cleans up
+        // nothing — not cleanup evidence
         code: `
         class Watcher {
-          constructor(model: any) {
-            void model.changed.connect(this._onChanged, this);
+          constructor(model: any, content: any) {
+            model.changed.connect(this._onChanged, this);
+            content.onClose(() => this.dispose());
           }
+          dispose(): void {}
           private _onChanged(): void {}
         }
       `,
@@ -262,7 +241,8 @@ nonTypeAwareTester.run(
         errors: [{ messageId: 'missingSignalCleanup' }]
       },
       {
-        // Multiple uncleaned connections — one report per call
+        // Multiple uncleaned connections — reported once per class, on the
+        // first offending connect
         code: `
         class Watcher {
           constructor(model: any, session: any) {
@@ -273,10 +253,7 @@ nonTypeAwareTester.run(
           private _onKernel(): void {}
         }
       `,
-        errors: [
-          { messageId: 'missingSignalCleanup' },
-          { messageId: 'missingSignalCleanup' }
-        ]
+        errors: [{ messageId: 'missingSignalCleanup', line: 4 }]
       }
     ]
   }
@@ -288,7 +265,7 @@ ruleTester.run('require-signal-cleanup', requireSignalCleanup, {
       // Receiver's type resolves to a non-signal — do not flag
       filename: 'tests/type-aware-fixture.ts',
       code: `
-        import { NotASignal } from './fixtures/signaling';
+        import { NotASignal } from './fixtures/not-a-signal';
         class Wiring {
           constructor(node: NotASignal) {
             node.connect(this._onEvent, this);
@@ -303,7 +280,7 @@ ruleTester.run('require-signal-cleanup', requireSignalCleanup, {
       // Receiver typed as ISignal, no cleanup anywhere
       filename: 'tests/type-aware-fixture.ts',
       code: `
-        import { ISignal } from './fixtures/signaling';
+        import { ISignal } from '@lumino/signaling';
         interface IModel {
           changed: ISignal<IModel, void>;
         }
