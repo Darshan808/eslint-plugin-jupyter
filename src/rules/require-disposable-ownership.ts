@@ -15,13 +15,17 @@ import {
   isDisposableConstructor,
   isDisposableExpressionManaged,
   isDisposableType,
+  isDisposedByNestedFunction,
+  isExportedVariable,
   isInJupyterPluginActivate,
   isOuterFunctionScopeVariable,
   markManagedDisposableUse,
-  PendingDisposableMap
+  PendingDisposableMap,
+  resolveNameListOption
 } from '../utils/disposables';
 
 interface RuleOptions {
+  extendDefaultOwnershipFunctionNames?: boolean;
   ownershipFunctionNames?: string[];
 }
 
@@ -47,9 +51,14 @@ const requireDisposableOwnership = createRule({
           ownershipFunctionNames: {
             type: 'array',
             items: { type: 'string' },
-            default: DEFAULT_OWNERSHIP_FUNCTION_NAMES,
             description:
-              'Function or method names that take ownership of a disposable argument.'
+              'Function or method names that take ownership of a disposable argument. Added to the built-in defaults unless extendDefaultOwnershipFunctionNames is false.'
+          },
+          extendDefaultOwnershipFunctionNames: {
+            type: 'boolean',
+            default: true,
+            description:
+              'Whether ownershipFunctionNames extends the built-in defaults. Set to false to replace them, or to drop them entirely when no list is given.'
           }
         },
         additionalProperties: false
@@ -89,9 +98,10 @@ const requireDisposableOwnership = createRule({
       sourceCode: context.sourceCode,
       checker,
       services,
-      ownershipFunctionNames: new Set(
-        (options as RuleOptions).ownershipFunctionNames ??
-          DEFAULT_OWNERSHIP_FUNCTION_NAMES
+      ownershipFunctionNames: resolveNameListOption(
+        (options as RuleOptions).ownershipFunctionNames,
+        DEFAULT_OWNERSHIP_FUNCTION_NAMES,
+        (options as RuleOptions).extendDefaultOwnershipFunctionNames !== false
       )
     };
 
@@ -126,7 +136,9 @@ const requireDisposableOwnership = createRule({
               node,
               assignedVariable,
               context.sourceCode
-            )
+            ) ||
+            isExportedVariable(assignedVariable) ||
+            isDisposedByNestedFunction(assignedVariable, ownership)
           ) {
             return;
           }

@@ -17,14 +17,20 @@ import {
   isDisposableExpressionManaged,
   isDisposableSetFactoryCall,
   isDisposableType,
+  isDisposedByNestedFunction,
+  isExportedVariable,
   isInJupyterPluginActivate,
   isOuterFunctionScopeVariable,
   markManagedDisposableUse,
   PendingDisposableMap,
+  resolveNameListOption,
   shouldCheckReturnedDisposable
 } from '../utils/disposables';
 
 interface RuleOptions {
+  checkAllDisposableReturns?: boolean;
+  extendDefaultIgnoredReturnFunctionNames?: boolean;
+  extendDefaultOwnershipFunctionNames?: boolean;
   ignoredReturnFunctionNames?: string[];
   ownershipFunctionNames?: string[];
 }
@@ -114,16 +120,32 @@ const requireDisposableTransfer = createRule({
           ownershipFunctionNames: {
             type: 'array',
             items: { type: 'string' },
-            default: DEFAULT_OWNERSHIP_FUNCTION_NAMES,
             description:
-              'Function or method names that take ownership of a disposable argument.'
+              'Function or method names that take ownership of a disposable argument. Added to the built-in defaults unless extendDefaultOwnershipFunctionNames is false.'
+          },
+          extendDefaultOwnershipFunctionNames: {
+            type: 'boolean',
+            default: true,
+            description:
+              'Whether ownershipFunctionNames extends the built-in defaults. Set to false to replace them, or to drop them entirely when no list is given.'
           },
           ignoredReturnFunctionNames: {
             type: 'array',
             items: { type: 'string' },
-            default: DEFAULT_IGNORED_RETURN_FUNCTION_NAMES,
             description:
-              'Function or method names whose disposable return value is intentionally ignored.'
+              'Function or method names whose disposable return value is intentionally ignored. Added to the built-in defaults unless extendDefaultIgnoredReturnFunctionNames is false.'
+          },
+          extendDefaultIgnoredReturnFunctionNames: {
+            type: 'boolean',
+            default: true,
+            description:
+              'Whether ignoredReturnFunctionNames extends the built-in defaults, including the add*Factory and this._map.set()/delete() exemptions. Set to false to replace them, or to drop them entirely when no list is given.'
+          },
+          checkAllDisposableReturns: {
+            type: 'boolean',
+            default: false,
+            description:
+              'Check every call whose return type is disposable, not only factory-named calls (create*, build*, make*, new*).'
           }
         },
         additionalProperties: false
@@ -162,15 +184,22 @@ const requireDisposableTransfer = createRule({
       }
     }
 
-    const ignoredReturnFunctionNamesOption = (options as RuleOptions)
-      .ignoredReturnFunctionNames;
-    const ignoredReturnFunctionNames = new Set(
-      ignoredReturnFunctionNamesOption ?? DEFAULT_IGNORED_RETURN_FUNCTION_NAMES
+    // The two pattern-based exemptions below (`add*Factory`, and mutating a
+    // map-like field of `this`) are part of the built-in defaults, so the same
+    // flag that governs the default name list governs them too.
+    const extendDefaultIgnoredReturnFunctionNames =
+      (options as RuleOptions).extendDefaultIgnoredReturnFunctionNames !==
+      false;
+
+    const ignoredReturnFunctionNames = resolveNameListOption(
+      (options as RuleOptions).ignoredReturnFunctionNames,
+      DEFAULT_IGNORED_RETURN_FUNCTION_NAMES,
+      extendDefaultIgnoredReturnFunctionNames
     );
 
     function isIgnoredReturn(node: TSESTree.CallExpression): boolean {
       if (
-        ignoredReturnFunctionNamesOption === undefined &&
+        extendDefaultIgnoredReturnFunctionNames &&
         isClassFieldCollectionMutationCall(node, ['delete', 'set'])
       ) {
         return true;
@@ -182,18 +211,22 @@ const requireDisposableTransfer = createRule({
       }
       return (
         ignoredReturnFunctionNames.has(name) ||
-        (ignoredReturnFunctionNamesOption === undefined &&
+        (extendDefaultIgnoredReturnFunctionNames &&
           isDefaultIgnoredFactoryReturnFunctionName(name))
       );
     }
+
+    const checkAllDisposableReturns =
+      (options as RuleOptions).checkAllDisposableReturns === true;
 
     const ownership: DisposableOwnershipContext = {
       sourceCode: context.sourceCode,
       checker,
       services,
-      ownershipFunctionNames: new Set(
-        (options as RuleOptions).ownershipFunctionNames ??
-          DEFAULT_OWNERSHIP_FUNCTION_NAMES
+      ownershipFunctionNames: resolveNameListOption(
+        (options as RuleOptions).ownershipFunctionNames,
+        DEFAULT_OWNERSHIP_FUNCTION_NAMES,
+        (options as RuleOptions).extendDefaultOwnershipFunctionNames !== false
       )
     };
 
@@ -211,7 +244,7 @@ const requireDisposableTransfer = createRule({
         }
 
         if (
-          ignoredReturnFunctionNamesOption === undefined &&
+          !checkAllDisposableReturns &&
           !isLikelyDisposableFactoryCall(node)
         ) {
           return;
@@ -228,7 +261,9 @@ const requireDisposableTransfer = createRule({
               node,
               assignedVariable,
               context.sourceCode
-            )
+            ) ||
+            isExportedVariable(assignedVariable) ||
+            isDisposedByNestedFunction(assignedVariable, ownership)
           ) {
             return;
           }
