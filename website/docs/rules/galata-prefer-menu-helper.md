@@ -14,7 +14,7 @@ Galata UI tests often walk the main menu with raw Playwright selectors such as `
 
 ## Rule details
 
-The rule flags Playwright interaction calls on the `page` fixture — both direct calls (`page.click(selector)`, `page.hover(selector)`, …) and locator chains (`page.locator(...).getByText(...).click()`, including `.first()`/`.last()`/`.nth()` steps) — when the selector or text contains a known menu marker:
+The rule flags Playwright clicks on the `page` fixture — both direct calls (`page.click(selector)`) and locator chains (`page.locator(...).getByText(...).click()`, including `.first()`/`.last()`/`.nth()` steps) — when the selector or text contains a known menu marker:
 
 - a menu bar item: a single-segment `#jp-mainmenu-*` id, or an exact top-level menu label (`File`, `Edit`, `View`, `Run`, `Kernel`, `Tabs`, `Settings`, `Help`), reported as `preferMenuOpen`;
 - an item inside an open menu: the Lumino popup classes (`.lm-Menu`, `.lm-Menu-item`, `.lm-Menu-content`, …), a `role="menu"` container, or a `#jp-mainmenu-<menu>-<submenu>` id together with an item label, reported as `preferClickMenuItem`;
@@ -22,7 +22,7 @@ The rule flags Playwright interaction calls on the `page` fixture — both direc
 
 The rule is deliberately conservative — it prefers missing a violation to reporting a false one:
 
-- Only `click` and `hover` are considered. `hover` matters because Lumino switches the open submenu on hover. Every other gesture (`dblclick`, `tap`, `press`, `fill`, `check`, `selectOption`, …) and every wait (`waitForSelector`, `locator(...).waitFor()`) is ignored: nothing drives a Lumino menu that way, so a menu-ish selector combined with one of them means the test is doing something else.
+- Only `click` is considered. Every other gesture (`hover`, `dblclick`, `tap`, `press`, `fill`, `check`, `selectOption`, …) and every wait (`waitForSelector`, `locator(...).waitFor()`) is ignored: `page.menu` has no equivalent for them, so there would be nothing useful to suggest, and a menu-ish selector combined with one of them usually means the test is doing something else.
 - A top-level menu label only counts when it is the whole selector (`page.click('text=File')`) or when the selector also carries menu markup (`page.click('li[role="menuitem"]:has-text("File")')`). A label under any other scope refers to different UI — `page.dblclick('#filebrowser >> text="File"')` clicks a _file_ named `File`, and `page.click('button:has-text("Run")')` clicks a button — so neither is flagged.
 - A label that merely contains a top-level menu name, such as `text=New File` or `text=Close Tab`, is never treated as a menu bar item.
 - Right-clicks (`{ button: 'right' }`) are skipped, since they open the context menu rather than the main menu.
@@ -40,7 +40,7 @@ await page.click('text=File');
 await page.click('.lm-Menu ul[role="menu"] >> text=New');
 await page.click('#jp-mainmenu-file-new >> text=Terminal');
 await page.click('li[role="menuitem"]:has-text("Kernel")');
-await page.hover('ul[role="menu"] >> text=New File');
+await page.locator('.lm-MenuBar-item').getByText('File').click();
 ```
 
 ## Correct

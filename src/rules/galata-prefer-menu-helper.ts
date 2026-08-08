@@ -23,8 +23,13 @@ const BARE_MENU_BAR_LABEL_PATTERN = new RegExp(
 // A top-level menu label inside a larger selector. Only trusted when the same
 // selector also carries menu markup (see MENU_MARKUP_PATTERN), e.g.
 // `li[role="menuitem"]:has-text("File")`.
+//
+// The left boundary accepts a plain space as well as `>>` because a locator
+// chain such as `page.locator('.lm-MenuBar-item').getByText('File')` is joined
+// into `.lm-MenuBar-item text=File`. The right boundary deliberately does not:
+// allowing a space there would make `text=File Browser` match the label `File`.
 const SCOPED_MENU_BAR_LABEL_PATTERN = new RegExp(
-  `(?:^|>>\\s*)text=["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\s*(?:$|>>)` +
+  `(?:^|>>\\s*|\\s)text=["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\s*(?:$|>>)` +
     `|has-text\\(["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\)`
 );
 
@@ -44,15 +49,12 @@ const MENU_MARKUP_PATTERN = /role\s*=\s*["']menuitem["']|lm-MenuBar\b/;
 
 const TEXT_SELECTOR_PATTERN = /text=|has-text\(/;
 
-// Menu items are activated with a single click, and submenus are opened by
-// hovering an item (Lumino switches the open submenu on hover). Every other
-// gesture — `dblclick`, `tap`, `press`, `fill`, `check`, `selectOption`, … — is
-// left alone: nothing drives a Lumino menu that way, so a menu-ish selector
-// combined with one of them means the test is doing something else.
-const MENU_INTERACTION_METHODS: ReadonlySet<string> = new Set([
-  'click',
-  'hover'
-]);
+// Menu items are activated with a single click, and `MenuHelper` has no
+// equivalent for any other gesture — so there is nothing useful to suggest for
+// one. Every other gesture (`dblclick`, `hover`, `tap`, `press`, `fill`, …) is
+// left alone: a menu-ish selector combined with one of them means the test is
+// doing something else.
+const MENU_INTERACTION_METHOD = 'click';
 
 const galataPreferMenuHelper = createRule<Options, MessageIds>({
   name: 'galata-prefer-menu-helper',
@@ -81,7 +83,7 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
           return;
         }
 
-        if (!MENU_INTERACTION_METHODS.has(match.interactionMethod)) {
+        if (match.interactionMethod !== MENU_INTERACTION_METHOD) {
           return;
         }
 
