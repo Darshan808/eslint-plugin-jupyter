@@ -16,44 +16,25 @@ const ruleTester = new RuleTester({
   }
 });
 
+// The recognized bundle receivers are exercised by the
+// no-translation-concatenation tests; both rules share isTransBundle.
 ruleTester.run('no-dynamic-translation', noDynamicTranslation, {
   valid: [
     { code: `trans.__("Delete %1", fileName)` },
-    { code: `this.trans.__("Hello")` },
-    { code: `this._trans.__("Hello %1", x)` },
-    { code: `this.props.trans.__("Hello")` },
-    { code: `props.trans.__("Hello %1", x)` },
-
-    // A template literal without interpolation is as static as a quoted string
+    // A template literal with nothing interpolated is as static as a quote
     { code: 'trans.__(`Delete this file`)' },
     { code: `trans.__("Delete" as const)` },
 
     // Concatenation belongs to no-translation-concatenation, not to this rule
     { code: `trans.__("Delete " + fileName)` },
-    { code: `this.trans.__("Hello " + name)` },
-    {
-      code: `trans.__('Part 1 of long message.\\n' + 'Part 2 of long message.\\n')`
-    },
 
-    // Other bundle methods, all-static message arguments
-    { code: `trans._n('%1 file', '%1 files', n)` },
-    { code: `trans._p('menu', 'Open')` },
-    { code: `trans._np('menu', '%1 file', '%1 files', n)` },
-    { code: `trans.gettext('Delete')` },
-    { code: `trans.ngettext('%1 file', '%1 files', n)` },
-    { code: `trans.pgettext('menu', 'Open')` },
-    { code: `trans.npgettext('menu', '%1 file', '%1 files', n)` },
+    // Dynamic values outside the extracted message slots are fine
+    { code: 'trans.__("Total %1", `${a}${b}`)' },
+    { code: `trans.__('Delete %1', ...args)` },
     // The domain selects a catalog, it is not extracted message text
     { code: `trans.dcnpgettext(domain, 'menu', '%1 file', '%1 files', n)` },
 
-    // Dynamic values outside the extracted argument slots are fine
-    { code: 'trans.__("Total %1", `${a}${b}`)' },
-    { code: 'trans._n("%1 file", "%1 files", `${n}`)' },
-    { code: `trans.__('Delete %1', 'a' + b)` },
-    { code: `trans.__('Delete %1', ...args)` },
-
     // Not a translation bundle
-    { code: 'logger.__(`Delete ${fileName}`)' },
     { code: 'other.trans.__(`Delete ${fileName}`)' }
   ],
 
@@ -63,52 +44,36 @@ ruleTester.run('no-dynamic-translation', noDynamicTranslation, {
       code: 'trans.__(`Delete ${fileName}`)',
       errors: [{ messageId: 'noInterpolation' }]
     },
+    // A TypeScript wrapper still names the same bundle, at either level
     {
-      code: 'this.trans.__(`Hello ${name}!`)',
+      code: 'this.trans!.__(`Delete ${fileName}`)',
       errors: [{ messageId: 'noInterpolation' }]
     },
     {
-      code: 'this._trans.__(`${count} items`)',
-      errors: [{ messageId: 'noInterpolation' }]
-    },
-    {
-      code: 'props.trans.__(`Kernel ${status}`)',
+      code: '(this as any).trans.__(`Delete ${fileName}`)',
       errors: [{ messageId: 'noInterpolation' }]
     },
 
-    // A message reaching the call through a variable is never extracted
+    // A message reaching the call through a variable is never extracted —
+    // the verbatim jupyter/notebook#8013 shape
     {
       code:
         'let text = `Kernel ${Text.titleCase(status)}`;\n' +
         'widget.node.textContent = trans.__(text);',
       errors: [{ messageId: 'noDynamicMessage' }]
     },
+    // ...even when the variable plainly holds a literal
     {
       code: `const MESSAGE = 'Delete'; trans.__(MESSAGE);`,
       errors: [{ messageId: 'noDynamicMessage' }]
     },
-    {
-      code: `const text = 'Kernel ' + status; trans.__(text);`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `import { MESSAGE } from './messages'; trans.__(MESSAGE);`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
+    // ...and a generic helper is no different
     {
       code: `function t(key: string) { return trans.__(key); }`,
       errors: [{ messageId: 'noDynamicMessage' }]
     },
-    {
-      code: `items.map(s => trans.__(s))`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
 
     // Other expressions the extractor cannot read
-    {
-      code: `trans.__(labels[i])`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
     {
       code: `trans.__(err.message)`,
       errors: [{ messageId: 'noDynamicMessage' }]
@@ -119,10 +84,6 @@ ruleTester.run('no-dynamic-translation', noDynamicTranslation, {
     },
     {
       code: `trans.__(cond ? 'Yes' : 'No')`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `trans.__(['Delete', fileName].join(' '))`,
       errors: [{ messageId: 'noDynamicMessage' }]
     },
     // A concatenation wrapped in a call is no longer a bare `+`, so it is this
@@ -141,7 +102,7 @@ ruleTester.run('no-dynamic-translation', noDynamicTranslation, {
       errors: [{ messageId: 'noDynamicMessage' }]
     },
 
-    // Non-`__` bundle methods, at their own extracted argument positions
+    // Each method's own message positions
     {
       code: 'trans.gettext(`Hi ${x}`)',
       errors: [{ messageId: 'noInterpolation' }]

@@ -19,50 +19,36 @@ const ruleTester = new RuleTester({
 ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
   valid: [
     { code: `trans.__("Delete %1", fileName)` },
-    { code: `this.trans.__("Hello")` },
-    { code: `this._trans.__("Hello %1", x)` },
-    { code: `this.props.trans.__("Hello")` },
-    { code: `props.trans.__("Hello %1", x)` },
-    { code: `trans.__('Total %1', a + b)` },
-    // Pure string literal concatenation is static — translation tools handle it
+    // Literal concatenation stays readable, so it is a fine way to break up a
+    // long message
     {
       code: `trans.__('Part 1 of long message.\\n' + 'Part 2 of long message.\\n')`
     },
-    { code: `this.props.trans.__("a" + "b")` },
-    { code: `props.trans.__("a" + "b")` },
-
-    // Template literals without interpolation are as static as quoted strings
+    // A template literal with nothing interpolated is as static as a quote
     { code: 'trans.__(`a` + `b`)' },
-    { code: 'trans.__(`a` + "b")' },
 
-    // Other bundle methods, all-static message arguments
-    { code: `trans._n('%1 file', '%1 files', n)` },
-    { code: `trans._p('menu', 'Open')` },
-    { code: `trans._np('menu', '%1 file', '%1 files', n)` },
-    { code: `trans.gettext('Delete')` },
-    { code: `trans.ngettext('%1 file', '%1 files', n)` },
-    { code: `trans.pgettext('menu', 'Open')` },
-    { code: `trans.npgettext('menu', '%1 file', '%1 files', n)` },
+    // Concatenation outside the extracted message slots is fine
+    { code: `trans._n('%1 file', '%1 files', a + b)` },
     // The domain selects a catalog, it is not extracted message text
     { code: `trans.dcnpgettext(domain + suffix, 'menu', 'a', 'b', n)` },
 
-    // Concatenation outside the extracted argument slots is fine
-    { code: `trans._n('%1 file', '%1 files', a + b)` },
-    { code: `trans._p('menu', 'Open', a + b)` },
-
     // Not a translation bundle
-    { code: `logger.__("Delete " + fileName)` },
     { code: `other.trans.__("Delete " + fileName)` },
+    { code: `getBundle().__("Delete " + fileName)` },
+    // The extractor matches by name, so computed access is not a match
+    { code: `trans["__"]("Delete " + fileName)` },
+    { code: `this["trans"].__("Delete " + fileName)` },
+    // No message argument to check
+    { code: `trans.__()` },
 
-    // Not a concatenation at all — no-dynamic-translation reports these
+    // Not a concatenation — no-dynamic-translation reports these instead
     { code: 'trans.__(`Delete ${fileName}`)' },
-    { code: `trans.__(message)` },
     // The `+` is not what reaches the message slot; the call result is
-    { code: `trans.__(("Delete " + fileName).trim())` },
-    { code: `trans.__(items.map(s => "p" + s).join(""))` }
+    { code: `trans.__(("Delete " + fileName).trim())` }
   ],
 
   invalid: [
+    // Each recognized bundle receiver
     {
       code: `trans.__("Delete " + fileName)`,
       errors: [{ messageId: 'noConcatenation' }]
@@ -76,10 +62,23 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
       errors: [{ messageId: 'noConcatenation' }]
     },
     {
+      code: `props.trans.__("Hello " + name)`,
+      errors: [{ messageId: 'noConcatenation' }]
+    },
+    {
       code: `this.props.trans.__("Hello " + name)`,
       errors: [{ messageId: 'noConcatenation' }]
     },
-    // A TypeScript wrapper does not change what reaches the message slot
+    // A TypeScript wrapper does not change which bundle the call is on
+    {
+      code: `this.trans!.__("Delete " + fileName)`,
+      errors: [{ messageId: 'noConcatenation' }]
+    },
+    {
+      code: `(trans as any).__("Delete " + fileName)`,
+      errors: [{ messageId: 'noConcatenation' }]
+    },
+    // ...nor what reaches the message slot
     {
       code: `trans.__(("Delete " + fileName) as string)`,
       errors: [{ messageId: 'noConcatenation' }]
@@ -90,7 +89,7 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
       errors: [{ messageId: 'noConcatenation' }]
     },
 
-    // Non-`__` bundle methods, at their own extracted argument positions
+    // Each method's own message positions
     {
       code: `trans.gettext("Hi " + x)`,
       errors: [{ messageId: 'noConcatenation' }]

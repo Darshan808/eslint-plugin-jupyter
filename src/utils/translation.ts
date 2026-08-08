@@ -87,7 +87,7 @@ export function isRecognizedBundleMember(
     return false;
   }
   const propertyName = node.property.name;
-  const object = node.object;
+  const object = unwrapExpression(node.object);
 
   // this.trans / this._trans
   if (object.type === 'ThisExpression') {
@@ -116,14 +116,18 @@ export function isRecognizedBundleMember(
 /**
  * Returns true if the node is a recognized JupyterLab translation bundle:
  * trans | this.trans | this._trans | props.trans | this.props.trans
+ *
+ * TypeScript-only wrappers are seen through, so `this.trans!` and
+ * `(trans as any)` are recognized too — they still name the same bundle.
  * See jupyterlab.readthedocs.io/en/stable/extension/internationalization.html#rules
  */
 export function isTransBundle(node: TSESTree.Node): boolean {
-  if (node.type === 'Identifier') {
-    return node.name === BUNDLE_VARIABLE_NAME;
+  const expression = unwrapExpression(node);
+  if (expression.type === 'Identifier') {
+    return expression.name === BUNDLE_VARIABLE_NAME;
   }
-  if (node.type === 'MemberExpression') {
-    return isRecognizedBundleMember(node);
+  if (expression.type === 'MemberExpression') {
+    return isRecognizedBundleMember(expression);
   }
   return false;
 }

@@ -66,7 +66,7 @@ const noDynamicTranslation = createRule({
       noInterpolation:
         'Do not interpolate values into translation strings. Use a placeholder instead, e.g. trans.__("Delete %1", fileName).',
       noDynamicMessage:
-        'Write the translation string as a literal in the call itself. e.g. trans.__("Kernel %1", status).'
+        'Write the translation string as a literal in the call itself or use a placeholder instead, e.g. trans.__("Kernel %1", status).'
     },
     schema: []
   },
