@@ -1,24 +1,35 @@
 # `no-translation-concatenation`
 
-Forbid dynamically built strings inside JupyterLab translation wrapper calls.
+Require JupyterLab translation messages to be written as literals at the call
+site.
 
 ## Why
 
-Translation extractors read your source statically — they never run it. So the
-message passed to `trans.__()` has to be readable straight from the file. Three
-common patterns break that, all for the same reason:
+The translation string extractor reads your source statically — it never runs
+it, and it never looks anywhere but the call itself. So whatever message you
+want translated has to be spelled out inside the call:
 
 ```ts
 trans.__('Delete ' + fileName); // concatenation
 trans.__(`Delete ${fileName}`); // template interpolation
-
-let text = `Kernel ${status}`; // a dynamic string reaching the call
-trans.__(text); //   through a variable
+trans.__(message); // a variable
 ```
 
-In every case the extractor sees no complete message, so the string is never translated. Pure literal concatenation
-(`'a' + 'b'`) and a template literal with no interpolation (`` `a` ``) are still
-static, so both are allowed.
+In every case the extractor finds no message to put in the catalog, so the
+string is never translated.
+
+This holds even when the variable obviously holds a plain string:
+
+```ts
+const MESSAGE = 'Delete';
+trans.__(MESSAGE); // still not extracted
+```
+
+The extractor does not follow `MESSAGE` to its definition. It sees an
+identifier where a message should be, and moves on.
+
+Literal concatenation (`'a' + 'b'`) and template literals with no interpolation
+(`` `a` ``) are spelled out in the call, so both are fine.
 
 See [Rules](https://jupyterlab.readthedocs.io/en/stable/extension/internationalization.html#rules).
 
@@ -28,18 +39,21 @@ The rule checks calls to any `TranslationBundle` method on a recognized
 translation bundle — `trans`, `this.trans`, `this._trans`, `props.trans`, or
 `this.props.trans`.
 
-For `trans.__(msgid, ...args)`, the rule checks only `msgid`.
+A message argument must be one of:
 
-Dynamic values should go in later placeholder arguments (`...args`), which are
-not checked.
+- a string literal,
+- a template literal with no interpolation, or
+- a `+` concatenation of those.
 
-If `msgid` is an identifier, the rule follows it to its definition. A variable
-assigned once from a static string is allowed; one built with concatenation or
-template interpolation is reported. If the value cannot be resolved reliably
-(for example, parameters, imports, or variables reassigned), it is ignored.
+Anything else is reported: variables, property access, function calls,
+conditionals, and interpolated template literals.
 
-Other translation methods follow the same idea: only message-text arguments are
-checked.
+Only the arguments that carry message text are checked. For
+`trans.__(msgid, ...args)` that is `msgid` alone — the placeholder arguments
+after it are exactly where dynamic values belong. The other methods follow the
+same idea: `_n`/`ngettext` check the singular and plural, `_p`/`pgettext` check
+the context and message, and `dcnpgettext` checks everything except its
+`domain`, which selects a catalog rather than carrying text.
 
 ## Incorrect
 
@@ -50,6 +64,9 @@ trans._n('%1 file', `${n} files`, n);
 
 let text = `Kernel ${Text.titleCase(status)}`;
 widget.node.textContent = trans.__(text);
+
+const MESSAGE = 'Delete';
+trans.__(MESSAGE);
 ```
 
 ## Correct
@@ -60,11 +77,8 @@ trans._n('%1 file', '%1 files', n);
 
 widget.node.textContent = trans.__('Kernel %1', Text.titleCase(status));
 
-// Still static, so still fine:
+// Spelled out in the call, so still fine:
 trans.__('Part 1 of long message.\n' + 'Part 2 of long message.\n');
-
-const MESSAGE = 'Delete';
-trans.__(MESSAGE);
 ```
 
 ## Options
