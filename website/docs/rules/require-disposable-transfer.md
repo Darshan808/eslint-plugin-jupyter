@@ -14,9 +14,12 @@ This rule checks factory-like call expressions such as `create*`, `make*`,
 `build*`, and `new*` whose return type is compatible with `IDisposable` or
 `IObservableDisposable` when TypeScript type information is available. It also
 recognizes the known Lumino factories `DisposableSet.from(...)` and
-`ObservableDisposableSet.from(...)`. It ignores disposable values created
-directly inside a typed Jupyter plugin `activate` function, where services
-commonly live for the application lifetime.
+`ObservableDisposableSet.from(...)`.
+
+It ignores disposable values created directly inside a Jupyter plugin `activate`
+function, where services commonly live for the application lifetime. All three
+ways of writing one are recognised: an inline `activate` property, a function
+named `activate`, and a separate function referenced as `activate: activateFoo`.
 
 It accepts common ownership patterns:
 
@@ -35,17 +38,21 @@ It accepts common ownership patterns:
   `insertWidget`, or `registerStatusItem`
 - Passing it through a known owned constructor options object, such as
   `new MainAreaWidget({ content })` or `new Dialog({ body })`
+- Disposing it unconditionally inside a callback, so the
+  `requestAnimationFrame(() => splash.dispose())` and
+  `void load().then(() => splash.dispose())` idioms are accepted. Disposal that
+  is itself conditional inside the callback is still reported.
+- Declaring it as an exported binding (`export const tracker = ...`, including
+  inside an exported `namespace`): ownership of a module singleton passes to the
+  importers of the module.
 
-By default, the rule does not report common borrowed-reference,
-fluent-initializer, or registration-return calls such as `get`, `find`,
-`getCurrent`, `contextForWidget`, `insertCell`, `insertTab`,
-`initializeState`, `contextMenuWidget`, `add`, `addCommand`, `addFileType`,
-`addItem`, `addWidgetExtension`, `addToolbarButtonClass`,
-`addCommandToolbarButtonClass`, `addTab`, `delete`, `open`, `openInspector`,
-`openOrReveal`, `findWidget`, `_findWidgetByID`, `widgetAt`,
-`widgetRenderer`, `pop`, `shift`, `registerItem`, `registerStatusItem`,
-`addKeyBinding`, `addGroup`, `register`, `set`, `transform`, and
-`add*Factory`.
+By default, the rule does not report calls whose return value is a borrowed
+reference, a fluent initializer, or a registration handle that the caller is not
+expected to own. Representative entries are `get`, `find`, `add`, `addCommand`,
+`open`, `register`, `set`, and `transform`, plus any name matching
+`add*Factory`. For the full list see the
+[`DEFAULT_IGNORED_RETURN_FUNCTION_NAMES`](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+const+DEFAULT_IGNORED_RETURN_FUNCTION_NAMES&type=code)
+constant.
 
 ## Incorrect
 
@@ -82,18 +89,46 @@ disposables.dispose();
 
 ### `ownershipFunctionNames`
 
-Function or method names that take ownership of disposable arguments. The
-default list is `add`, `addCell`, `addFactory`, `addItem`, `addModelFactory`,
-`addSibling`, `addMenu`, `addWidget`, `addWidgetFactory`, `insertItem`,
-`insertWidget`, and `registerStatusItem`. If provided, this list replaces the
-default. Set this option to `[]` to require stricter typed ownership checks.
+Function or method names that take ownership of disposable arguments, such as
+`add`, `addWidget`, `insertWidget`, and `registerStatusItem`. For the full
+default list see the
+[`DEFAULT_OWNERSHIP_FUNCTION_NAMES`](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+const+DEFAULT_OWNERSHIP_FUNCTION_NAMES&type=code)
+constant. Names given here are **added** to that default list.
+
+### `extendDefaultOwnershipFunctionNames`
+
+Type: `boolean`, default: `true`.
+
+Set to `false` to replace the default ownership list instead of extending it.
+With no `ownershipFunctionNames` of your own, `false` drops the defaults
+entirely.
 
 ### `ignoredReturnFunctionNames`
 
 Function or method names whose disposable return value should be treated as
-borrowed or owned by a registration/session API. If provided, this list
-replaces the default and opts into stricter return checking for non-factory
-calls. Set this option to `[]` to report ignored registration return values.
+borrowed, or as owned by a registration or session API. Names given here are
+**added** to the default list described above.
+
+### `extendDefaultIgnoredReturnFunctionNames`
+
+Type: `boolean`, default: `true`.
+
+Set to `false` to replace the default ignore list instead of extending it. This
+also drops the two pattern-based default exemptions, `add*Factory` and
+`this._map.set(...)` / `this._map.delete(...)`, since those are part of the same
+defaults. With no `ignoredReturnFunctionNames` of your own, `false` ignores
+nothing at all.
+
+### `checkAllDisposableReturns`
+
+Type: `boolean`, default: `false`.
+
+By default only factory-named calls (`create*`, `build*`, `make*`, `new*`) have
+their disposable return value checked, because any call _might_ return a
+disposable and reporting all of them is too noisy. Set this to `true` to check
+every call whose return type is disposable.
+
+Extending the defaults, the common case:
 
 ```json
 {
@@ -101,7 +136,22 @@ calls. Set this option to `[]` to report ignored registration return values.
     "warn",
     {
       "ownershipFunctionNames": ["ownDisposable", "registerDisposable"],
-      "ignoredReturnFunctionNames": ["addCommand", "get", "find"]
+      "ignoredReturnFunctionNames": ["borrowWidget"]
+    }
+  ]
+}
+```
+
+Strictest possible checking, dropping every default exemption:
+
+```json
+{
+  "jupyter/require-disposable-transfer": [
+    "warn",
+    {
+      "extendDefaultOwnershipFunctionNames": false,
+      "extendDefaultIgnoredReturnFunctionNames": false,
+      "checkAllDisposableReturns": true
     }
   ]
 }
