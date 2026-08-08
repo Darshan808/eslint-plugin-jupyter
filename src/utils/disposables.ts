@@ -47,6 +47,27 @@ const OWNED_FUNCTION_OPTION_NAMES = new Map([
 
 const FLUENT_DISPOSABLE_METHOD_NAMES = ['initializeState'];
 
+/**
+ * Resolves a configurable name list option.
+ *
+ * A user-supplied list is *added* to the built-in defaults, so a project only
+ * has to name its own helpers rather than restate this plugin's list. Passing
+ * the matching `extendDefault...` option as `false` drops the defaults, whether
+ * or not a replacement list is given, which is also how to ask for the
+ * strictest possible checking.
+ */
+export function resolveNameListOption(
+  provided: readonly string[] | undefined,
+  defaults: readonly string[],
+  extendDefaults: boolean
+): Set<string> {
+  const names = extendDefaults ? [...defaults] : [];
+  if (provided) {
+    names.push(...provided);
+  }
+  return new Set(names);
+}
+
 export const DEFAULT_OWNERSHIP_FUNCTION_NAMES = [
   'add',
   'addCell',
@@ -738,37 +759,320 @@ export function isOuterFunctionScopeVariable(
   );
 }
 
-export function isInJupyterPluginActivate(
-  node: TSESTree.Node,
-  ownership: DisposableOwnershipContext
+/**
+ * Checks whether the `export` keyword sits on a variable's own declaration, as
+ * in `export const tracker = ...`, including inside an exported `namespace`.
+ */
+function isExportedAtDeclaration(variable: TSESLint.Scope.Variable): boolean {
+  return variable.defs.some(definition => {
+    let current: TSESTree.Node | undefined = definition.node;
+    while (current) {
+      if (
+        current.type === 'ExportNamedDeclaration' ||
+        current.type === 'ExportDefaultDeclaration'
+      ) {
+        return true;
+      }
+      // Stop at the declaration boundary: only the declaration itself and its
+      // enclosing statement can carry the `export` keyword.
+      if (
+        current.type === 'VariableDeclaration' &&
+        current.parent?.type !== 'ExportNamedDeclaration'
+      ) {
+        return false;
+      }
+      current = current.parent;
+    }
+    return false;
+  });
+}
+
+/**
+ * Checks whether a variable is exported by a later statement rather than at its
+ * declaration: `export { tracker }`, `export { tracker as t }`, or
+ * `export default tracker`. The scope manager records each of these as a
+ * reference to the local binding, so they are matched by resolution rather than
+ * by name.
+ */
+function isExportedByExportStatement(
+  variable: TSESLint.Scope.Variable
 ): boolean {
-  const fn = getEnclosingFunction(node);
-  const property = fn?.parent;
+  return variable.references.some(reference => {
+    const parent = reference.identifier.parent;
+    return (
+      parent?.type === 'ExportSpecifier' ||
+      parent?.type === 'ExportDefaultDeclaration'
+    );
+  });
+}
+
+/**
+ * Checks whether a variable is an exported binding, in any of the forms the
+ * `export` keyword can take.
+ *
+ * Ownership of an exported singleton passes to the importers of the module, so
+ * this file cannot see - and is not responsible for - its disposal. Such
+ * declarations are also created exactly once and live for the lifetime of the
+ * program, so there is nothing to leak.
+ */
+export function isExportedVariable(variable: TSESLint.Scope.Variable): boolean {
   if (
-    !fn ||
-    !property ||
-    property.type !== 'Property' ||
-    property.value !== fn ||
-    property.computed ||
-    !(
-      (property.key.type === 'Identifier' &&
-        property.key.name === 'activate') ||
-      (property.key.type === 'Literal' && property.key.value === 'activate')
-    )
+    !isExportedAtDeclaration(variable) &&
+    !isExportedByExportStatement(variable)
   ) {
     return false;
   }
 
-  const object = property.parent;
-  if (!object || object.type !== 'ObjectExpression') {
+  // A reassigned export is not a single module-lifetime singleton: every value
+  // but the last one is replaced, and only the last one can still be disposed.
+  return (
+    variable.references.filter(reference => reference.isWrite()).length <= 1
+  );
+}
+
+/**
+ * Checks whether a node is reached on every run of its enclosing function, that
+ * is, whether nothing conditional or repeated sits between it and the function
+ * body. This is the same standard `isUnconditionalUse` applies within a scope.
+ */
+function isUnconditionalWithinFunction(node: TSESTree.Node): boolean {
+  let parent = node.parent;
+  while (parent && !isFunctionLike(parent)) {
+    if (isConditionalOrRepeated(parent)) {
+      return false;
+    }
+    parent = parent.parent;
+  }
+  return true;
+}
+
+/**
+ * Checks whether a function expression ends up somewhere that can run it later:
+ * passed to a call, returned, stored on a field or in an object literal, or
+ * assigned to a variable that itself escapes.
+ *
+ * A callback that is only declared and never used is not a cleanup path, so
+ * `const cleanupLater = () => d.dispose();` on its own leaves `d` unmanaged.
+ */
+function isEscapingCallback(
+  fn: TSESTree.Node,
+  sourceCode: TSESLint.SourceCode
+): boolean {
+  const expression = getOuterExpression(fn);
+  const parent = expression.parent;
+  if (!parent) {
     return false;
   }
 
-  const variable = object.parent;
+  if (parent.type === 'VariableDeclarator' && parent.init === expression) {
+    const [variable] = sourceCode.getDeclaredVariables(parent);
+    return (
+      variable !== undefined &&
+      variable.references.some(
+        reference => !reference.init && isEscapingUse(reference.identifier)
+      )
+    );
+  }
+
+  return isEscapingUse(expression);
+}
+
+/**
+ * Positions in which a value is handed to something else: an argument or callee
+ * of a call, a return value, a field or object literal entry, an array element.
+ */
+function isEscapingUse(node: TSESTree.Node): boolean {
+  const parent = getOuterExpression(node).parent;
+  if (!parent) {
+    return false;
+  }
+  return (
+    parent.type === 'CallExpression' ||
+    parent.type === 'NewExpression' ||
+    parent.type === 'ReturnStatement' ||
+    parent.type === 'PropertyDefinition' ||
+    parent.type === 'Property' ||
+    parent.type === 'ArrayExpression' ||
+    (parent.type === 'ArrowFunctionExpression' && parent.body === node) ||
+    (parent.type === 'AssignmentExpression' &&
+      parent.left.type === 'MemberExpression')
+  );
+}
+
+/**
+ * Checks whether a reference sits inside a closure that the declaring function
+ * unconditionally returns, the factory pattern:
+ *
+ * ```ts
+ * function createToolbarFactory() {
+ *   const items = new ObservableList(...);
+ *   return (widget: Widget) => { ...uses items... };
+ * }
+ * ```
+ *
+ * The closure is the function's product, so the captured state's lifetime is
+ * bound to it and belongs to whoever holds the factory. Walks outwards through
+ * enclosing functions, because the reference is often nested deeper than the
+ * returned closure itself (in a handler declared inside it).
+ *
+ * Only an unconditional `return` counts, matching how ownership transfer is
+ * treated elsewhere in this file. A closure that merely escapes as a call
+ * argument does not count: that is `defer(() => console.log(d))`, which hands
+ * off nothing.
+ */
+function isCapturedByReturnedClosure(
+  identifier: TSESTree.Node,
+  variable: TSESLint.Scope.Variable
+): boolean {
+  const declaringFunction = getFunctionScope(variable.scope)?.block;
+  if (!declaringFunction) {
+    return false;
+  }
+
+  let fn = getEnclosingFunction(identifier);
+  while (fn && fn !== declaringFunction) {
+    const expression = getOuterExpression(fn);
+    const parent = expression.parent;
+
+    const returnedFromDeclaringFunction =
+      parent?.type === 'ReturnStatement' &&
+      parent.argument === expression &&
+      getEnclosingFunction(parent) === declaringFunction &&
+      isUnconditionalWithinFunction(parent);
+
+    // `const make = () => () => items.use()` returns implicitly.
+    const isImplicitReturnBody =
+      parent?.type === 'ArrowFunctionExpression' &&
+      parent.body === expression &&
+      parent === declaringFunction;
+
+    if (returnedFromDeclaringFunction || isImplicitReturnBody) {
+      return true;
+    }
+
+    fn = getEnclosingFunction(fn);
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether this exact reference is handed to an ownership call, following
+ * only value-preserving positions on the way out: `set.add(item)`,
+ * `set.add([item])`, `set.add({ item })`, `set.add(item as IDisposable)`.
+ *
+ * Anchored on the resolved reference rather than on its name, so a same-named
+ * binding elsewhere in the callback cannot be mistaken for this variable. The
+ * transfer must also be unconditional, matching how same-scope transfers are
+ * treated: a transfer that only happens on some paths is not a transfer.
+ */
+function isReferenceHandedToOwnershipCall(
+  identifier: TSESTree.Node,
+  ownership: DisposableOwnershipContext
+): boolean {
+  let current: TSESTree.Node = identifier;
+  let parent = current.parent;
+
+  while (parent && !isFunctionLike(parent)) {
+    if (parent.type === 'CallExpression') {
+      return (
+        getOwnershipArguments(parent, ownership).includes(
+          current as TSESTree.CallExpressionArgument
+        ) && isUnconditionalWithinFunction(parent)
+      );
+    }
+
+    const preservesValue =
+      getTransparentChild(parent) === current ||
+      (parent.type === 'ArrayExpression' &&
+        parent.elements.includes(current as TSESTree.Expression)) ||
+      (parent.type === 'Property' && parent.value === current) ||
+      (parent.type === 'ObjectExpression' &&
+        parent.properties.includes(current as TSESTree.Property));
+    if (!preservesValue) {
+      return false;
+    }
+
+    current = parent;
+    parent = current.parent;
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether a variable's lifetime is taken over by a nested function, in
+ * any of three ways:
+ *
+ * - it is captured by a closure the declaring function returns, so the closure
+ *   owns it (`createToolbarFactory`);
+ * - an escaping callback unconditionally disposes it
+ *   (`requestAnimationFrame(() => splash.dispose())`, promise chains);
+ * - an escaping callback unconditionally hands its ownership to something else.
+ *
+ * The last two generalise the existing `disposed.connect(...)` special case to
+ * any callback. Cleanup that is itself conditional inside the callback does not
+ * count, so "cleanup only on some paths" stays reportable, and every branch
+ * resolves identifiers to this variable rather than comparing names, so a
+ * shadowing binding inside the callback cannot silence the outer one.
+ */
+export function isDisposedByNestedFunction(
+  variable: TSESLint.Scope.Variable,
+  ownership: DisposableOwnershipContext
+): boolean {
+  const declaringScope = getFunctionScope(variable.scope);
+
+  for (const reference of variable.references) {
+    if (getFunctionScope(reference.from) === declaringScope) {
+      continue;
+    }
+
+    if (isCapturedByReturnedClosure(reference.identifier, variable)) {
+      return true;
+    }
+
+    const fn = getEnclosingFunction(reference.identifier);
+    if (
+      !fn ||
+      (fn.type !== 'ArrowFunctionExpression' &&
+        fn.type !== 'FunctionExpression')
+    ) {
+      continue;
+    }
+
+    // A callback nobody can run is not a cleanup path.
+    if (!isEscapingCallback(fn, ownership.sourceCode)) {
+      continue;
+    }
+
+    if (isReferenceHandedToOwnershipCall(reference.identifier, ownership)) {
+      return true;
+    }
+
+    const disposesVariable = getUnconditionalDisposeTargets(fn).some(
+      target => getIdentifierVariable(ownership.sourceCode, target) === variable
+    );
+    if (disposesVariable) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Checks whether an object literal is shaped like a Jupyter plugin descriptor,
+ * either by its declared type or by its property names.
+ */
+function isPluginDescriptorObject(
+  object: TSESTree.ObjectExpression,
+  ownership: DisposableOwnershipContext
+): boolean {
+  const declarator = object.parent;
   if (
-    variable?.type === 'VariableDeclarator' &&
+    declarator?.type === 'VariableDeclarator' &&
     getJupyterPluginKind(
-      variable,
+      declarator,
       ownership.checker,
       ownership.services
         ? node => ownership.services!.esTreeNodeToTSNodeMap.get(node)
@@ -793,6 +1097,90 @@ export function isInJupyterPluginActivate(
     ['autoStart', 'optional', 'provides', 'requires'].some(name =>
       propertyNames.has(name)
     )
+  );
+}
+
+/**
+ * Resolves the variable a function is named by, so its references can be
+ * inspected: `function activateCsv() {}` or `const activateCsv = () => {}`.
+ */
+function getFunctionNameVariable(
+  fn: TSESTree.Node,
+  sourceCode: TSESLint.SourceCode
+): TSESLint.Scope.Variable | null {
+  if (fn.type === 'FunctionDeclaration' && fn.id) {
+    const name = fn.id.name;
+    return (
+      sourceCode.getDeclaredVariables(fn).find(entry => entry.name === name) ??
+      null
+    );
+  }
+
+  const declarator = fn.parent;
+  if (
+    declarator?.type === 'VariableDeclarator' &&
+    declarator.init === fn &&
+    declarator.id.type === 'Identifier'
+  ) {
+    return sourceCode.getDeclaredVariables(declarator)[0] ?? null;
+  }
+
+  return null;
+}
+
+/**
+ * Checks whether a function is wired up as the `activate` of a plugin
+ * descriptor elsewhere in the file, e.g. `activate: activateCsv`.
+ */
+function isReferencedAsPluginActivate(
+  variable: TSESLint.Scope.Variable,
+  ownership: DisposableOwnershipContext
+): boolean {
+  return variable.references.some(reference => {
+    const property = reference.identifier.parent;
+    return (
+      property?.type === 'Property' &&
+      property.value === reference.identifier &&
+      getPropertyName(property) === 'activate' &&
+      property.parent?.type === 'ObjectExpression' &&
+      isPluginDescriptorObject(property.parent, ownership)
+    );
+  });
+}
+
+export function isInJupyterPluginActivate(
+  node: TSESTree.Node,
+  ownership: DisposableOwnershipContext
+): boolean {
+  const fn = getEnclosingFunction(node);
+  if (!fn) {
+    return false;
+  }
+
+  // Inline form: `const plugin = { id, autoStart, activate: () => { ... } }`.
+  const property = fn.parent;
+  if (
+    property?.type === 'Property' &&
+    property.value === fn &&
+    getPropertyName(property) === 'activate' &&
+    property.parent?.type === 'ObjectExpression' &&
+    isPluginDescriptorObject(property.parent, ownership)
+  ) {
+    return true;
+  }
+
+  // Named form: `function activate() { ... }`, the convention for plugins whose
+  // activation lives in a separate function (often in a `Private` namespace).
+  if (fn.type === 'FunctionDeclaration' && fn.id?.name === 'activate') {
+    return true;
+  }
+
+  // Referenced form: `function activateCsv() { ... }` used as
+  // `{ id, autoStart, activate: activateCsv }`.
+  const nameVariable = getFunctionNameVariable(fn, ownership.sourceCode);
+  return (
+    nameVariable !== null &&
+    isReferencedAsPluginActivate(nameVariable, ownership)
   );
 }
 

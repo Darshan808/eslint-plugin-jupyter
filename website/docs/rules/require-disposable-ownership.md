@@ -15,8 +15,12 @@ The rule checks `new` expressions that create known disposable classes such as
 `DisposableDelegate`, `ObservableDisposableDelegate`, `DisposableSet`, and
 `ObservableDisposableSet`. When TypeScript type information is available, it
 also detects objects typed as `IDisposable` or `IObservableDisposable`.
-It ignores disposable objects created directly inside a typed Jupyter plugin
+
+It ignores disposable objects created directly inside a Jupyter plugin
 `activate` function, where services commonly live for the application lifetime.
+All three ways of writing one are recognised: an inline `activate` property, a
+function named `activate`, and a separate function referenced as
+`activate: activateFoo`.
 
 It accepts common ownership patterns:
 
@@ -37,6 +41,13 @@ It accepts common ownership patterns:
   `new MainAreaWidget({ content })` or `new Dialog({ body })`
 - Passing it as a `showDialog({ body: ... })` body or launching a typed
   `Dialog` with `.launch()`
+- Disposing it unconditionally inside a callback, so the
+  `requestAnimationFrame(() => splash.dispose())` and
+  `void load().then(() => splash.dispose())` idioms are accepted. Disposal that
+  is itself conditional inside the callback is still reported.
+- Declaring it as an exported binding (`export const tracker = ...`, including
+  inside an exported `namespace`): ownership of a module singleton passes to the
+  importers of the module.
 
 ## Incorrect
 
@@ -86,11 +97,14 @@ class Owner {
 
 ### `ownershipFunctionNames`
 
-Function or method names that take ownership of disposable arguments. The
-default list is `add`, `addCell`, `addFactory`, `addItem`, `addModelFactory`,
-`addSibling`, `addMenu`, `addWidget`, `addWidgetFactory`, `insertItem`,
-`insertWidget`, and `registerStatusItem`. If provided, this list replaces the
-default. Set this option to `[]` to require stricter typed ownership checks.
+Function or method names that take ownership of disposable arguments, such as
+`add`, `addWidget`, `insertWidget`, and `registerStatusItem`. For the full
+default list see the
+[`DEFAULT_OWNERSHIP_FUNCTION_NAMES`](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+const+DEFAULT_OWNERSHIP_FUNCTION_NAMES&type=code)
+constant.
+
+Names given here are **added** to that default list, so a project only has to
+name its own ownership helpers:
 
 ```json
 {
@@ -99,6 +113,23 @@ default. Set this option to `[]` to require stricter typed ownership checks.
     {
       "ownershipFunctionNames": ["ownDisposable", "registerDisposable"]
     }
+  ]
+}
+```
+
+### `extendDefaultOwnershipFunctionNames`
+
+Type: `boolean`, default: `true`.
+
+Set to `false` to replace the default list instead of extending it. With no
+`ownershipFunctionNames` of your own, `false` drops the defaults entirely, which
+is how to ask for the strictest typed ownership checking:
+
+```json
+{
+  "jupyter/require-disposable-ownership": [
+    "warn",
+    { "extendDefaultOwnershipFunctionNames": false }
   ]
 }
 ```

@@ -21,6 +21,7 @@ const resolvedTsPlugin = tsPlugin.default ?? tsPlugin;
 const noopRule = { create: () => ({}) };
 const jestStub = { rules: new Proxy({}, { get: () => noopRule }) };
 const regexStub = { rules: new Proxy({}, { get: () => noopRule }) };
+const playwrightStub = { rules: new Proxy({}, { get: () => noopRule }) };
 
 const jsoncParserModule = await import('jsonc-eslint-parser');
 const resolvedJsoncParser = jsoncParserModule.default ?? jsoncParserModule;
@@ -104,7 +105,8 @@ function makeTestConfig(projectName) {
       plugins: {
         jupyter: resolvedPlugin,
         '@typescript-eslint': resolvedTsPlugin,
-        jest: jestStub
+        jest: jestStub,
+        playwright: playwrightStub
       },
       rules: {
         'jupyter/require-soft-assertions-before-snapshots': 'error'
@@ -131,9 +133,10 @@ function makeTestConfig(projectName) {
       ],
       ignores: [`${projectName}/galata/src/helpers/**`],
       plugins: {
-        'jupyter': resolvedPlugin,
+        jupyter: resolvedPlugin,
         '@typescript-eslint': resolvedTsPlugin,
-        'jest': jestStub,
+        jest: jestStub,
+        playwright: playwrightStub
       },
       rules: {
         'jupyter/galata-prefer-filebrowser-helper': 'error'
