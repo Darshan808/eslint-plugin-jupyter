@@ -32,7 +32,7 @@ Any of these counts as cleanup evidence and silences the whole class:
 - any `.disconnect(...)` call — covers `dispose()` teardown as well as disconnect-before-reconnect idioms
 - a call to any method listed in `additionalCleanupMethods`
 
-Single-argument `.connect(callback)` calls are not this rule's domain; see [require-signal-this-arg](./require-signal-this-arg) and [prefer-signal-this-arg](./prefer-signal-this-arg).
+Single-argument `.connect(callback)` calls are not this rule's domain; see [require-signal-this-arg](../require-signal-this-arg) and [prefer-signal-this-arg](../prefer-signal-this-arg).
 
 ## Incorrect
 

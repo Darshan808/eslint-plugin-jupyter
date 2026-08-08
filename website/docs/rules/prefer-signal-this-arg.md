@@ -14,7 +14,7 @@ The [JupyterLab signal patterns](https://jupyterlab.readthedocs.io/en/latest/dev
 
 That only matters when the **sender outlives the receiver**. A connection to an object the class owns and disposes is collected along with it whether or not a receiver was recorded. So the rule reports a missing `thisArg` only where the sender is provably longer-lived and the class's own cleanup strategy is receiver-based — the exact combination where the cleanup that exists cannot work.
 
-This rule is the companion to [require-signal-this-arg](./require-signal-this-arg). The two rules partition the missing-`thisArg` cases:
+This rule is the companion to [require-signal-this-arg](../require-signal-this-arg). The two rules partition the missing-`thisArg` cases:
 
 - a bare class-method reference whose body uses `this` is a **runtime bug** (the method's `this` is unbound when the signal fires) — flagged by `require-signal-this-arg`;
 - every other one-argument `.connect(callback)` where the sender outlives the receiver is a **cleanup concern only** — flagged by this rule.
