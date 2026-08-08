@@ -88,6 +88,93 @@ nonTypeAwareTester.run(
 ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
   valid: [
     {
+      // A custom ignored name is ADDED to the defaults, so the built-in `get`
+      // keeps being ignored alongside it.
+      filename: typeAwareFilename,
+      options: [{ ignoredReturnFunctionNames: ['borrowThing'] }],
+      code: `
+        interface IDisposable {
+          readonly isDisposed: boolean;
+          dispose(): void;
+        }
+        declare const registry: {
+          borrowThing(): IDisposable;
+          createThing(): IDisposable;
+          get(id: string): IDisposable;
+        };
+
+        registry.borrowThing();
+        registry.get('example');
+      `
+    },
+    {
+      // An empty options object must behave exactly like no options at all.
+      // ESLint fills schema `default` values into the options object, so array
+      // options must not declare one or "was it provided" becomes undetectable.
+      filename: typeAwareFilename,
+      options: [{}],
+      code: `
+        interface IDisposable {
+          readonly isDisposed: boolean;
+          dispose(): void;
+        }
+        declare const registry: { get(id: string): IDisposable };
+
+        registry.get('example');
+      `
+    },
+    {
+      // Exported singleton: ownership belongs to the importers of the module.
+      filename: typeAwareFilename,
+      code: `
+        interface IDisposable {
+          readonly isDisposed: boolean;
+          dispose(): void;
+        }
+        declare function createDisposable(): IDisposable;
+        export const tracker = createDisposable();
+      `
+    },
+    {
+      // Plugin activation split into a named function.
+      filename: typeAwareFilename,
+      code: `
+        interface IDisposable {
+          readonly isDisposed: boolean;
+          dispose(): void;
+        }
+        declare function createDisposable(): IDisposable;
+        function activateCsv(): void {
+          const tracker = createDisposable();
+          void tracker;
+        }
+        const plugin = {
+          id: 'example:plugin',
+          autoStart: true,
+          activate: activateCsv
+        };
+        export default plugin;
+      `
+    },
+    {
+      // Unconditional disposal inside a callback.
+      filename: typeAwareFilename,
+      code: `
+        interface IDisposable {
+          readonly isDisposed: boolean;
+          dispose(): void;
+        }
+        declare function createDisposable(): IDisposable;
+        declare function defer(callback: () => void): void;
+        function load(): void {
+          const splash = createDisposable();
+          defer(() => {
+            splash.dispose();
+          });
+        }
+      `
+    },
+    {
       filename: typeAwareFilename,
       code: `
         interface IDisposable {
@@ -889,6 +976,45 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
 
   invalid: [
     {
+      // extendDefault...: false with no list of its own drops every default
+      // exemption, which is how to ask for the strictest checking.
+      filename: typeAwareFilename,
+      options: [
+        {
+          extendDefaultIgnoredReturnFunctionNames: false,
+          checkAllDisposableReturns: true
+        }
+      ],
+      code: `
+        interface IDisposable {
+          readonly isDisposed: boolean;
+          dispose(): void;
+        }
+        declare const registry: { get(id: string): IDisposable };
+
+        registry.get('example');
+      `,
+      errors: [{ messageId: 'unhandledDisposable', data: { name: 'get' } }]
+    },
+    {
+      // checkAllDisposableReturns alone widens the checked call set without
+      // touching the ignore list.
+      filename: typeAwareFilename,
+      options: [{ checkAllDisposableReturns: true }],
+      code: `
+        interface IDisposable {
+          readonly isDisposed: boolean;
+          dispose(): void;
+        }
+        declare const registry: { borrowThing(): IDisposable };
+
+        registry.borrowThing();
+      `,
+      errors: [
+        { messageId: 'unhandledDisposable', data: { name: 'borrowThing' } }
+      ]
+    },
+    {
       filename: typeAwareFilename,
       code: `
         interface IDisposable {
@@ -956,7 +1082,12 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
     },
     {
       filename: typeAwareFilename,
-      options: [{ ignoredReturnFunctionNames: [] }],
+      options: [
+        {
+          extendDefaultIgnoredReturnFunctionNames: false,
+          checkAllDisposableReturns: true
+        }
+      ],
       code: `
         interface IDisposable {
           readonly isDisposed: boolean;
@@ -984,7 +1115,12 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
     },
     {
       filename: typeAwareFilename,
-      options: [{ ignoredReturnFunctionNames: [] }],
+      options: [
+        {
+          extendDefaultIgnoredReturnFunctionNames: false,
+          checkAllDisposableReturns: true
+        }
+      ],
       code: `
         interface IDisposable {
           readonly isDisposed: boolean;
@@ -1005,7 +1141,12 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
     },
     {
       filename: typeAwareFilename,
-      options: [{ ignoredReturnFunctionNames: [] }],
+      options: [
+        {
+          extendDefaultIgnoredReturnFunctionNames: false,
+          checkAllDisposableReturns: true
+        }
+      ],
       code: `
         interface IDisposable {
           readonly isDisposed: boolean;
@@ -1026,7 +1167,12 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
     },
     {
       filename: typeAwareFilename,
-      options: [{ ignoredReturnFunctionNames: [] }],
+      options: [
+        {
+          extendDefaultIgnoredReturnFunctionNames: false,
+          checkAllDisposableReturns: true
+        }
+      ],
       code: `
         interface IDisposable {
           readonly isDisposed: boolean;
@@ -1047,7 +1193,12 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
     },
     {
       filename: typeAwareFilename,
-      options: [{ ignoredReturnFunctionNames: [] }],
+      options: [
+        {
+          extendDefaultIgnoredReturnFunctionNames: false,
+          checkAllDisposableReturns: true
+        }
+      ],
       code: `
         interface IDisposable {
           readonly isDisposed: boolean;
@@ -1171,18 +1322,24 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
       ]
     },
     {
+      // Disposal inside a callback that is only *conditionally* reached still
+      // counts as unmanaged. Unconditional disposal inside the callback is
+      // accepted - see the matching valid case.
       filename: typeAwareFilename,
       code: `
         interface IDisposable {
           readonly isDisposed: boolean;
           dispose(): void;
         }
+        declare const condition: boolean;
         declare function createDisposable(): IDisposable;
         declare function defer(callback: () => void): void;
 
         const disposable = createDisposable();
         defer(() => {
-          disposable.dispose();
+          if (condition) {
+            disposable.dispose();
+          }
         });
       `,
       errors: [
@@ -1223,7 +1380,7 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
     },
     {
       filename: typeAwareFilename,
-      options: [{ ownershipFunctionNames: [] }],
+      options: [{ extendDefaultOwnershipFunctionNames: false }],
       code: `
         interface IDisposable {
           readonly isDisposed: boolean;

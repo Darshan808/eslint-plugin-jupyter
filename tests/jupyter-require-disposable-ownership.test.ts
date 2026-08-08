@@ -109,6 +109,295 @@ nonTypeAwareTester.run(
 ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
   valid: [
     {
+      // Mirrors JupyterLab's createToolbarFactory (apputils/src/toolbar/factory.ts):
+      // `items` is created once, passed to a helper, captured by the returned
+      // factory closure and by handlers declared inside it, and never disposed.
+      // The returned closure owns it.
+      filename: typeAwareFilename,
+      code: `
+        declare class ObservableList<T> {
+          constructor(options: { itemCmp: (a: T, b: T) => boolean });
+          readonly changed: {
+            connect(cb: () => void): void;
+            disconnect(cb: () => void): void;
+          };
+          get(index: number): T;
+          dispose(): void;
+          readonly isDisposed: boolean;
+        }
+        declare function setToolbarItems(
+          items: ObservableList<string>
+        ): Promise<void>;
+        declare const registry: {
+          factoryAdded: {
+            connect(cb: () => void): void;
+            disconnect(cb: () => void): void;
+          };
+        };
+        declare const widget: { disposed: { connect(cb: () => void): void } };
+
+        export function createToolbarFactory(): () => void {
+          const items = new ObservableList<string>({
+            itemCmp: (a, b) => a === b
+          });
+
+          setToolbarItems(items).catch(() => undefined);
+
+          return () => {
+            const updateToolbar = () => {
+              void Array.from([items.get(0)]);
+            };
+            const updateWidget = () => {
+              void items.get(0);
+            };
+            registry.factoryAdded.connect(updateWidget);
+            items.changed.connect(updateToolbar);
+            widget.disposed.connect(() => {
+              items.changed.disconnect(updateToolbar);
+              registry.factoryAdded.disconnect(updateWidget);
+            });
+          };
+        }
+      `
+    },
+    {
+      // The same ownership handoff written with an implicit arrow return.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+          use(): void {}
+        }
+        const makeFactory = () => {
+          const items = new DisposableDelegate(() => undefined);
+          return () => items.use();
+        };
+        void makeFactory;
+      `
+    },
+    {
+      // Ownership transfer at the top level of an escaping callback.
+      filename: typeAwareFilename,
+      code: `
+        declare function defer(cb: () => void): void;
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        declare const disposables: { add(x: DisposableDelegate): void };
+
+        function go(): void {
+          const d = new DisposableDelegate(() => undefined);
+          defer(() => {
+            disposables.add(d);
+          });
+        }
+      `
+    },
+    {
+      // A callback stored on a field can still be run later.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        class Owner {
+          private _cleanup: (() => void) | null = null;
+          init(): void {
+            const d = new DisposableDelegate(() => undefined);
+            this._cleanup = () => d.dispose();
+          }
+        }
+      `
+    },
+    {
+      // A custom ownership name is ADDED to the defaults, so the built-in
+      // `add` keeps working alongside it.
+      filename: typeAwareFilename,
+      options: [{ ownershipFunctionNames: ['ownDisposable'] }],
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        declare const items: { add(disposable: DisposableDelegate): void };
+
+        const first = new DisposableDelegate(() => undefined);
+        items.add(first);
+      `
+    },
+    {
+      // An empty options object must behave exactly like no options at all.
+      // ESLint fills schema `default` values into the options object, so array
+      // options must not declare one or "was it provided" becomes undetectable.
+      filename: typeAwareFilename,
+      options: [{}],
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        declare const items: { add(disposable: DisposableDelegate): void };
+
+        const first = new DisposableDelegate(() => undefined);
+        items.add(first);
+      `
+    },
+    {
+      // Exported singleton: ownership belongs to the importers of the module.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        export const tracker = new DisposableDelegate(() => undefined);
+      `
+    },
+    {
+      // Exported by a later statement rather than at the declaration.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        const tracker = new DisposableDelegate(() => undefined);
+        export { tracker };
+      `
+    },
+    {
+      // Exported by a later statement under a different name.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        const tracker = new DisposableDelegate(() => undefined);
+        export { tracker as dialogTracker };
+      `
+    },
+    {
+      // Exported as the module default.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        const tracker = new DisposableDelegate(() => undefined);
+        export default tracker;
+      `
+    },
+    {
+      // Exported singleton inside a namespace (Dialog.tracker,
+      // Notification.manager).
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        export namespace Private {
+          export const tracker = new DisposableDelegate(() => undefined);
+        }
+      `
+    },
+    {
+      // Plugin activation split into a named function, referenced as
+      // `activate: activateCsv`.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        function activateCsv(): void {
+          const tracker = new DisposableDelegate(() => undefined);
+          void tracker;
+        }
+        const plugin = {
+          id: 'example:plugin',
+          autoStart: true,
+          activate: activateCsv
+        };
+        export default plugin;
+      `
+    },
+    {
+      // Plugin activation as `export function activate()`, the convention for
+      // activation living in a `Private` namespace.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        export namespace Private {
+          export function activate(): void {
+            const palette = new DisposableDelegate(() => undefined);
+            void palette;
+          }
+        }
+      `
+    },
+    {
+      // Unconditional disposal inside a callback: the
+      // `requestAnimationFrame(() => splash.dispose())` idiom.
+      filename: typeAwareFilename,
+      code: `
+        declare function defer(callback: () => void): void;
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        function load(): void {
+          const splash = new DisposableDelegate(() => undefined);
+          defer(() => {
+            splash.dispose();
+          });
+        }
+      `
+    },
+    {
+      // Disposal in a promise chain.
+      filename: typeAwareFilename,
+      code: `
+        declare function work(): Promise<void>;
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        function load(): void {
+          const splash = new DisposableDelegate(() => undefined);
+          void work()
+            .then(() => {
+              splash.dispose();
+            })
+            .catch(() => {
+              splash.dispose();
+            });
+        }
+      `
+    },
+    {
+      // Captured by a returned closure that disposes it.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        function createFactory(): () => void {
+          const items = new DisposableDelegate(() => undefined);
+          return () => items.dispose();
+        }
+      `
+    },
+    {
       filename: typeAwareFilename,
       code: `
         declare function cleanup(): void;
@@ -967,6 +1256,120 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
 
   invalid: [
     {
+      // A closure that captures the disposable but is not returned hands off
+      // nothing, so the disposable is still unowned.
+      filename: typeAwareFilename,
+      code: `
+        declare function defer(cb: () => void): void;
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+          use(): void {}
+        }
+
+        function go(): void {
+          const items = new DisposableDelegate(() => undefined);
+          defer(() => items.use());
+        }
+      `,
+      errors: [
+        { messageId: 'unmanagedDisposableVariable', data: { name: 'items' } }
+      ]
+    },
+    {
+      // A callback that is only declared, never invoked, registered or
+      // returned, is not a cleanup path.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+
+        function go(): void {
+          const d = new DisposableDelegate(() => undefined);
+          const cleanupLater = () => d.dispose();
+        }
+      `,
+      errors: [
+        { messageId: 'unmanagedDisposableVariable', data: { name: 'd' } }
+      ]
+    },
+    {
+      // Conditional ownership transfer inside a callback is not a transfer,
+      // matching how same-scope conditional uses are treated.
+      filename: typeAwareFilename,
+      code: `
+        declare function defer(cb: () => void): void;
+        declare const condition: boolean;
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        declare const disposables: { add(x: DisposableDelegate): void };
+
+        function go(): void {
+          const d = new DisposableDelegate(() => undefined);
+          defer(() => {
+            if (condition) {
+              disposables.add(d);
+            }
+          });
+        }
+      `,
+      errors: [
+        { messageId: 'unmanagedDisposableVariable', data: { name: 'd' } }
+      ]
+    },
+    {
+      // A reassigned export is not a module-lifetime singleton: the replaced
+      // value can no longer be reached, let alone disposed.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+
+        export let tracker = new DisposableDelegate(() => undefined);
+        tracker = new DisposableDelegate(() => undefined);
+      `,
+      errors: [
+        { messageId: 'unmanagedDisposableVariable', data: { name: 'tracker' } },
+        { messageId: 'unmanagedDisposableVariable', data: { name: 'tracker' } }
+      ]
+    },
+    {
+      // A shadowing binding inside the callback must not silence the outer
+      // disposable: the ownership check resolves identifiers, not names.
+      filename: typeAwareFilename,
+      code: `
+        declare function defer(cb: () => void): void;
+        class DisposableDelegate {
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        declare const disposables: { add(d: DisposableDelegate): void };
+
+        function go(): void {
+          const splash = new DisposableDelegate(() => undefined);
+          defer(() => {
+            {
+              const splash = new DisposableDelegate(() => undefined);
+              disposables.add(splash);
+            }
+            void splash;
+          });
+        }
+      `,
+      errors: [
+        {
+          messageId: 'unmanagedDisposableVariable',
+          data: { name: 'splash' }
+        }
+      ]
+    },
+    {
       filename: typeAwareFilename,
       code: `
         declare function cleanup(): void;
@@ -1229,9 +1632,13 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
       ]
     },
     {
+      // Disposal inside a callback that is only *conditionally* reached still
+      // counts as unmanaged. Unconditional disposal inside the callback is
+      // accepted - see the matching valid case.
       filename: typeAwareFilename,
       code: `
         declare function cleanup(): void;
+        declare const condition: boolean;
         declare function defer(callback: () => void): void;
         class DisposableDelegate {
           constructor(callback: () => void) {}
@@ -1242,7 +1649,9 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
           cleanup();
         });
         defer(() => {
-          disposable.dispose();
+          if (condition) {
+            disposable.dispose();
+          }
         });
       `,
       errors: [
@@ -1299,7 +1708,7 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
     },
     {
       filename: typeAwareFilename,
-      options: [{ ownershipFunctionNames: [] }],
+      options: [{ extendDefaultOwnershipFunctionNames: false }],
       code: `
         declare function cleanup(): void;
         class DisposableDelegate {
