@@ -66,9 +66,9 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
     },
     messages: {
       preferMenuOpen:
-        "Prefer `page.menu.open('File')` (or `page.menu.clickMenuItem('File>…')`) over clicking the main menu bar directly.",
+        'Prefer `page.menu.open(path)` (or `page.menu.clickMenuItem(path)`) over clicking the main menu bar directly.',
       preferClickMenuItem:
-        "Prefer `page.menu.clickMenuItem('File>New>Terminal')` over raw selectors to click a menu item.",
+        "Prefer `page.menu.clickMenuItem(path)` (e.g. `'File>New>Terminal'`) over raw selectors to click a menu item.",
       preferMenuHelper:
         'Prefer the Galata `page.menu` helper (e.g. `page.menu.open(path)`, `page.menu.isOpen(path)`) over raw main menu selectors.'
     },

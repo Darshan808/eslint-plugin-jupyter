@@ -20,19 +20,6 @@ The rule flags Playwright clicks on the `page` fixture — both direct calls (`p
 - an item inside an open menu: the Lumino popup classes (`.lm-Menu`, `.lm-Menu-item`, `.lm-Menu-content`, …), a `role="menu"` container, or a `#jp-mainmenu-<menu>-<submenu>` id together with an item label, reported as `preferClickMenuItem`;
 - any other interaction on menu markup, reported as the generic `preferMenuHelper`.
 
-The rule is deliberately conservative — it prefers missing a violation to reporting a false one:
-
-- Only `click` is considered. Every other gesture (`hover`, `dblclick`, `tap`, `press`, `fill`, `check`, `selectOption`, …) and every wait (`waitForSelector`, `locator(...).waitFor()`) is ignored: `page.menu` has no equivalent for them, so there would be nothing useful to suggest, and a menu-ish selector combined with one of them usually means the test is doing something else.
-- A top-level menu label only counts when it is the whole selector (`page.click('text=File')`) or when the selector also carries menu markup (`page.click('li[role="menuitem"]:has-text("File")')`). A label under any other scope refers to different UI — `page.dblclick('#filebrowser >> text="File"')` clicks a _file_ named `File`, and `page.click('button:has-text("Run")')` clicks a button — so neither is flagged.
-- A label that merely contains a top-level menu name, such as `text=New File` or `text=Close Tab`, is never treated as a menu bar item.
-- Right-clicks (`{ button: 'right' }`) are skipped, since they open the context menu rather than the main menu.
-- Matching is case-sensitive, so lower-case `-menu` widgets such as `.jp-PauseOnExceptions-menu` are not mistaken for Lumino menu markup.
-
-Known limitations:
-
-- Locators stored in variables (`const item = page.locator(...); await item.click();`) are not tracked.
-- A popup opened by a right-click uses the same markup as a main menu popup, so clicks on context menu items are flagged too. The `page.menu` helper family covers those as well (`page.menu.openContextMenu(selector)`, `page.menu.getMenuItemInMenu(...)`).
-
 ## Incorrect
 
 ```ts
