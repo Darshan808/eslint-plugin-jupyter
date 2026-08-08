@@ -45,6 +45,20 @@ Only the arguments that carry message text are checked. For
 after it are exactly where dynamic values belong. The other methods follow the
 same idea.
 
+### Known limitation
+
+The rule cannot tell that a value already reached the catalog by another route.
+Settings schema text, for example, is extracted from the JSON itself, so
+`trans._p('schema', schema.description)` is translated even though the argument
+is not a literal — but it is still reported.
+
+There is no option for this; silence the individual call site instead:
+
+```ts
+// eslint-disable-next-line jupyter/no-dynamic-translation
+trans._p('schema', schema.description);
+```
+
 ## Incorrect
 
 ```ts
