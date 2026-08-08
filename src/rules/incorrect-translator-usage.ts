@@ -9,25 +9,9 @@ import {
   BUNDLE_METHODS,
   BUNDLE_PROPERTY_NAMES,
   BUNDLE_VARIABLE_NAME,
-  isRecognizedBundleMember
+  isRecognizedBundleMember,
+  unwrapExpression
 } from '../utils/translation';
-
-/**
- * Skips TypeScript-only and optional-chaining wrapper nodes so the
- * underlying expression can be inspected.
- */
-function unwrapExpression(node: TSESTree.Node): TSESTree.Node {
-  switch (node.type) {
-    case 'ChainExpression':
-    case 'TSNonNullExpression':
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSTypeAssertion':
-      return unwrapExpression(node.expression);
-    default:
-      return node;
-  }
-}
 
 /**
  * Returns the object on which `.load(...)` is called when the node is a call

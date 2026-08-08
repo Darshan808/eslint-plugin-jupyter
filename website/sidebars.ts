@@ -22,6 +22,7 @@ const sidebars: SidebarsConfig = {
         'rules/command-described-by',
         'rules/galata-prefer-filebrowser-helper',
         'rules/incorrect-translator-usage',
+        'rules/no-dynamic-translation',
         'rules/no-pageconfig-base-url',
         'rules/no-schema-enum',
         'rules/no-translation-concatenation',

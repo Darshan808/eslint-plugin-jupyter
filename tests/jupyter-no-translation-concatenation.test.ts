@@ -31,10 +31,9 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
     { code: `this.props.trans.__("a" + "b")` },
     { code: `props.trans.__("a" + "b")` },
 
-    // A template literal without interpolation is as static as a quoted string
-    { code: 'trans.__(`Delete this file`)' },
+    // Template literals without interpolation are as static as quoted strings
+    { code: 'trans.__(`a` + `b`)' },
     { code: 'trans.__(`a` + "b")' },
-    { code: `trans.__("Delete" as const)` },
 
     // Other bundle methods, all-static message arguments
     { code: `trans._n('%1 file', '%1 files', n)` },
@@ -45,17 +44,22 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
     { code: `trans.pgettext('menu', 'Open')` },
     { code: `trans.npgettext('menu', '%1 file', '%1 files', n)` },
     // The domain selects a catalog, it is not extracted message text
-    { code: `trans.dcnpgettext(domain, 'menu', '%1 file', '%1 files', n)` },
+    { code: `trans.dcnpgettext(domain + suffix, 'menu', 'a', 'b', n)` },
 
-    // Dynamic values outside the extracted argument slots are fine
-    { code: 'trans.__("Total %1", `${a}${b}`)' },
-    { code: 'trans._n("%1 file", "%1 files", `${n}`)' },
-    { code: `trans.__('Delete %1', 'a' + b)` },
-    { code: `trans.__('Delete %1', ...args)` },
+    // Concatenation outside the extracted argument slots is fine
+    { code: `trans._n('%1 file', '%1 files', a + b)` },
+    { code: `trans._p('menu', 'Open', a + b)` },
 
     // Not a translation bundle
-    { code: 'logger.__(`Delete ${fileName}`)' },
-    { code: 'other.trans.__(`Delete ${fileName}`)' }
+    { code: `logger.__("Delete " + fileName)` },
+    { code: `other.trans.__("Delete " + fileName)` },
+
+    // Not a concatenation at all — no-dynamic-translation reports these
+    { code: 'trans.__(`Delete ${fileName}`)' },
+    { code: `trans.__(message)` },
+    // The `+` is not what reaches the message slot; the call result is
+    { code: `trans.__(("Delete " + fileName).trim())` },
+    { code: `trans.__(items.map(s => "p" + s).join(""))` }
   ],
 
   invalid: [
@@ -72,129 +76,55 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
       errors: [{ messageId: 'noConcatenation' }]
     },
     {
-      code: `trans.__(("Delete " + fileName).trim())`,
-      errors: [{ messageId: 'noDynamicMessage' }]
+      code: `this.props.trans.__("Hello " + name)`,
+      errors: [{ messageId: 'noConcatenation' }]
     },
-
-    // Template literal interpolation — jupyter/notebook#8013
+    // A TypeScript wrapper does not change what reaches the message slot
     {
-      code: 'trans.__(`Delete ${fileName}`)',
-      errors: [{ messageId: 'noInterpolation' }]
+      code: `trans.__(("Delete " + fileName) as string)`,
+      errors: [{ messageId: 'noConcatenation' }]
     },
+    // A template literal is static only with nothing interpolated into it
     {
-      code: 'this.trans.__(`Hello ${name}!`)',
-      errors: [{ messageId: 'noInterpolation' }]
-    },
-    {
-      code: 'this._trans.__(`${count} items`)',
-      errors: [{ messageId: 'noInterpolation' }]
-    },
-    {
-      code: 'props.trans.__(`Kernel ${status}`)',
-      errors: [{ messageId: 'noInterpolation' }]
-    },
-
-    // A message reaching the call through a variable is never extracted
-    {
-      code:
-        'let text = `Kernel ${Text.titleCase(status)}`;\n' +
-        'widget.node.textContent = trans.__(text);',
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `const MESSAGE = 'Delete'; trans.__(MESSAGE);`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `const text = 'Kernel ' + status; trans.__(text);`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `import { MESSAGE } from './messages'; trans.__(MESSAGE);`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `function t(key: string) { return trans.__(key); }`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `items.map(s => trans.__(s))`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-
-    // Other expressions the extractor cannot read
-    {
-      code: `trans.__(labels[i])`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `trans.__(err.message)`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `trans.__(format(x))`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `trans.__(cond ? 'Yes' : 'No')`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `trans.__(['Delete', fileName].join(' '))`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    // A spread lands no readable text in the message slot either
-    {
-      code: `trans.__(...args)`,
-      errors: [{ messageId: 'noDynamicMessage' }]
-    },
-    {
-      code: `trans._n('%1 file', ...rest)`,
-      errors: [{ messageId: 'noDynamicMessage' }]
+      code: 'trans.__(`Delete ` + `${fileName}`)',
+      errors: [{ messageId: 'noConcatenation' }]
     },
 
     // Non-`__` bundle methods, at their own extracted argument positions
     {
-      code: 'trans.gettext(`Hi ${x}`)',
-      errors: [{ messageId: 'noInterpolation' }]
+      code: `trans.gettext("Hi " + x)`,
+      errors: [{ messageId: 'noConcatenation' }]
     },
     {
-      code: 'trans._n("%1 file", `${n} files`, n)',
-      errors: [{ messageId: 'noInterpolation' }]
-    },
-    {
-      code: 'trans._p("menu", `Open ${name}`)',
-      errors: [{ messageId: 'noInterpolation' }]
+      code: `trans._n("%1 file", "%1 " + word, n)`,
+      errors: [{ messageId: 'noConcatenation' }]
     },
     {
       code: `trans._p("menu " + section, "Open")`,
       errors: [{ messageId: 'noConcatenation' }]
     },
     {
-      code: 'trans._np("menu", "%1 file", `${n} files`, n)',
-      errors: [{ messageId: 'noInterpolation' }]
+      code: `trans._np("menu", "%1 file", "%1 " + word, n)`,
+      errors: [{ messageId: 'noConcatenation' }]
     },
     {
-      code: 'trans.dcnpgettext(domain, "menu", `Open ${name}`, "Opens", n)',
-      errors: [{ messageId: 'noInterpolation' }]
+      code: `trans.dcnpgettext(domain, "menu", "Open " + name, "Opens", n)`,
+      errors: [{ messageId: 'noConcatenation' }]
     },
 
     // Each extracted argument is reported independently
     {
-      code: 'trans._n(`${n} file`, `${n} files`, n)',
+      code: `trans._n("%1 " + a, "%1 " + b, n)`,
       errors: [
-        { messageId: 'noInterpolation' },
-        { messageId: 'noInterpolation' }
+        { messageId: 'noConcatenation' },
+        { messageId: 'noConcatenation' }
       ]
     },
 
-    // Outer call is dynamic, inner call interpolates — both are real problems
+    // A nested call reports on its own, not through the outer one
     {
-      code: 'trans.__(format(trans.__(`Delete ${fileName}`)))',
-      errors: [
-        { messageId: 'noDynamicMessage' },
-        { messageId: 'noInterpolation' }
-      ]
+      code: `trans.__(format(trans.__("Delete " + fileName)))`,
+      errors: [{ messageId: 'noConcatenation' }]
     }
   ]
 });

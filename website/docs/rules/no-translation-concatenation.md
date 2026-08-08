@@ -1,35 +1,21 @@
 # `no-translation-concatenation`
 
-Require JupyterLab translation messages to be written as literals at the call
-site.
+Forbid concatenating dynamic values into JupyterLab translation messages.
 
 ## Why
 
 The translation string extractor reads your source statically — it never runs
-it, and it never looks anywhere but the call itself. So whatever message you
-want translated has to be spelled out inside the call:
+it. When a message is built with `+`, only the literal parts are in the source,
+so the extractor has nothing complete to put in the catalog and the string
+never gets translated:
 
 ```ts
-trans.__('Delete ' + fileName); // concatenation
-trans.__(`Delete ${fileName}`); // template interpolation
-trans.__(message); // a variable
+trans.__('Hello ' + userName); // never extracted
 ```
 
-In every case the extractor finds no message to put in the catalog, so the
-string is never translated.
-
-This holds even when the variable obviously holds a plain string:
-
-```ts
-const MESSAGE = 'Delete';
-trans.__(MESSAGE); // still not extracted
-```
-
-The extractor does not follow `MESSAGE` to its definition. It sees an
-identifier where a message should be, and moves on.
-
-Literal concatenation (`'a' + 'b'`) and template literals with no interpolation
-(`` `a` ``) are spelled out in the call, so both are fine.
+Concatenating literals is different. `'a' + 'b'` is only a source-formatting
+choice — the extractor still sees the whole message — so it stays allowed, and
+is a useful way to break a long string across lines.
 
 See [Rules](https://jupyterlab.readthedocs.io/en/stable/extension/internationalization.html#rules).
 
@@ -39,14 +25,10 @@ The rule checks calls to any `TranslationBundle` method on a recognized
 translation bundle — `trans`, `this.trans`, `this._trans`, `props.trans`, or
 `this.props.trans`.
 
-A message argument must be one of:
-
-- a string literal,
-- a template literal with no interpolation, or
-- a `+` concatenation of those.
-
-Anything else is reported: variables, property access, function calls,
-conditionals, spread arguments, and interpolated template literals.
+A message argument is reported when its own top-level form is a `+` expression
+with at least one operand the extractor cannot read. String literals and
+template literals with no interpolation count as readable, so a `+` tree made
+only of those is fine.
 
 Only the arguments that carry message text are checked. For
 `trans.__(msgid, ...args)` that is `msgid` alone — the placeholder arguments
@@ -58,26 +40,19 @@ the context and message, and `dcnpgettext` checks everything except its
 ## Incorrect
 
 ```ts
-trans.__('Delete ' + fileName);
-trans.__(`Delete ${fileName}`);
-trans._n('%1 file', `${n} files`, n);
-
-let text = `Kernel ${Text.titleCase(status)}`;
-widget.node.textContent = trans.__(text);
-
-const MESSAGE = 'Delete';
-trans.__(MESSAGE);
+this.trans.__('Hello ' + userName);
+trans._p('menu ' + section, 'Open');
+trans._n('%1 file', '%1 ' + word, n);
 ```
 
 ## Correct
 
 ```ts
-trans.__('Delete %1', fileName);
+this.trans.__('Hello %1', userName);
+trans._p('menu', 'Open');
 trans._n('%1 file', '%1 files', n);
 
-widget.node.textContent = trans.__('Kernel %1', Text.titleCase(status));
-
-// Spelled out in the call, so still fine:
+// Literal concatenation is still readable, so it stays fine:
 trans.__('Part 1 of long message.\n' + 'Part 2 of long message.\n');
 ```
 

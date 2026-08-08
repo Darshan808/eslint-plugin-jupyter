@@ -44,6 +44,7 @@ function makeProjectConfig(projectName) {
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error',
       'jupyter/no-translation-concatenation': 'error',
+      'jupyter/no-dynamic-translation': 'error',
       'jupyter/token-format': 'error',
       'jupyter/require-soft-assertions-before-snapshots': 'error',
       'jupyter/require-disposable-ownership': 'error',
@@ -128,9 +129,9 @@ function makeTestConfig(projectName) {
       ],
       ignores: [`${projectName}/galata/src/helpers/**`],
       plugins: {
-        'jupyter': resolvedPlugin,
+        jupyter: resolvedPlugin,
         '@typescript-eslint': resolvedTsPlugin,
-        'jest': jestStub,
+        jest: jestStub
       },
       rules: {
         'jupyter/galata-prefer-filebrowser-helper': 'error'

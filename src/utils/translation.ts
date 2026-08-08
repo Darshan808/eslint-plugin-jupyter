@@ -58,6 +58,23 @@ export const STATIC_ARGUMENT_INDICES: Record<string, readonly number[]> = {
 };
 
 /**
+ * Skips TypeScript-only and optional-chaining wrapper nodes so the underlying
+ * expression can be inspected.
+ */
+export function unwrapExpression(node: TSESTree.Node): TSESTree.Node {
+  switch (node.type) {
+    case 'ChainExpression':
+    case 'TSNonNullExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSTypeAssertion':
+      return unwrapExpression(node.expression);
+    default:
+      return node;
+  }
+}
+
+/**
  * Returns true when a member expression names one of the exact targets the
  * string extractor recognizes as a translation bundle:
  * this.trans, this._trans, props.trans, this.props.trans.

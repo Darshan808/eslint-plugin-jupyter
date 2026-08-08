@@ -8,35 +8,17 @@ import { TSESTree } from '@typescript-eslint/types';
 import {
   BUNDLE_METHODS,
   STATIC_ARGUMENT_INDICES,
-  isTransBundle
+  isTransBundle,
+  unwrapExpression
 } from '../utils/translation';
 
-type MessageId = 'noConcatenation' | 'noInterpolation' | 'noDynamicMessage';
-
 /**
- * Skips TypeScript-only and optional-chaining wrapper nodes so the underlying
- * expression can be inspected.
- */
-function unwrapExpression(node: TSESTree.Node): TSESTree.Node {
-  switch (node.type) {
-    case 'ChainExpression':
-    case 'TSNonNullExpression':
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSTypeAssertion':
-      return unwrapExpression(node.expression);
-    default:
-      return node;
-  }
-}
-
-/**
- * Returns true when the message is written out at the call site: a string
- * literal, a template literal with no interpolation, or a `+` tree of those.
+ * Returns true when the expression is text the string extractor can read
+ * straight from the source: a quoted string, a template literal with nothing
+ * interpolated into it, or a `+` tree of those.
  *
- * The string extractor reads the call site and nothing else — it never follows
- * a variable to its definition — so anything else leaves it with no message to
- * extract, however static the value may be at runtime.
+ * Concatenating literals is only ever a source-formatting choice — the
+ * extractor still sees the whole message — so it stays allowed.
  */
 function isStaticString(node: TSESTree.Node): boolean {
   const expression = unwrapExpression(node);
@@ -53,17 +35,23 @@ function isStaticString(node: TSESTree.Node): boolean {
 }
 
 /**
- * Picks the message that best explains why an argument is not extractable.
+ * Returns the message argument's `+` expression when it concatenates something
+ * the extractor cannot read, or null otherwise.
+ *
+ * Only the argument's own top-level form is inspected. A `+` buried inside a
+ * larger expression — `('Delete ' + name).trim()`, `xs.map(x => 'p' + x)` —
+ * is not what reaches the message slot, so reporting it here would point at
+ * the wrong node and duplicate what `no-dynamic-translation` already says
+ * about the argument as a whole.
  */
-function getMessageId(node: TSESTree.Node): MessageId {
+function getDynamicConcatenation(
+  node: TSESTree.Node
+): TSESTree.BinaryExpression | null {
   const expression = unwrapExpression(node);
-  if (expression.type === 'BinaryExpression' && expression.operator === '+') {
-    return 'noConcatenation';
+  if (expression.type !== 'BinaryExpression' || expression.operator !== '+') {
+    return null;
   }
-  if (expression.type === 'TemplateLiteral') {
-    return 'noInterpolation';
-  }
-  return 'noDynamicMessage';
+  return isStaticString(expression) ? null : expression;
 }
 
 const noTranslationConcatenation = createRule({
@@ -72,16 +60,12 @@ const noTranslationConcatenation = createRule({
     type: 'problem',
     docs: {
       description:
-        'Require translation messages to be written as literals at the call site',
+        'Forbid concatenating dynamic values into translation messages',
       url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/no-translation-concatenation/'
     },
     messages: {
       noConcatenation:
-        'Do not concatenate values into translation strings. Use a placeholder instead, e.g. trans.__("Hello %1", name).',
-      noInterpolation:
-        'Do not interpolate values into translation strings. Use a placeholder instead, e.g. trans.__("Delete %1", fileName).',
-      noDynamicMessage:
-        'Write the translation string as a literal in the call itself. e.g. trans.__("Kernel %1", status).'
+        'Do not concatenate values into translation strings; the extractor only reads the literal parts. Use a placeholder instead, e.g. trans.__("Hello %1", name).'
     },
     schema: []
   },
@@ -110,10 +94,11 @@ const noTranslationConcatenation = createRule({
           if (!argument) {
             continue;
           }
-          if (!isStaticString(argument)) {
+          const concatenation = getDynamicConcatenation(argument);
+          if (concatenation) {
             context.report({
-              node: argument,
-              messageId: getMessageId(argument)
+              node: concatenation,
+              messageId: 'noConcatenation'
             });
           }
         }
