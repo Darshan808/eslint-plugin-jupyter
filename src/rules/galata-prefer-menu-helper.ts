@@ -14,11 +14,16 @@ type Options = [];
 
 const TOP_LEVEL_MENU_LABELS = 'File|Edit|View|Run|Kernel|Tabs|Settings|Help';
 
-// The whole text value of a match is exactly a top-level menu label:
-// `text=File`, `… >> text=File`, `:has-text("File")`. Anchoring on the label
-// means names that merely start with one (`text=New File`, `text=Close Tab`)
-// are not mistaken for a menu bar item.
-const MENU_BAR_LABEL_PATTERN = new RegExp(
+// The entire selector is a bare text query for a top-level menu label:
+// `text=File`, `text="Settings"`.
+const BARE_MENU_BAR_LABEL_PATTERN = new RegExp(
+  `^text=["']?(?:${TOP_LEVEL_MENU_LABELS})["']?$`
+);
+
+// A top-level menu label inside a larger selector. Only trusted when the same
+// selector also carries menu markup (see MENU_MARKUP_PATTERN), e.g.
+// `li[role="menuitem"]:has-text("File")`.
+const SCOPED_MENU_BAR_LABEL_PATTERN = new RegExp(
   `(?:^|>>\\s*)text=["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\s*(?:$|>>)` +
     `|has-text\\(["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\)`
 );
@@ -39,14 +44,14 @@ const MENU_MARKUP_PATTERN = /role\s*=\s*["']menuitem["']|lm-MenuBar\b/;
 
 const TEXT_SELECTOR_PATTERN = /text=|has-text\(/;
 
-// Menus are activated by pointer gestures and keyboard, not by form-control
-// interactions. `hover` matters because Lumino switches open submenus on hover.
+// Menu items are activated with a single click, and submenus are opened by
+// hovering an item (Lumino switches the open submenu on hover). Every other
+// gesture — `dblclick`, `tap`, `press`, `fill`, `check`, `selectOption`, … — is
+// left alone: nothing drives a Lumino menu that way, so a menu-ish selector
+// combined with one of them means the test is doing something else.
 const MENU_INTERACTION_METHODS: ReadonlySet<string> = new Set([
   'click',
-  'dblclick',
-  'hover',
-  'tap',
-  'press'
+  'hover'
 ]);
 
 const galataPreferMenuHelper = createRule<Options, MessageIds>({
@@ -90,11 +95,16 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
           return;
         }
 
-        const hasTopLevelMarker =
-          MENU_BAR_LABEL_PATTERN.test(selectorText) ||
-          MENU_BAR_ID_PATTERN.test(selectorText);
         const hasPopupContainer = POPUP_CONTAINER_PATTERN.test(selectorText);
         const hasMenuMarkup = MENU_MARKUP_PATTERN.test(selectorText);
+
+        // A top-level label is only trusted unscoped (`text=File` and nothing
+        // else) or next to menu markup (`li[role="menuitem"]:has-text("File")`).
+        // Any other scope means the label is some other piece of UI text.
+        const hasTopLevelMarker =
+          MENU_BAR_ID_PATTERN.test(selectorText) ||
+          BARE_MENU_BAR_LABEL_PATTERN.test(selectorText) ||
+          (hasMenuMarkup && SCOPED_MENU_BAR_LABEL_PATTERN.test(selectorText));
 
         if (!hasTopLevelMarker && !hasPopupContainer && !hasMenuMarkup) {
           return;

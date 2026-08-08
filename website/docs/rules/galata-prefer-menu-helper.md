@@ -16,13 +16,17 @@ Galata UI tests often walk the main menu with raw Playwright selectors such as `
 
 The rule flags Playwright interaction calls on the `page` fixture — both direct calls (`page.click(selector)`, `page.hover(selector)`, …) and locator chains (`page.locator(...).getByText(...).click()`, including `.first()`/`.last()`/`.nth()` steps) — when the selector or text contains a known menu marker:
 
-- a menu bar item: an exact top-level menu label (`File`, `Edit`, `View`, `Run`, `Kernel`, `Tabs`, `Settings`, `Help`) or a single-segment `#jp-mainmenu-*` id, reported as `preferMenuOpen`;
+- a menu bar item: a single-segment `#jp-mainmenu-*` id, or an exact top-level menu label (`File`, `Edit`, `View`, `Run`, `Kernel`, `Tabs`, `Settings`, `Help`), reported as `preferMenuOpen`;
 - an item inside an open menu: the Lumino popup classes (`.lm-Menu`, `.lm-Menu-item`, `.lm-Menu-content`, …), a `role="menu"` container, or a `#jp-mainmenu-<menu>-<submenu>` id together with an item label, reported as `preferClickMenuItem`;
 - any other interaction on menu markup, reported as the generic `preferMenuHelper`.
 
-Only pointer and keyboard gestures are considered (`click`, `dblclick`, `hover`, `tap`, `press`) — `hover` matters because Lumino switches the open submenu on hover. Form-control interactions (`fill`, `check`, `selectOption`, …) and waits (`waitForSelector`, `locator(...).waitFor()`) are not flagged. A label that merely begins with a top-level menu name, such as `text=New File`, is not treated as a menu bar item.
+The rule is deliberately conservative — it prefers missing a violation to reporting a false one:
 
-Right-clicks (`{ button: 'right' }`) are skipped, since they open the context menu rather than the main menu.
+- Only `click` and `hover` are considered. `hover` matters because Lumino switches the open submenu on hover. Every other gesture (`dblclick`, `tap`, `press`, `fill`, `check`, `selectOption`, …) and every wait (`waitForSelector`, `locator(...).waitFor()`) is ignored: nothing drives a Lumino menu that way, so a menu-ish selector combined with one of them means the test is doing something else.
+- A top-level menu label only counts when it is the whole selector (`page.click('text=File')`) or when the selector also carries menu markup (`page.click('li[role="menuitem"]:has-text("File")')`). A label under any other scope refers to different UI — `page.dblclick('#filebrowser >> text="File"')` clicks a _file_ named `File`, and `page.click('button:has-text("Run")')` clicks a button — so neither is flagged.
+- A label that merely contains a top-level menu name, such as `text=New File` or `text=Close Tab`, is never treated as a menu bar item.
+- Right-clicks (`{ button: 'right' }`) are skipped, since they open the context menu rather than the main menu.
+- Matching is case-sensitive, so lower-case `-menu` widgets such as `.jp-PauseOnExceptions-menu` are not mistaken for Lumino menu markup.
 
 Known limitations:
 
