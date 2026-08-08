@@ -51,6 +51,7 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
     { code: 'trans.__("Total %1", `${a}${b}`)' },
     { code: 'trans._n("%1 file", "%1 files", `${n}`)' },
     { code: `trans.__('Delete %1', 'a' + b)` },
+    { code: `trans.__('Delete %1', ...args)` },
 
     // Not a translation bundle
     { code: 'logger.__(`Delete ${fileName}`)' },
@@ -140,6 +141,15 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
     },
     {
       code: `trans.__(['Delete', fileName].join(' '))`,
+      errors: [{ messageId: 'noDynamicMessage' }]
+    },
+    // A spread lands no readable text in the message slot either
+    {
+      code: `trans.__(...args)`,
+      errors: [{ messageId: 'noDynamicMessage' }]
+    },
+    {
+      code: `trans._n('%1 file', ...rest)`,
       errors: [{ messageId: 'noDynamicMessage' }]
     },
 

@@ -46,7 +46,7 @@ A message argument must be one of:
 - a `+` concatenation of those.
 
 Anything else is reported: variables, property access, function calls,
-conditionals, and interpolated template literals.
+conditionals, spread arguments, and interpolated template literals.
 
 Only the arguments that carry message text are checked. For
 `trans.__(msgid, ...args)` that is `msgid` alone — the placeholder arguments

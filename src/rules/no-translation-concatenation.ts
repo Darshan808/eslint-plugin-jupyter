@@ -77,7 +77,7 @@ const noTranslationConcatenation = createRule({
     },
     messages: {
       noConcatenation:
-        'Do not use string concatenation inside translation wrappers. Use a placeholder instead, e.g. trans.__("Hello %1", name).',
+        'Do not concatenate values into translation strings. Use a placeholder instead, e.g. trans.__("Hello %1", name).',
       noInterpolation:
         'Do not interpolate values into translation strings. Use a placeholder instead, e.g. trans.__("Delete %1", fileName).',
       noDynamicMessage:
@@ -107,7 +107,7 @@ const noTranslationConcatenation = createRule({
 
         for (const index of STATIC_ARGUMENT_INDICES[method]) {
           const argument = node.arguments[index];
-          if (!argument || argument.type === 'SpreadElement') {
+          if (!argument) {
             continue;
           }
           if (!isStaticString(argument)) {
