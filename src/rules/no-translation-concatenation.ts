@@ -79,9 +79,9 @@ const noTranslationConcatenation = createRule({
       noConcatenation:
         'Do not use string concatenation inside translation wrappers. Use a placeholder instead, e.g. trans.__("Hello %1", name).',
       noInterpolation:
-        'Do not interpolate values into translation strings; the extractor only reads the literal text around ${}. Use a placeholder instead, e.g. trans.__("Delete %1", fileName).',
+        'Do not interpolate values into translation strings. Use a placeholder instead, e.g. trans.__("Delete %1", fileName).',
       noDynamicMessage:
-        'Write the translation string as a literal in the call itself. The extractor reads this call site only and does not follow variables or expressions, e.g. trans.__("Kernel %1", status).'
+        'Write the translation string as a literal in the call itself. e.g. trans.__("Kernel %1", status).'
     },
     schema: []
   },

@@ -93,8 +93,7 @@ ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
       errors: [{ messageId: 'noInterpolation' }]
     },
 
-    // A message reaching the call through a variable is never extracted, no
-    // matter what the variable holds — the extractor reads the call site only.
+    // A message reaching the call through a variable is never extracted
     {
       code:
         'let text = `Kernel ${Text.titleCase(status)}`;\n' +
