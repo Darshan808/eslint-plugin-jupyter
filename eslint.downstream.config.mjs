@@ -45,6 +45,7 @@ function makeProjectConfig(projectName) {
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error',
       'jupyter/no-translation-concatenation': 'error',
+      'jupyter/no-dynamic-translation': 'error',
       'jupyter/token-format': 'error',
       'jupyter/require-soft-assertions-before-snapshots': 'error',
       'jupyter/require-disposable-ownership': 'error',

@@ -7,6 +7,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 - [command-described-by](./command-described-by)
 - [galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)
 - [incorrect-translator-usage](./incorrect-translator-usage)
+- [no-dynamic-translation](./no-dynamic-translation)
 - [no-schema-enum](./no-schema-enum)
 - [no-translation-concatenation](./no-translation-concatenation)
 - [no-pageconfig-base-url](./no-pageconfig-base-url)
@@ -31,6 +32,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/no-untranslated-string](./no-untranslated-string)                                     | `warn`   |
 | [jupyter/plugin-description](./plugin-description)                                             | `warn`   |
 | [jupyter/no-translation-concatenation](./no-translation-concatenation)                         | `error`  |
+| [jupyter/no-dynamic-translation](./no-dynamic-translation)                                     | `warn`   |
 | [jupyter/token-format](./token-format)                                                         | `error`  |
 | [jupyter/require-disposable-ownership](./require-disposable-ownership)                         | `warn`   |
 | [jupyter/require-disposable-transfer](./require-disposable-transfer)                           | `warn`   |
