@@ -19,6 +19,11 @@ const ruleTester = new RuleTester({
 ruleTester.run('no-translation-concatenation', noTranslationConcatenation, {
   valid: [
     { code: `trans.__("Delete %1", fileName)` },
+    { code: `this.trans.__("Hello")` },
+    { code: `this._trans.__("Hello %1", x)` },
+    { code: `this.props.trans.__("Hello")` },
+    { code: `props.trans.__("Hello %1", x)` },
+    { code: `trans.__('Total %1', a + b)` },
     // Literal concatenation stays readable, so it is a fine way to break up a
     // long message
     {
