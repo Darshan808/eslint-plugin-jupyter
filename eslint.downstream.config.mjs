@@ -48,6 +48,9 @@ function makeProjectConfig(projectName) {
       'jupyter/no-dynamic-translation': 'error',
       'jupyter/token-format': 'error',
       'jupyter/require-soft-assertions-before-snapshots': 'error',
+      'jupyter/require-signal-cleanup': 'error',
+      'jupyter/require-signal-this-arg': 'error',
+      'jupyter/prefer-signal-this-arg': 'error',
       'jupyter/require-disposable-ownership': 'error',
       'jupyter/require-disposable-transfer': 'error',
       'jupyter/incorrect-translator-usage': 'error'

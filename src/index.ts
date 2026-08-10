@@ -14,6 +14,9 @@ import noUntranslatedString from './rules/no-untranslated-string';
 import noSchemaEnum from './rules/no-schema-enum';
 import requireSoftAssertionsBeforeSnapshots from './rules/require-soft-assertions-before-snapshots';
 import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
+import requireSignalCleanup from './rules/require-signal-cleanup';
+import requireSignalThisArg from './rules/require-signal-this-arg';
+import preferSignalThisArg from './rules/prefer-signal-this-arg';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
 import requireDisposableOwnership from './rules/require-disposable-ownership';
 import requireDisposableTransfer from './rules/require-disposable-transfer';
@@ -32,6 +35,9 @@ const plugin = {
     'require-soft-assertions-before-snapshots':
       requireSoftAssertionsBeforeSnapshots,
     'no-pageconfig-base-url': noPageconfigBaseUrl,
+    'require-signal-cleanup': requireSignalCleanup,
+    'require-signal-this-arg': requireSignalThisArg,
+    'prefer-signal-this-arg': preferSignalThisArg,
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
     'require-disposable-ownership': requireDisposableOwnership,
     'require-disposable-transfer': requireDisposableTransfer,
@@ -50,6 +56,9 @@ const plugin = {
           'jupyter/token-format': 'error',
           'jupyter/no-untranslated-string': 'warn',
           'jupyter/no-pageconfig-base-url': 'warn',
+          'jupyter/require-signal-cleanup': 'warn',
+          'jupyter/require-signal-this-arg': 'error',
+          'jupyter/prefer-signal-this-arg': 'warn',
           'jupyter/require-disposable-ownership': 'warn',
           'jupyter/require-disposable-transfer': 'warn',
           'jupyter/incorrect-translator-usage': 'warn'
@@ -81,6 +90,9 @@ const plugin = {
         'jupyter/no-untranslated-string': 'warn',
         'jupyter/no-schema-enum': 'warn',
         'jupyter/no-pageconfig-base-url': 'warn',
+        'jupyter/require-signal-cleanup': 'warn',
+        'jupyter/require-signal-this-arg': 'error',
+        'jupyter/prefer-signal-this-arg': 'warn',
         'jupyter/require-disposable-ownership': 'warn',
         'jupyter/require-disposable-transfer': 'warn',
         'jupyter/incorrect-translator-usage': 'warn'
