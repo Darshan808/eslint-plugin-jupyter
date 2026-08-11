@@ -86,13 +86,29 @@ ruleTester.run(
       },
       {
         code: `await page.dblclick('text=Close >> button.jp-Button');`
+      },
+      // The file selector dialog reuses the directory listing markup, but the
+      // `page.filebrowser` helpers only drive the sidebar widget
+      {
+        code: `await page.locator('.jp-Dialog .jp-DirListing-itemName').first().dblclick();`
+      },
+      {
+        code: `await page.locator('.jp-Dialog').locator('.jp-DirListing-item').dblclick();`
+      },
+      {
+        code: `await page.dblclick('.jp-Dialog >> text=Data.ipynb');`
       }
     ],
 
     invalid: [
+      // A bare name is a directory, which `open()` cannot handle
       {
         code: `await page.dblclick('[aria-label="File Browser Section"] >> text=notebooks');`,
-        errors: [{ messageId: 'preferFilebrowserHelper' }]
+        errors: [{ messageId: 'preferOpenDirectory' }]
+      },
+      {
+        code: `await page.dblclick('.jp-DirListing-item:has-text("mydir")');`,
+        errors: [{ messageId: 'preferOpenDirectory' }]
       },
       {
         code: `await page.dblclick('text=Data.ipynb');`,
@@ -102,12 +118,17 @@ ruleTester.run(
         code: `await page.click('.jp-BreadCrumbs-home svg');`,
         errors: [{ messageId: 'preferOpenHomeDirectory' }]
       },
-      // Template literal: static parts still match
+      // Template literal: static parts still match, but an interpolated name
+      // could be either a file or a directory
       {
         code: `await page.dblclick(\`.jp-DirListing-item span:has-text("\${folderName}")\`);`,
         errors: [{ messageId: 'preferFilebrowserHelper' }]
       },
-      // Locator chain
+      {
+        code: `await page.dblclick(\`#filebrowser >> text=\${tmpPath}\`);`,
+        errors: [{ messageId: 'preferFilebrowserHelper' }]
+      },
+      // Locator chain; no name is matched, so the target is unknown
       {
         code: `await page.locator('.jp-DirListing-item').dblclick();`,
         errors: [{ messageId: 'preferFilebrowserHelper' }]
@@ -115,7 +136,7 @@ ruleTester.run(
       // Chained locators: selector parts are combined across the chain
       {
         code: `await page.locator('[aria-label="File Browser Section"]').getByText('notebooks').dblclick();`,
-        errors: [{ messageId: 'preferFilebrowserHelper' }]
+        errors: [{ messageId: 'preferOpenDirectory' }]
       },
       // Dynamic chain segments are ignored, static ones still match
       {
@@ -152,6 +173,23 @@ ruleTester.run(
       {
         code: `await page.dblclick('.jp-Content span:has-text("lorenz.py")');`,
         errors: [{ messageId: 'preferFilebrowserHelper' }]
+      },
+      // A test driving JupyterLab from a bare Playwright `test` has no
+      // helpers on its `page`, and is reported precisely so that the helpers
+      // (and the Galata fixture that carries them) get surfaced
+      {
+        code: `
+import { expect, test } from '@playwright/test';
+test('benchmark', async ({ page }) => {
+  await page.click('#filebrowser >> .jp-BreadCrumbs-home');
+  await page.dblclick('[aria-label="File Browser Section"] >> text=notebooks');
+  await page.dblclick('text=Data.ipynb');
+});`,
+        errors: [
+          { messageId: 'preferOpenHomeDirectory' },
+          { messageId: 'preferOpenDirectory' },
+          { messageId: 'preferNotebookOpenByPath' }
+        ]
       }
     ]
   }
