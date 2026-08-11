@@ -36,8 +36,10 @@ It accepts common ownership patterns:
 - Passing it to a configured ownership helper function or default ownership
   sink such as `add`, `addCell`, `addItem`, `addMenu`, `addWidget`,
   `insertWidget`, or `registerStatusItem`
-- Passing it through a known owned constructor options object, such as
-  `new MainAreaWidget({ content })` or `new Dialog({ body })`
+- Passing it to a call or constructor that declares the corresponding parameter
+  as a disposable type, including as a property of an options object. This is
+  decided from the callee's declared types, so it works for your own APIs and
+  needs no table of known classes.
 - Disposing it unconditionally inside a callback, so the
   `requestAnimationFrame(() => splash.dispose())` and
   `void load().then(() => splash.dispose())` idioms are accepted. Disposal that
@@ -108,6 +110,15 @@ entirely.
 Function or method names whose disposable return value should be treated as
 borrowed, or as owned by a registration or session API. Names given here are
 **added** to the default list described above.
+
+Note that this option has no effect under the default settings: only
+factory-named calls (`create*`, `build*`, `make*`, `new*`) have their return
+value checked, and no name in the default list matches that pattern. The list
+becomes load-bearing only once `checkAllDisposableReturns` is enabled, where on
+JupyterLab it takes the finding count down by an order of magnitude.
+Whether a returned disposable is borrowed or freshly created is not something
+the declared types express, which is why this remains a name list while ownership
+does not.
 
 ### `extendDefaultIgnoredReturnFunctionNames`
 
