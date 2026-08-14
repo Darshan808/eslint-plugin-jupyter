@@ -233,6 +233,109 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
   ]
 });
 
+// checkAllLabels option tests
+ruleTester.run(
+  'no-untranslated-string (checkAllLabels)',
+  noUntranslatedString,
+  {
+    valid: [
+      // Arbitrary `label` is not flagged unless the option is enabled
+      {
+        code: `const field = new MyField({ label: 'My field' });`
+      },
+      // Translated label
+      {
+        code: `const field = new MyField({ label: trans.__('My field') });`,
+        options: [{ checkAllLabels: true }]
+      },
+      // Non-literal label
+      {
+        code: `const field = new MyField({ label: someVar });`,
+        options: [{ checkAllLabels: true }]
+      },
+      // Empty label
+      {
+        code: `const field = new MyField({ label: '' });`,
+        options: [{ checkAllLabels: true }]
+      },
+      // Shorthand is a reference, not a literal
+      {
+        code: `const opts = { label };`,
+        options: [{ checkAllLabels: true }]
+      },
+      // Computed keys are not tracked
+      {
+        code: `const opts = { [label]: 'My field' };`,
+        options: [{ checkAllLabels: true }]
+      }
+    ],
+    invalid: [
+      // A `label` on an arbitrary constructor
+      {
+        code: `
+          const field = new MyField({
+            factory,
+            label: 'My field',
+            translator: translator
+          });
+        `,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedLabelProp' }]
+      },
+      // Plain object literal
+      {
+        code: `const opts = { label: 'My field' };`,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedLabelProp' }]
+      },
+      // Quoted key
+      {
+        code: `const opts = { 'label': 'My field' };`,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedLabelProp' }]
+      },
+      // Template literal and concise arrow function
+      {
+        code: `const opts = { label: \`My field\` };`,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedLabelProp' }]
+      },
+      {
+        code: `const opts = { label: () => 'My field' };`,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedLabelProp' }]
+      },
+      // Nested labels are all reported
+      {
+        code: `const opts = { label: 'Outer', child: { label: 'Inner' } };`,
+        options: [{ checkAllLabels: true }],
+        errors: [
+          { messageId: 'untranslatedLabelProp' },
+          { messageId: 'untranslatedLabelProp' }
+        ]
+      },
+      // More specific branches still win, without duplicate reports
+      {
+        code: `
+          commands.addCommand('file-download', {
+            label: 'Download',
+            execute: () => {}
+          });
+        `,
+        options: [{ checkAllLabels: true }],
+        errors: [
+          { messageId: 'untranslatedCommandProp', data: { prop: 'label' } }
+        ]
+      },
+      {
+        code: `Dialog.okButton({ label: 'Build' });`,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedDialogButtonLabel' }]
+      }
+    ]
+  }
+);
+
 // JSX tests require a separate tester with JSX parsing enabled
 const jsxRuleTester = new RuleTester({
   languageOptions: {
@@ -290,6 +393,33 @@ jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
     }
   ]
 });
+
+jsxRuleTester.run(
+  'no-untranslated-string (JSX, checkAllLabels)',
+  noUntranslatedString,
+  {
+    valid: [
+      // Not flagged unless the option is enabled
+      { code: `<MyCheckbox label="Enable feature" />` },
+      {
+        code: `<MyCheckbox label={trans.__('Enable feature')} />`,
+        options: [{ checkAllLabels: true }]
+      }
+    ],
+    invalid: [
+      {
+        code: `<MyCheckbox label="Enable feature" />`,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedLabelProp' }]
+      },
+      {
+        code: `<MyCheckbox label={'Enable feature'} />`,
+        options: [{ checkAllLabels: true }],
+        errors: [{ messageId: 'untranslatedLabelProp' }]
+      }
+    ]
+  }
+);
 
 // enforcePunctuation option tests
 jsxRuleTester.run(
