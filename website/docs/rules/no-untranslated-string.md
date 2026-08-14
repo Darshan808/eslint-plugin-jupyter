@@ -92,12 +92,33 @@ const el = <span>{'raw string'}</span>;
 const el = <span>{trans.__('Error message:')}</span>;
 ```
 
+### 8. Any `label` property (opt-in)
+
+With the [`checkAllLabels`](#checkalllabels) option enabled, every `label: 'raw string'` object property and every raw `label` JSX attribute is flagged, no matter which call or component it belongs to.
+
+```tsx
+// Incorrect
+new MyField({ ...options, label: 'My field' });
+const el = <MyCheckbox label="Enable feature" />;
+
+// Correct
+new MyField({ ...options, label: trans.__('My field') });
+const el = <MyCheckbox label={trans.__('Enable feature')} />;
+```
+
 ## Options
 
 ```ts
 {
-  "enforcePunctuation": false
+  "enforcePunctuation": false,
+  "checkAllLabels": false
 }
 ```
 
-Set `enforcePunctuation` option to `true` to enforce translation of punctuation characters such as `,`, `-`, `+`, and other symbols.
+### `enforcePunctuation`
+
+Set to `true` to enforce translation of punctuation characters such as `,`, `-`, `+`, and other symbols.
+
+### `checkAllLabels`
+
+Set to `true` to flag every `label` property whose value is a raw string literal, rather than only the `label` positions the rule knows about.
