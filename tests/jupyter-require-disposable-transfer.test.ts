@@ -1387,7 +1387,7 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
           dispose(): void;
         }
         declare function createDisposable(): IDisposable;
-        declare const items: { add(disposable: IDisposable): void };
+        declare const items: { add(disposable: unknown): void };
 
         const disposable = createDisposable();
         items.add(disposable);
@@ -1447,7 +1447,7 @@ ruleTester.run('require-disposable-transfer', requireDisposableTransfer, {
         }
         declare function createDisposable(): IDisposable;
         class Owner {
-          constructor(disposable: IDisposable) {}
+          constructor(disposable: unknown) {}
         }
 
         new Owner(createDisposable());

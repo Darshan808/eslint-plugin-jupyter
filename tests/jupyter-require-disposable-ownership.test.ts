@@ -109,6 +109,128 @@ nonTypeAwareTester.run(
 ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
   valid: [
     {
+      // A tuple rest parameter after a leading parameter: the first rest
+      // argument maps to tuple element 0, not to element 1.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          readonly isDisposed = false;
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        class Plain {
+          value = 1;
+        }
+        declare const sink: {
+          (a: number, ...rest: [DisposableDelegate, Plain]): void;
+        };
+
+        export function go(): void {
+          sink(1, new DisposableDelegate(() => undefined), new Plain());
+        }
+      `
+    },
+    {
+      // A disposable created inline as a constructor argument: the constructor
+      // declares the parameter as disposable, so it takes ownership.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          readonly isDisposed = false;
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        class Owner {
+          readonly isDisposed = false;
+          constructor(disposable: DisposableDelegate) {}
+          dispose(): void {}
+        }
+
+        export function make(): Owner {
+          return new Owner(new DisposableDelegate(() => undefined));
+        }
+      `
+    },
+    {
+      // The same through an array argument: the element binds to the element
+      // type of the declared parameter.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          readonly isDisposed = false;
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        class Owner {
+          readonly isDisposed = false;
+          constructor(items: DisposableDelegate[]) {}
+          dispose(): void {}
+        }
+
+        export function make(): Owner {
+          return new Owner([new DisposableDelegate(() => undefined)]);
+        }
+      `
+    },
+    {
+      // Mirrors ServiceManagerMock (services/src/testutils.ts): disposables are
+      // properties of an object literal held in a variable that is returned.
+      filename: typeAwareFilename,
+      code: `
+        class Manager {
+          dispose(): void {}
+          readonly isDisposed: boolean = false;
+        }
+
+        export function makeServiceManager(): { contents: Manager } {
+          const thisObject = {
+            contents: new Manager(),
+            sessions: new Manager()
+          };
+          return thisObject;
+        }
+      `
+    },
+    {
+      // Mirrors ContentsManagerMock: the disposable is captured by callbacks
+      // that are wrapped in jest.fn() and hung off the returned object.
+      filename: typeAwareFilename,
+      code: `
+        class Manager {
+          driveName(path: string): string {
+            return path;
+          }
+          dispose(): void {}
+          readonly isDisposed: boolean = false;
+        }
+        declare function wrap<T>(fn: T): T;
+
+        export function makeContentsManager(): { get: (p: string) => string } {
+          const dummy = new Manager();
+          const thisObject = {
+            get: wrap((p: string) => dummy.driveName(p))
+          };
+          return thisObject;
+        }
+      `
+    },
+    {
+      // A spread carries the aggregate onwards.
+      filename: typeAwareFilename,
+      code: `
+        class Manager {
+          dispose(): void {}
+          readonly isDisposed: boolean = false;
+        }
+        declare const disposables: { add(x: unknown): void };
+
+        export function build(): void {
+          const extra = { manager: new Manager() };
+          disposables.add({ ...extra, name: 'x' });
+        }
+      `
+    },
+    {
       // Mirrors JupyterLab's createToolbarFactory (apputils/src/toolbar/factory.ts):
       // `items` is created once, passed to a helper, captured by the returned
       // factory closure and by handlers declared inside it, and never disposed.
@@ -1256,6 +1378,35 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
 
   invalid: [
     {
+      // Owned option names are scoped to the parameter they came from: `payload`
+      // is disposable on the first parameter only, so the second argument's
+      // object must not be credited by it.
+      filename: typeAwareFilename,
+      code: `
+        class DisposableDelegate {
+          readonly isDisposed = false;
+          constructor(callback: () => void) {}
+          dispose(): void {}
+        }
+        class Plain {
+          value = 1;
+        }
+        declare function two(
+          first: { payload: DisposableDelegate },
+          second: { payload: Plain }
+        ): void;
+
+        export function go(): void {
+          const leaked = new DisposableDelegate(() => undefined);
+          const secondBag = { payload: leaked as unknown as Plain };
+          two({ payload: new DisposableDelegate(() => undefined) }, secondBag);
+        }
+      `,
+      errors: [
+        { messageId: 'unmanagedDisposableVariable', data: { name: 'leaked' } }
+      ]
+    },
+    {
       // A closure that captures the disposable but is not returned hands off
       // nothing, so the disposable is still unowned.
       filename: typeAwareFilename,
@@ -1393,7 +1544,7 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
           dispose(): void {}
         }
         class Widget {
-          constructor(options: { disposable: DisposableDelegate }) {}
+          constructor(options: { disposable: unknown }) {}
         }
 
         new Widget({
@@ -1412,7 +1563,7 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
         }
         declare const widget: object;
         declare const values: {
-          set(owner: object, value: DisposableSet): void;
+          set(owner: object, value: unknown): void;
         };
 
         const disposables = new DisposableSet();
@@ -1715,7 +1866,7 @@ ruleTester.run('require-disposable-ownership', requireDisposableOwnership, {
           constructor(callback: () => void) {}
           dispose(): void {}
         }
-        declare const items: { add(disposable: DisposableDelegate): void };
+        declare const items: { add(disposable: unknown): void };
 
         const disposable = new DisposableDelegate(() => {
           cleanup();

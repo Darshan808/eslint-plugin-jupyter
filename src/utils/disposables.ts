@@ -19,32 +19,6 @@ const DISPOSABLE_CONSTRUCTOR_NAMES = [
 
 const DISPOSABLE_SET_NAMES = ['DisposableSet', 'ObservableDisposableSet'];
 
-const OWNED_CONSTRUCTOR_OPTION_NAMES = new Map([
-  ['CodeCell', ['model']],
-  ['CodeEditorWrapper', ['model']],
-  ['CodeViewerWidget', ['model']],
-  ['Collapser', ['widget']],
-  ['DocumentWidget', ['content']],
-  ['FileBrowser', ['model']],
-  ['FileEditorWidget', ['content']],
-  ['Dialog', ['body']],
-  ['Licenses', ['model']],
-  ['MainAreaWidget', ['content']],
-  ['MarkdownDocument', ['content']],
-  ['MarkdownViewer', ['renderer']],
-  ['MimeContent', ['renderer']],
-  ['MimeDocument', ['content']],
-  ['NotebookPanel', ['content']],
-  ['RawCell', ['model']]
-]);
-
-const OWNED_FUNCTION_OPTION_NAMES = new Map([
-  ['createNew', ['sharedModel']],
-  ['createNotebook', ['kernelHistory']],
-  ['open', ['editorWrapper']],
-  ['showPopup', ['body']]
-]);
-
 const FLUENT_DISPOSABLE_METHOD_NAMES = ['initializeState'];
 
 /**
@@ -277,30 +251,6 @@ function isOwnershipFunctionCall(
   return name !== null && ownership.ownershipFunctionNames.has(name);
 }
 
-function getReceiverName(node: TSESTree.Node): string | null {
-  if (node.type === 'Identifier') {
-    return node.name;
-  }
-  if (
-    node.type === 'MemberExpression' &&
-    !node.computed &&
-    node.property.type === 'Identifier'
-  ) {
-    return node.property.name;
-  }
-  return null;
-}
-
-function isLikelyDisposableSet(node: TSESTree.Node): boolean {
-  const name = getReceiverName(node);
-  return name === 'disposables' || name === '_disposables';
-}
-
-function isLikelyDisposableProperty(node: TSESTree.Node): boolean {
-  const name = getReceiverName(node);
-  return name === 'disposablesProperty';
-}
-
 export function isDisposableConstructor(node: TSESTree.NewExpression): boolean {
   const name = getCalleeName(node.callee);
   return name !== null && DISPOSABLE_CONSTRUCTOR_NAMES.includes(name);
@@ -423,17 +373,23 @@ function getIdentifierVariables(
 
   if (node.type === 'ArrayExpression') {
     return node.elements.flatMap(element =>
-      element && element.type !== 'SpreadElement'
-        ? getIdentifierVariables(sourceCode, element, seen)
+      element
+        ? getIdentifierVariables(
+            sourceCode,
+            element.type === 'SpreadElement' ? element.argument : element,
+            seen
+          )
         : []
     );
   }
 
   if (node.type === 'ObjectExpression') {
     return node.properties.flatMap(property =>
-      property.type === 'Property'
-        ? getIdentifierVariables(sourceCode, property.value, seen)
-        : []
+      getIdentifierVariables(
+        sourceCode,
+        property.type === 'Property' ? property.value : property.argument,
+        seen
+      )
     );
   }
 
@@ -922,7 +878,8 @@ function isEscapingUse(node: TSESTree.Node): boolean {
  */
 function isCapturedByReturnedClosure(
   identifier: TSESTree.Node,
-  variable: TSESLint.Scope.Variable
+  variable: TSESLint.Scope.Variable,
+  ownership?: DisposableOwnershipContext
 ): boolean {
   const declaringFunction = getFunctionScope(variable.scope)?.block;
   if (!declaringFunction) {
@@ -931,14 +888,42 @@ function isCapturedByReturnedClosure(
 
   let fn = getEnclosingFunction(identifier);
   while (fn && fn !== declaringFunction) {
-    const expression = getOuterExpression(fn);
+    // The closure may be returned directly, or sit in an object or array that
+    // is returned, possibly via the variable holding it:
+    // `const thisObject = { get: () => dummy.x }; return thisObject;`
+    // A closure handed to a wrapper call escapes if the wrapper's result does:
+    // `jest.fn(() => dummy.x)` as a property of a returned object.
+    let escaped: TSESTree.Node = fn;
+    for (;;) {
+      const outer = getOuterExpression(escaped);
+      const wrapper = outer.parent;
+      if (
+        wrapper?.type === 'CallExpression' &&
+        wrapper.arguments.includes(outer as TSESTree.CallExpressionArgument)
+      ) {
+        escaped = wrapper;
+        continue;
+      }
+      break;
+    }
+
+    const expression = getOuterExpression(
+      getManagedAggregateExpression(escaped) ?? escaped
+    );
     const parent = expression.parent;
 
+    const holder = ownership
+      ? getAggregateHolderVariable(expression, ownership)
+      : null;
+    const returnedViaHolder =
+      holder !== null && isVariableHandedOff(holder, ownership!);
+
     const returnedFromDeclaringFunction =
-      parent?.type === 'ReturnStatement' &&
-      parent.argument === expression &&
-      getEnclosingFunction(parent) === declaringFunction &&
-      isUnconditionalWithinFunction(parent);
+      returnedViaHolder ||
+      (parent?.type === 'ReturnStatement' &&
+        parent.argument === expression &&
+        getEnclosingFunction(parent) === declaringFunction &&
+        isUnconditionalWithinFunction(parent));
 
     // `const make = () => () => items.use()` returns implicitly.
     const isImplicitReturnBody =
@@ -976,9 +961,8 @@ function isReferenceHandedToOwnershipCall(
   while (parent && !isFunctionLike(parent)) {
     if (parent.type === 'CallExpression') {
       return (
-        getOwnershipArguments(parent, ownership).includes(
-          current as TSESTree.CallExpressionArgument
-        ) && isUnconditionalWithinFunction(parent)
+        isOwnershipArgument(parent, current, ownership) &&
+        isUnconditionalWithinFunction(parent)
       );
     }
 
@@ -1027,7 +1011,9 @@ export function isDisposedByNestedFunction(
       continue;
     }
 
-    if (isCapturedByReturnedClosure(reference.identifier, variable)) {
+    if (
+      isCapturedByReturnedClosure(reference.identifier, variable, ownership)
+    ) {
       return true;
     }
 
@@ -1315,13 +1301,6 @@ function isDialogType(
   return hasExpressionTypeOrHeritageName(node, ownership, ['Dialog']);
 }
 
-function isDocumentWidgetType(
-  node: TSESTree.Node,
-  ownership: DisposableOwnershipContext
-): boolean {
-  return hasExpressionTypeOrHeritageName(node, ownership, ['DocumentWidget']);
-}
-
 function isOwnershipAddCall(
   node: TSESTree.CallExpression,
   ownership: DisposableOwnershipContext
@@ -1333,10 +1312,7 @@ function isOwnershipAddCall(
     return false;
   }
 
-  return (
-    isDisposableSetType(node.callee.object, ownership) ||
-    isLikelyDisposableSet(node.callee.object)
-  );
+  return isDisposableSetType(node.callee.object, ownership);
 }
 
 function isOwnershipSetCall(
@@ -1350,10 +1326,7 @@ function isOwnershipSetCall(
     return false;
   }
 
-  return (
-    isAttachedPropertyType(node.callee.object, ownership) ||
-    isLikelyDisposableProperty(node.callee.object)
-  );
+  return isAttachedPropertyType(node.callee.object, ownership);
 }
 
 export function isClassFieldCollectionMutationCall(
@@ -1379,7 +1352,234 @@ function isArrayExtInsertCall(
   );
 }
 
+/**
+ * Ownership is decided by what the callee declares, not by its name: an API
+ * that types a parameter as a disposable is saying it takes something with a
+ * lifecycle, while one typing it `any` is not.
+ *
+ * Signature resolution is the expensive part of this rule, so results are
+ * memoised per call node and per type for the lifetime of the file.
+ */
+const signatureCache = new WeakMap<TSESTree.Node, ts.Signature | null>();
+const disposableTypeCache = new WeakMap<ts.Type, boolean>();
+
+function isDisposableTypeCached(
+  type: ts.Type,
+  checker: ts.TypeChecker
+): boolean {
+  const cached = disposableTypeCache.get(type);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const result = isDisposableType(type, checker);
+  disposableTypeCache.set(type, result);
+  return result;
+}
+
+function getResolvedSignatureCached(
+  call: TSESTree.CallExpression | TSESTree.NewExpression,
+  ownership: DisposableOwnershipContext
+): ts.Signature | null {
+  const cached = signatureCache.get(call);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  let signature: ts.Signature | null = null;
+  const { checker, services } = ownership;
+  if (checker && services) {
+    try {
+      const tsNode = services.esTreeNodeToTSNodeMap.get(
+        call as TSESTree.Node
+      ) as ts.CallLikeExpression | undefined;
+      signature = tsNode
+        ? (checker.getResolvedSignature(tsNode) ?? null)
+        : null;
+    } catch {
+      signature = null;
+    }
+  }
+  signatureCache.set(call, signature);
+  return signature;
+}
+
+function getParameterTypeForArgument(
+  call: TSESTree.CallExpression | TSESTree.NewExpression,
+  argumentIndex: number,
+  ownership: DisposableOwnershipContext
+): ts.Type | null {
+  const { checker } = ownership;
+  if (!checker) {
+    return null;
+  }
+
+  const signature = getResolvedSignatureCached(call, ownership);
+  const parameters = signature?.getParameters() ?? [];
+  if (parameters.length === 0) {
+    return null;
+  }
+
+  try {
+    const index = Math.min(argumentIndex, parameters.length - 1);
+    const parameter = parameters[index];
+    const declaration =
+      parameter.valueDeclaration ?? parameter.declarations?.[0];
+    if (!declaration) {
+      return null;
+    }
+    // An optional parameter or one with a default is typed `T | undefined`,
+    // and `getProperty` on a union only reports properties present in every
+    // constituent. Strip the nullish part so `showDialog(options = {})` still
+    // exposes its option types.
+    const type = checker.getNonNullableType(
+      checker.getTypeOfSymbolAtLocation(parameter, declaration)
+    );
+    // A rest parameter is declared as an array; the argument binds to its
+    // element type. `console.log(x)` has `...data: any[]`, so this matters.
+    if (
+      ts.isParameter(declaration) &&
+      declaration.dotDotDotToken !== undefined
+    ) {
+      // A tuple rest parameter still names each position, as in jest's
+      // `new (...args: [IOptions, IKernelConnection | null]) => T`, so index
+      // into it rather than collapsing to the union of its elements.
+      if (checker.isTupleType(type)) {
+        const elements = checker.getTypeArguments(type as ts.TypeReference);
+        // The rest parameter is always last, so `index` is its position and
+        // the argument lands at that offset into the tuple. Without this,
+        // `(a: number, ...rest: [D, X])` maps the first rest argument to `X`.
+        const offset = argumentIndex - index;
+        return elements[offset] ?? elements[elements.length - 1] ?? type;
+      }
+      return checker.getIndexTypeOfType(type, ts.IndexKind.Number) ?? type;
+    }
+    return type;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether this specific argument is one the callee takes ownership of. Lazy by
+ * design: callers ask about the one argument they care about, so a call whose
+ * arguments are all uninteresting never costs a signature resolution.
+ */
+function isOwnershipArgument(
+  call: TSESTree.CallExpression | TSESTree.NewExpression,
+  argument: TSESTree.Node,
+  ownership: DisposableOwnershipContext
+): boolean {
+  if (call.callee.type === 'Super') {
+    return true;
+  }
+
+  // Checked first: a named sink may own something that is not a direct
+  // argument, such as an element of the array in `DisposableSet.from([...])`.
+  if (
+    call.type === 'CallExpression' &&
+    isNamedOwnershipSink(call, argument, ownership)
+  ) {
+    return true;
+  }
+
+  let index = call.arguments.indexOf(
+    argument as TSESTree.CallExpressionArgument
+  );
+  let elementOfArrayArgument = false;
+
+  if (index < 0) {
+    // `new Owner([disposable])`: the element binds to the element type of the
+    // parameter, not to the parameter itself.
+    const array = argument.parent;
+    if (
+      array?.type === 'ArrayExpression' &&
+      array.elements.includes(argument as TSESTree.Expression)
+    ) {
+      index = call.arguments.indexOf(array as TSESTree.CallExpressionArgument);
+      elementOfArrayArgument = index >= 0;
+    }
+    if (!elementOfArrayArgument) {
+      return false;
+    }
+  }
+
+  let type = getParameterTypeForArgument(call, index, ownership);
+  if (type && elementOfArrayArgument && ownership.checker) {
+    type =
+      ownership.checker.getIndexTypeOfType(type, ts.IndexKind.Number) ?? type;
+  }
+  return (
+    type !== null &&
+    ownership.checker !== null &&
+    isDisposableTypeCached(type, ownership.checker)
+  );
+}
+
+/**
+ * The options-object form: the disposable is a property of an object literal
+ * argument, so the question is whether that property is declared disposable.
+ */
+function isTypedOwnedOptionProperty(
+  call: TSESTree.CallExpression | TSESTree.NewExpression,
+  argumentIndex: number,
+  propertyName: string,
+  ownership: DisposableOwnershipContext
+): boolean {
+  const { checker } = ownership;
+  const type = getParameterTypeForArgument(call, argumentIndex, ownership);
+  if (!type || !checker) {
+    return false;
+  }
+  const property = type.getProperty(propertyName);
+  const declaration =
+    property?.valueDeclaration ?? property?.declarations?.[0] ?? null;
+  if (!property || !declaration) {
+    return false;
+  }
+  try {
+    return isDisposableTypeCached(
+      checker.getTypeOfSymbolAtLocation(property, declaration),
+      checker
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The remaining name-based sinks: an escape hatch for APIs whose types are too
+ * loose for the check above (notably test mocks typed as `any`), configured
+ * through `ownershipFunctionNames`, plus the shapes that types cannot express
+ * (a `super(...)` handoff, `DisposableSet.from([...])` unwrapping an array,
+ * `this._items.push(...)` into a field collection).
+ */
+function isNamedOwnershipSink(
+  node: TSESTree.CallExpression,
+  argument: TSESTree.Node,
+  ownership: DisposableOwnershipContext
+): boolean {
+  return getOwnershipArgumentsByName(node, ownership).includes(
+    argument as TSESTree.CallExpressionArgument
+  );
+}
+
 function getOwnershipArguments(
+  node: TSESTree.CallExpression,
+  ownership: DisposableOwnershipContext
+): TSESTree.CallExpressionArgument[] {
+  // Named sinks can name things that are not direct arguments (array elements
+  // of `DisposableSet.from([...])`), so they are unioned in rather than
+  // filtered out of `node.arguments`.
+  const named = getOwnershipArgumentsByName(node, ownership);
+  const typed = node.arguments.filter(
+    argument =>
+      !named.includes(argument) &&
+      isOwnershipArgument(node, argument, ownership)
+  );
+  return [...named, ...typed];
+}
+
+function getOwnershipArgumentsByName(
   node: TSESTree.CallExpression,
   ownership: DisposableOwnershipContext
 ): TSESTree.CallExpressionArgument[] {
@@ -1458,27 +1658,55 @@ function getObjectExpression(
   return null;
 }
 
+/**
+ * The option names a call or constructor takes ownership of, read from the
+ * declared type of its options parameter rather than from a table of known
+ * JupyterLab classes.
+ */
+/**
+ * The option names a call or constructor takes ownership of at one argument
+ * position, read from the declared type of that parameter rather than from a
+ * table of known JupyterLab classes.
+ *
+ * Scoped per argument: two parameters may both declare a `payload` property
+ * with only one of them disposable, and crediting the wrong one would suppress
+ * a real finding.
+ */
 function getManagedOptionNames(
   node: TSESTree.CallExpression | TSESTree.NewExpression,
+  argumentIndex: number,
   ownership: DisposableOwnershipContext
 ): string[] {
-  if (node.type === 'NewExpression') {
-    const constructorName = getCalleeName(node.callee);
-    const names =
-      constructorName === null
-        ? []
-        : (OWNED_CONSTRUCTOR_OPTION_NAMES.get(constructorName) ?? []);
-    return [
-      ...names,
-      ...(isDialogType(node, ownership) ? ['body'] : []),
-      ...(isDocumentWidgetType(node, ownership) ? ['content'] : [])
-    ];
+  const { checker } = ownership;
+  if (!checker) {
+    return [];
   }
 
-  const calleeName = getCalleeName(node.callee);
-  return calleeName === null
-    ? []
-    : (OWNED_FUNCTION_OPTION_NAMES.get(calleeName) ?? []);
+  const type = getParameterTypeForArgument(node, argumentIndex, ownership);
+  if (!type) {
+    return [];
+  }
+
+  const names: string[] = [];
+  for (const property of type.getProperties()) {
+    const declaration = property.valueDeclaration ?? property.declarations?.[0];
+    if (!declaration) {
+      continue;
+    }
+    try {
+      if (
+        isDisposableTypeCached(
+          checker.getTypeOfSymbolAtLocation(property, declaration),
+          checker
+        )
+      ) {
+        names.push(property.getName());
+      }
+    } catch {
+      // Unresolvable property type: not an ownership claim.
+    }
+  }
+  return names;
 }
 
 function markManagedKnownOptionVariables(
@@ -1486,19 +1714,19 @@ function markManagedKnownOptionVariables(
   node: TSESTree.CallExpression | TSESTree.NewExpression,
   ownership: DisposableOwnershipContext
 ): void {
-  const optionNames = getManagedOptionNames(node, ownership);
-  if (optionNames.length === 0) {
-    return;
-  }
-
-  for (const argument of node.arguments) {
+  node.arguments.forEach((argument, index) => {
     if (argument.type === 'ObjectExpression') {
-      continue;
+      return;
     }
 
     const object = getObjectExpression(ownership.sourceCode, argument);
     if (!object) {
-      continue;
+      return;
+    }
+
+    const optionNames = getManagedOptionNames(node, index, ownership);
+    if (optionNames.length === 0) {
+      return;
     }
 
     for (const property of object.properties) {
@@ -1509,7 +1737,7 @@ function markManagedKnownOptionVariables(
         markManagedVariables(pending, property.value, ownership);
       }
     }
-  }
+  });
 }
 
 function isOptionsObjectValueManaged(
@@ -1548,39 +1776,21 @@ function isOptionsObjectValueManaged(
     return false;
   }
 
-  if (parent.type === 'NewExpression') {
-    const constructorName = getCalleeName(parent.callee);
-    return (
-      propertyName !== null &&
-      ((constructorName !== null &&
-        (OWNED_CONSTRUCTOR_OPTION_NAMES.get(constructorName)?.includes(
-          propertyName
-        ) ??
-          false)) ||
-        (propertyName === 'body' && isDialogType(parent, ownership)) ||
-        (propertyName === 'content' && isDocumentWidgetType(parent, ownership)))
+  if (propertyName !== null) {
+    const argumentIndex = parent.arguments.indexOf(
+      object as TSESTree.CallExpressionArgument
     );
-  }
-
-  if (getCalleeName(parent.callee) === 'showDialog') {
-    return propertyName === 'body';
-  }
-
-  const calleeName = getCalleeName(parent.callee);
-  if (
-    calleeName !== null &&
-    propertyName !== null &&
-    (OWNED_FUNCTION_OPTION_NAMES.get(calleeName)?.includes(propertyName) ??
-      false)
-  ) {
-    return true;
+    if (
+      argumentIndex >= 0 &&
+      isTypedOwnedOptionProperty(parent, argumentIndex, propertyName, ownership)
+    ) {
+      return true;
+    }
   }
 
   return (
     parent.callee.type === 'Super' ||
-    getOwnershipArguments(parent, ownership).includes(
-      object as TSESTree.CallExpressionArgument
-    )
+    isOwnershipArgument(parent, object, ownership)
   );
 }
 
@@ -1599,6 +1809,13 @@ function getManagedAggregateExpression(
       continue;
     }
 
+    if (parent.type === 'SpreadElement' && parent.argument === current) {
+      current = parent;
+      parent = current.parent;
+      foundAggregate = true;
+      continue;
+    }
+
     if (
       parent.type === 'ArrayExpression' &&
       parent.elements.includes(current as TSESTree.Expression)
@@ -1611,7 +1828,9 @@ function getManagedAggregateExpression(
 
     if (
       parent.type === 'ObjectExpression' &&
-      parent.properties.includes(current as TSESTree.Property)
+      parent.properties.includes(
+        current as TSESTree.Property | TSESTree.SpreadElement
+      )
     ) {
       current = parent;
       parent = current.parent;
@@ -1623,6 +1842,85 @@ function getManagedAggregateExpression(
   }
 
   return foundAggregate ? current : null;
+}
+
+/**
+ * Checks whether a variable is itself handed off: returned, assigned to a
+ * field, or passed to an ownership sink. Used to follow a disposable one hop
+ * further, through the variable that holds the aggregate containing it:
+ *
+ * ```ts
+ * const thisObject = { contents: new ContentsManagerMock() };
+ * return thisObject;
+ * ```
+ */
+function isVariableHandedOff(
+  variable: TSESLint.Scope.Variable,
+  ownership: DisposableOwnershipContext
+): boolean {
+  return variable.references.some(reference => {
+    if (reference.init) {
+      return false;
+    }
+
+    // Walk out through any aggregate the reference sits in, so a spread such
+    // as `new Notebook({ ...history })` still counts as handing off `history`.
+    const aggregate =
+      getManagedAggregateExpression(reference.identifier) ??
+      reference.identifier;
+    const expression = getOuterFallbackExpression(aggregate);
+    const parent = expression.parent;
+    if (!parent) {
+      return false;
+    }
+
+    if (parent.type === 'ReturnStatement' && parent.argument === expression) {
+      return true;
+    }
+    if (
+      parent.type === 'ArrowFunctionExpression' &&
+      parent.body === expression
+    ) {
+      return true;
+    }
+    if (
+      parent.type === 'AssignmentExpression' &&
+      parent.right === expression &&
+      parent.left.type === 'MemberExpression'
+    ) {
+      return true;
+    }
+    if (parent.type === 'PropertyDefinition' && parent.value === expression) {
+      return true;
+    }
+    if (parent.type === 'CallExpression' || parent.type === 'NewExpression') {
+      return isOwnershipArgument(
+        parent as TSESTree.CallExpression,
+        expression,
+        ownership
+      );
+    }
+    return false;
+  });
+}
+
+/**
+ * Resolves the variable an aggregate is assigned to, if any:
+ * `const thisObject = { ... }`.
+ */
+function getAggregateHolderVariable(
+  aggregate: TSESTree.Node,
+  ownership: DisposableOwnershipContext
+): TSESLint.Scope.Variable | null {
+  const parent = aggregate.parent;
+  if (
+    parent?.type !== 'VariableDeclarator' ||
+    parent.init !== aggregate ||
+    parent.id.type !== 'Identifier'
+  ) {
+    return null;
+  }
+  return ownership.sourceCode.getDeclaredVariables(parent)[0] ?? null;
 }
 
 function isAggregateExpressionManaged(
@@ -1638,6 +1936,12 @@ function isAggregateExpressionManaged(
   const parent = outerAggregate.parent;
   if (!parent) {
     return false;
+  }
+
+  // One hop through the variable holding the aggregate.
+  const holder = getAggregateHolderVariable(outerAggregate, ownership);
+  if (holder && isVariableHandedOff(holder, ownership)) {
+    return true;
   }
 
   if (parent.type === 'ReturnStatement' && parent.argument === outerAggregate) {
@@ -1668,9 +1972,7 @@ function isAggregateExpressionManaged(
   }
 
   if (parent.type === 'CallExpression') {
-    return getOwnershipArguments(parent, ownership).includes(
-      outerAggregate as TSESTree.CallExpressionArgument
-    );
+    return isOwnershipArgument(parent, outerAggregate, ownership);
   }
 
   return false;
@@ -1706,19 +2008,16 @@ export function isDisposableExpressionManaged(
     return true;
   }
 
-  if (parent.type === 'CallExpression') {
-    return getOwnershipArguments(parent, ownership).includes(
-      expression as TSESTree.CallExpressionArgument
-    );
+  if (parent.type === 'CallExpression' || parent.type === 'NewExpression') {
+    return isOwnershipArgument(parent, expression, ownership);
   }
 
   if (
     parent.type === 'ArrayExpression' &&
-    parent.parent?.type === 'CallExpression'
+    (parent.parent?.type === 'CallExpression' ||
+      parent.parent?.type === 'NewExpression')
   ) {
-    return getOwnershipArguments(parent.parent, ownership).includes(
-      expression as TSESTree.CallExpressionArgument
-    );
+    return isOwnershipArgument(parent.parent, expression, ownership);
   }
 
   if (isOptionsObjectValueManaged(expression, ownership)) {
@@ -2017,7 +2316,9 @@ export function markManagedDisposableUse(
     markImmediateForEachOwnership(pending, node, ownership);
   }
 
-  markManagedKnownOptionVariables(pending, node, ownership);
+  if (pending.size > 0) {
+    markManagedKnownOptionVariables(pending, node, ownership);
+  }
 
   for (const argument of node.arguments) {
     if (argument.type !== 'ObjectExpression') {
@@ -2033,11 +2334,10 @@ export function markManagedDisposableUse(
     }
   }
 
-  if (node.type === 'NewExpression') {
-    return;
-  }
-
-  const ownershipArguments = getOwnershipArguments(node, ownership);
+  const ownershipArguments =
+    pending.size > 0
+      ? getOwnershipArguments(node as TSESTree.CallExpression, ownership)
+      : [];
   if (ownershipArguments.length > 0) {
     for (const argument of ownershipArguments) {
       markManagedVariables(pending, argument, ownership);
@@ -2046,6 +2346,7 @@ export function markManagedDisposableUse(
   }
 
   if (
+    node.type === 'CallExpression' &&
     isStaticMemberCall(node, 'dispose') &&
     node.callee.type === 'MemberExpression' &&
     node.callee.object.type !== 'Super'
@@ -2065,7 +2366,7 @@ export function markManagedDisposableUse(
     }
   }
 
-  if (isDialogLaunchCall(node, ownership)) {
+  if (node.type === 'CallExpression' && isDialogLaunchCall(node, ownership)) {
     const variable = getIdentifierVariable(
       ownership.sourceCode,
       node.callee.object

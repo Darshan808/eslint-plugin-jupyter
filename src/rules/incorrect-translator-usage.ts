@@ -5,51 +5,13 @@
 
 import { createRule } from '../utils/create-rule';
 import { TSESTree } from '@typescript-eslint/types';
-
-/**
- * Methods of the TranslationBundle interface from `@jupyterlab/translation`.
- */
-const BUNDLE_METHODS = new Set([
-  '__',
-  '_n',
-  '_p',
-  '_np',
-  'gettext',
-  'ngettext',
-  'pgettext',
-  'npgettext',
-  'dcnpgettext'
-]);
-
-/**
- * Property names under which a translation bundle may be stored so that the
- * string extractor recognizes its usages (this.trans, this._trans,
- * this.props.trans, props.trans).
- * See jupyterlab.readthedocs.io/en/stable/extension/internationalization.html#rules
- */
-const BUNDLE_PROPERTY_NAMES = new Set(['trans', '_trans']);
-
-/**
- * The only accepted name for a local variable holding a translation bundle.
- */
-const BUNDLE_VARIABLE_NAME = 'trans';
-
-/**
- * Skips TypeScript-only and optional-chaining wrapper nodes so the
- * underlying expression can be inspected.
- */
-function unwrapExpression(node: TSESTree.Node): TSESTree.Node {
-  switch (node.type) {
-    case 'ChainExpression':
-    case 'TSNonNullExpression':
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSTypeAssertion':
-      return unwrapExpression(node.expression);
-    default:
-      return node;
-  }
-}
+import {
+  BUNDLE_METHODS,
+  BUNDLE_PROPERTY_NAMES,
+  BUNDLE_VARIABLE_NAME,
+  isRecognizedBundleMember,
+  unwrapExpression
+} from '../utils/translation';
 
 /**
  * Returns the object on which `.load(...)` is called when the node is a call
@@ -97,43 +59,6 @@ function isTranslatorReference(node: TSESTree.Node): boolean {
 function isTranslatorLoadCall(node: TSESTree.Node): boolean {
   const object = getLoadCallObject(node);
   return object !== null && isTranslatorReference(object);
-}
-
-/**
- * Returns true when a member expression names one of the exact targets the
- * string extractor recognizes as a translation bundle:
- * this.trans, this._trans, props.trans, this.props.trans.
- * See jupyterlab.readthedocs.io/en/stable/extension/internationalization.html#rules
- */
-function isRecognizedBundleMember(node: TSESTree.MemberExpression): boolean {
-  if (node.computed || node.property.type !== 'Identifier') {
-    return false;
-  }
-  const propertyName = node.property.name;
-  const object = node.object;
-
-  // this.trans / this._trans
-  if (object.type === 'ThisExpression') {
-    return BUNDLE_PROPERTY_NAMES.has(propertyName);
-  }
-
-  if (propertyName !== BUNDLE_VARIABLE_NAME) {
-    return false;
-  }
-
-  // props.trans
-  if (object.type === 'Identifier' && object.name === 'props') {
-    return true;
-  }
-
-  // this.props.trans
-  return (
-    object.type === 'MemberExpression' &&
-    !object.computed &&
-    object.object.type === 'ThisExpression' &&
-    object.property.type === 'Identifier' &&
-    object.property.name === 'props'
-  );
 }
 
 /**

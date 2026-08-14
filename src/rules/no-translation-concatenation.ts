@@ -5,105 +5,53 @@
 
 import { createRule } from '../utils/create-rule';
 import { TSESTree } from '@typescript-eslint/types';
-
-const TRANS_METHOD = '__';
+import {
+  BUNDLE_METHODS,
+  STATIC_ARGUMENT_INDICES,
+  isTransBundle,
+  unwrapExpression
+} from '../utils/translation';
 
 /**
- * Returns true when every leaf of a `+` expression tree is a string literal.
- * Such concatenation is static and translation tools can handle it.
+ * Returns true when the expression is text the string extractor can read
+ * straight from the source: a quoted string, a template literal with nothing
+ * interpolated into it, or a `+` tree of those.
+ *
+ * Concatenating literals is only ever a source-formatting choice — the
+ * extractor still sees the whole message — so it stays allowed.
  */
-function isAllStringLiterals(node: TSESTree.Node): boolean {
-  if (node.type === 'Literal') {
-    return typeof node.value === 'string';
+function isStaticString(node: TSESTree.Node): boolean {
+  const expression = unwrapExpression(node);
+  if (expression.type === 'Literal') {
+    return typeof expression.value === 'string';
   }
-  if (node.type === 'BinaryExpression' && node.operator === '+') {
-    return isAllStringLiterals(node.left) && isAllStringLiterals(node.right);
+  if (expression.type === 'TemplateLiteral') {
+    return expression.expressions.length === 0;
+  }
+  if (expression.type === 'BinaryExpression' && expression.operator === '+') {
+    return isStaticString(expression.left) && isStaticString(expression.right);
   }
   return false;
 }
 
 /**
- * Returns the first `+` BinaryExpression found anywhere in the subtree that
- * involves a non-literal operand, or null if none exists.
+ * Returns the message argument's `+` expression when it concatenates something
+ * the extractor cannot read, or null otherwise.
+ *
+ * Only the argument's own top-level form is inspected. A `+` buried inside a
+ * larger expression — `('Delete ' + name).trim()`, `xs.map(x => 'p' + x)` —
+ * is not what reaches the message slot, so reporting it here would point at
+ * the wrong node and duplicate what `no-dynamic-translation` already says
+ * about the argument as a whole.
  */
-function findConcatenation(
+function getDynamicConcatenation(
   node: TSESTree.Node
 ): TSESTree.BinaryExpression | null {
-  if (node.type === 'BinaryExpression' && node.operator === '+') {
-    return isAllStringLiterals(node) ? null : node;
+  const expression = unwrapExpression(node);
+  if (expression.type !== 'BinaryExpression' || expression.operator !== '+') {
+    return null;
   }
-  const record = node as unknown as Record<string, unknown>;
-  for (const key of Object.keys(record)) {
-    if (
-      key === 'type' ||
-      key === 'loc' ||
-      key === 'range' ||
-      key === 'parent'
-    ) {
-      continue;
-    }
-    const child = record[key];
-    if (child && typeof child === 'object') {
-      if (Array.isArray(child)) {
-        for (const item of child) {
-          if (item && typeof (item as TSESTree.Node).type === 'string') {
-            const found = findConcatenation(item as TSESTree.Node);
-            if (found) return found;
-          }
-        }
-      } else if (typeof (child as TSESTree.Node).type === 'string') {
-        const found = findConcatenation(child as TSESTree.Node);
-        if (found) return found;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Returns true if the node is a recognized JupyterLab translation bundle:
- * trans | this.trans | this._trans | props.trans | this.props.trans
- * See jupyterlab.readthedocs.io/en/stable/extension/internationalization.html#rules
- */
-function isTransBundle(node: TSESTree.Node): boolean {
-  if (node.type === 'Identifier') {
-    return node.name === 'trans';
-  }
-
-  if (node.type === 'MemberExpression' && !node.computed) {
-    const prop = node.property;
-    if (prop.type !== 'Identifier') {
-      return false;
-    }
-
-    // this.trans / this._trans
-    if (node.object.type === 'ThisExpression') {
-      return prop.name === 'trans' || prop.name === '_trans';
-    }
-
-    // props.trans
-    if (
-      prop.name === 'trans' &&
-      node.object.type === 'Identifier' &&
-      node.object.name === 'props'
-    ) {
-      return true;
-    }
-
-    // this.props.trans
-    if (
-      prop.name === 'trans' &&
-      node.object.type === 'MemberExpression' &&
-      !node.object.computed &&
-      node.object.object.type === 'ThisExpression' &&
-      node.object.property.type === 'Identifier' &&
-      node.object.property.name === 'props'
-    ) {
-      return true;
-    }
-  }
-
-  return false;
+  return isStaticString(expression) ? null : expression;
 }
 
 const noTranslationConcatenation = createRule({
@@ -112,12 +60,12 @@ const noTranslationConcatenation = createRule({
     type: 'problem',
     docs: {
       description:
-        'Forbid string concatenation inside translation wrapper calls',
+        'Forbid concatenating dynamic values into translation messages',
       url: 'https://eslint-plugin.readthedocs.io/en/latest/rules/no-translation-concatenation/'
     },
     messages: {
       noConcatenation:
-        'Do not use string concatenation inside translation wrappers. Use a placeholder instead, e.g. trans.__("Hello %1", name).'
+        'Do not concatenate values into translation strings; the extractor only reads the literal parts. Use a placeholder instead, e.g. trans.__("Hello %1", name).'
     },
     schema: []
   },
@@ -133,20 +81,26 @@ const noTranslationConcatenation = createRule({
         if (callee.computed || callee.property.type !== 'Identifier') {
           return;
         }
-        if (callee.property.name !== TRANS_METHOD) {
+        const method = callee.property.name;
+        if (!BUNDLE_METHODS.has(method)) {
           return;
         }
         if (!isTransBundle(callee.object)) {
           return;
         }
 
-        const message = node.arguments[0];
-        if (!message) {
-          return;
-        }
-        const concat = findConcatenation(message);
-        if (concat) {
-          context.report({ node: concat, messageId: 'noConcatenation' });
+        for (const index of STATIC_ARGUMENT_INDICES[method]) {
+          const argument = node.arguments[index];
+          if (!argument) {
+            continue;
+          }
+          const concatenation = getDynamicConcatenation(argument);
+          if (concatenation) {
+            context.report({
+              node: concatenation,
+              messageId: 'noConcatenation'
+            });
+          }
         }
       }
     };

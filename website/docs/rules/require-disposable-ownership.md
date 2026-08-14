@@ -22,32 +22,49 @@ All three ways of writing one are recognised: an inline `activate` property, a
 function named `activate`, and a separate function referenced as
 `activate: activateFoo`.
 
-It accepts common ownership patterns:
+### How a handoff is recognised
 
-- Adding the object to a typed `DisposableSet` or a conventionally named
-  disposable collection such as `this._disposables.add(...)`
-- Passing the object as a direct array item to `DisposableSet.from(...)` or
-  `ObservableDisposableSet.from(...)`
+Whether a call takes ownership is decided by **what the callee declares**, not by
+its name. If the parameter the disposable binds to is itself typed as a
+disposable, the API is saying it takes something with a lifecycle:
+
+```ts
+// Owned: `Context` declares `factory` as an IModelFactory, which is disposable.
+const factory = new TextModelFactory();
+const context = new Context({ manager, factory, path });
+
+// Not owned: `console.log` declares `...data: any[]`, so this still reports.
+const factory = new TextModelFactory();
+console.log(factory);
+```
+
+The same applies to options objects: a property of an options bag counts when
+the corresponding property of the parameter's type is declared disposable. This
+means the rule needs no table of known classes and keeps working for your own
+APIs, provided they are typed. Without type information no call is treated as
+taking ownership, so the rule falls back to the syntactic patterns below.
+
+### Other accepted ownership patterns
+
+- Adding the object to a typed `DisposableSet`, or passing it as a direct array
+  item to `DisposableSet.from(...)` / `ObservableDisposableSet.from(...)`
 - Returning it
 - Assigning it to an object field or class field initializer
 - Storing it in a class-field collection with `this._items.set(...)`
 - Calling `.dispose()` immediately
 - Storing it in a variable that is later added, returned, assigned to a field,
-  or disposed
-- Passing it to a configured ownership helper function or default ownership
-  sink such as `add`, `addCell`, `addItem`, `addMenu`, `addWidget`,
-  `insertWidget`, or `registerStatusItem`
-- Passing it through a known owned constructor options object, such as
-  `new MainAreaWidget({ content })` or `new Dialog({ body })`
-- Passing it as a `showDialog({ body: ... })` body or launching a typed
-  `Dialog` with `.launch()`
+  or disposed, including one hop through an object or array that is itself
+  handed off: `const options = { model }; return new Completer(options);`
 - Disposing it unconditionally inside a callback, so the
   `requestAnimationFrame(() => splash.dispose())` and
   `void load().then(() => splash.dispose())` idioms are accepted. Disposal that
   is itself conditional inside the callback is still reported.
+- Capturing it in a closure that the declaring function returns, the factory
+  pattern: the closure is the function's product, so it owns what it captures.
 - Declaring it as an exported binding (`export const tracker = ...`, including
   inside an exported `namespace`): ownership of a module singleton passes to the
-  importers of the module.
+  importers of the module. A reassigned export does not count, since only the
+  last value can still be reached.
 
 ## Incorrect
 
@@ -96,6 +113,10 @@ class Owner {
 ## Options
 
 ### `ownershipFunctionNames`
+
+An escape hatch for APIs whose types cannot express the handoff, most often test
+mocks and helpers typed as `any`. Ownership is normally decided from the
+declared parameter type, so this list is only needed where that fails.
 
 Function or method names that take ownership of disposable arguments, such as
 `add`, `addWidget`, `insertWidget`, and `registerStatusItem`. For the full

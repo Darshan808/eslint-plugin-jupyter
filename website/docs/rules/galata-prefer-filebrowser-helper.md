@@ -16,6 +16,12 @@ Galata UI tests often drive the file browser with raw Playwright selectors such 
 
 The rule flags Playwright interaction calls on the `page` fixture, both direct calls (`page.dblclick(selector)`, …) and locator chains (`page.locator(...).getByText(...).dblclick()`, including `.first()`/`.last()`/`.nth()` steps), when the selector or text contains a known file browser marker.
 
+A double-clicked name without a dot in it is reported as a directory open, because `page.filebrowser.open()` waits for a document tab that a directory never opens. `page.filebrowser.openDirectory()` is recommended instead, and where the directory is opened only to reach a file inside it, both steps collapse into a single `page.filebrowser.open()` or `page.notebook.openByPath()` call, which open the intermediate directories themselves.
+
+Selectors scoped to a dialog (`.jp-Dialog`) are not reported: the file selector dialog reuses the directory listing markup, but the `page.filebrowser` helpers only drive the sidebar widget.
+
+The receiver is matched by the name `page`, whether it comes from the Galata fixture or from a bare `@playwright/test` one. A test driving JupyterLab without the Galata fixture has no helpers on its `page`, and is reported on purpose: surfacing the helpers, and the fixture that carries them, is the point of the rule. Where that is not wanted, disable the rule for those files.
+
 Known limitation: locators stored in variables (`const item = page.locator(...); await item.dblclick();`) are not tracked.
 
 ## Incorrect
@@ -33,7 +39,10 @@ await page.locator('#filebrowser').getByText('notebooks').dblclick();
 ```ts
 await page.notebook.openByPath('notebooks/Data.ipynb');
 await page.filebrowser.openHomeDirectory();
+await page.filebrowser.openDirectory('notebooks');
 await page.filebrowser.open('data/bar.json');
+// The file selector dialog is out of scope
+await page.locator('.jp-Dialog .jp-DirListing-itemName').first().dblclick();
 ```
 
 ## Options

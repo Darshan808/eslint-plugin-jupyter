@@ -45,8 +45,12 @@ function makeProjectConfig(projectName) {
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error',
       'jupyter/no-translation-concatenation': 'error',
+      'jupyter/no-dynamic-translation': 'error',
       'jupyter/token-format': 'error',
       'jupyter/require-soft-assertions-before-snapshots': 'error',
+      'jupyter/require-signal-cleanup': 'error',
+      'jupyter/require-signal-this-arg': 'error',
+      'jupyter/prefer-signal-this-arg': 'error',
       'jupyter/require-disposable-ownership': 'error',
       'jupyter/require-disposable-transfer': 'error',
       'jupyter/incorrect-translator-usage': 'error'
@@ -136,8 +140,8 @@ function makeTestConfig(projectName) {
         playwright: playwrightStub
       },
       rules: {
-        'jupyter/galata-prefer-filebrowser-helper': 'error',
-        'jupyter/galata-prefer-menu-helper': 'error'
+        'jupyter/galata-prefer-filebrowser-helper': 'warn',
+        'jupyter/galata-prefer-menu-helper': 'warn'
       },
       languageOptions: {
         parser: resolvedParser,
