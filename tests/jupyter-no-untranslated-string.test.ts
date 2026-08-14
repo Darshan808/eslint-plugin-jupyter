@@ -196,12 +196,23 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
     // --- title.label: raw string ---
     {
       code: `this.title.label = 'Source';`,
-      errors: [{ messageId: 'untranslatedTitleProp', data: { prop: 'label' } }]
+      errors: [
+        { messageId: 'untranslatedPropertyAssign', data: { prop: 'label' } }
+      ]
     },
     // --- title.label: arbitrary receiver ---
     {
       code: `widget.title.label = 'My Panel';`,
-      errors: [{ messageId: 'untranslatedTitleProp', data: { prop: 'label' } }]
+      errors: [
+        { messageId: 'untranslatedPropertyAssign', data: { prop: 'label' } }
+      ]
+    },
+    // --- title.caption: raw string ---
+    {
+      code: `this.title.caption = 'Source file';`,
+      errors: [
+        { messageId: 'untranslatedPropertyAssign', data: { prop: 'caption' } }
+      ]
     },
     // --- showDialog: raw string title ---
     {
@@ -233,40 +244,33 @@ ruleTester.run('no-untranslated-string', noUntranslatedString, {
   ]
 });
 
-// checkAllLabels option tests
+// checkProperties tests
 ruleTester.run(
-  'no-untranslated-string (checkAllLabels)',
+  'no-untranslated-string (checkProperties)',
   noUntranslatedString,
   {
     valid: [
-      // Arbitrary `label` is not flagged unless the option is enabled
-      {
-        code: `const field = new MyField({ label: 'My field' });`
-      },
-      // Translated label
-      {
-        code: `const field = new MyField({ label: trans.__('My field') });`,
-        options: [{ checkAllLabels: true }]
-      },
-      // Non-literal label
-      {
-        code: `const field = new MyField({ label: someVar });`,
-        options: [{ checkAllLabels: true }]
-      },
-      // Empty label
-      {
-        code: `const field = new MyField({ label: '' });`,
-        options: [{ checkAllLabels: true }]
-      },
+      // Translated
+      { code: `const field = new MyField({ label: trans.__('My field') });` },
+      // Non-literal
+      { code: `const field = new MyField({ label: someVar });` },
+      // Empty
+      { code: `const field = new MyField({ label: '' });` },
       // Shorthand is a reference, not a literal
-      {
-        code: `const opts = { label };`,
-        options: [{ checkAllLabels: true }]
-      },
+      { code: `const opts = { label };` },
       // Computed keys are not tracked
+      { code: `const opts = { [label]: 'My field' };` },
+      // Property names outside the list are ignored
+      { code: `const opts = { id: 'my-id', className: 'my-class' };` },
+      // An empty list disables the check
       {
-        code: `const opts = { [label]: 'My field' };`,
-        options: [{ checkAllLabels: true }]
+        code: `const opts = { label: 'My field' };`,
+        options: [{ checkProperties: [] }]
+      },
+      // A custom list replaces the default one
+      {
+        code: `const opts = { label: 'My field' };`,
+        options: [{ checkProperties: ['caption'] }]
       }
     ],
     invalid: [
@@ -279,39 +283,48 @@ ruleTester.run(
             translator: translator
           });
         `,
-        options: [{ checkAllLabels: true }],
-        errors: [{ messageId: 'untranslatedLabelProp' }]
+        errors: [{ messageId: 'untranslatedProperty', data: { prop: 'label' } }]
       },
       // Plain object literal
       {
         code: `const opts = { label: 'My field' };`,
-        options: [{ checkAllLabels: true }],
-        errors: [{ messageId: 'untranslatedLabelProp' }]
+        errors: [{ messageId: 'untranslatedProperty', data: { prop: 'label' } }]
+      },
+      // `category` is checked by default too
+      {
+        code: `launcher.add({ command, category: 'Notebook' });`,
+        errors: [
+          { messageId: 'untranslatedProperty', data: { prop: 'category' } }
+        ]
       },
       // Quoted key
       {
         code: `const opts = { 'label': 'My field' };`,
-        options: [{ checkAllLabels: true }],
-        errors: [{ messageId: 'untranslatedLabelProp' }]
+        errors: [{ messageId: 'untranslatedProperty', data: { prop: 'label' } }]
       },
       // Template literal and concise arrow function
       {
         code: `const opts = { label: \`My field\` };`,
-        options: [{ checkAllLabels: true }],
-        errors: [{ messageId: 'untranslatedLabelProp' }]
+        errors: [{ messageId: 'untranslatedProperty', data: { prop: 'label' } }]
       },
       {
         code: `const opts = { label: () => 'My field' };`,
-        options: [{ checkAllLabels: true }],
-        errors: [{ messageId: 'untranslatedLabelProp' }]
+        errors: [{ messageId: 'untranslatedProperty', data: { prop: 'label' } }]
       },
-      // Nested labels are all reported
+      // Nested properties are all reported
       {
         code: `const opts = { label: 'Outer', child: { label: 'Inner' } };`,
-        options: [{ checkAllLabels: true }],
         errors: [
-          { messageId: 'untranslatedLabelProp' },
-          { messageId: 'untranslatedLabelProp' }
+          { messageId: 'untranslatedProperty', data: { prop: 'label' } },
+          { messageId: 'untranslatedProperty', data: { prop: 'label' } }
+        ]
+      },
+      // A custom list replaces the default one
+      {
+        code: `const opts = { label: 'My field', caption: 'My caption' };`,
+        options: [{ checkProperties: ['caption'] }],
+        errors: [
+          { messageId: 'untranslatedProperty', data: { prop: 'caption' } }
         ]
       },
       // More specific branches still win, without duplicate reports
@@ -322,15 +335,97 @@ ruleTester.run(
             execute: () => {}
           });
         `,
-        options: [{ checkAllLabels: true }],
         errors: [
           { messageId: 'untranslatedCommandProp', data: { prop: 'label' } }
         ]
       },
       {
         code: `Dialog.okButton({ label: 'Build' });`,
-        options: [{ checkAllLabels: true }],
         errors: [{ messageId: 'untranslatedDialogButtonLabel' }]
+      }
+    ]
+  }
+);
+
+// checkAssignments tests
+ruleTester.run(
+  'no-untranslated-string (checkAssignments)',
+  noUntranslatedString,
+  {
+    valid: [
+      { code: `widget.label = trans.__('Save');` },
+      { code: `this.label = trans.__('Save');` },
+      { code: `node.textContent = trans.__('Save');` },
+      { code: `img.alt = trans.__('A diagram');` },
+      // Not in the default list
+      { code: `el.className = 'my-class';` },
+      { code: `el.id = 'my-id';` },
+      // An empty list disables the check
+      { code: `widget.label = 'Save';`, options: [{ checkAssignments: [] }] },
+      // Dropping `label` also drops the Lumino widget title check
+      {
+        code: `widget.title.label = 'Source';`,
+        options: [{ checkAssignments: ['title'] }]
+      },
+      // A custom list replaces the default one
+      {
+        code: `widget.label = 'Save';`,
+        options: [{ checkAssignments: ['textContent'] }]
+      },
+      // Compound assignment is not a plain assignment
+      { code: `el.textContent += 'Save';` }
+    ],
+    invalid: [
+      {
+        code: `widget.label = 'Save';`,
+        errors: [
+          { messageId: 'untranslatedPropertyAssign', data: { prop: 'label' } }
+        ]
+      },
+      {
+        code: `this.label = 'Save';`,
+        errors: [
+          { messageId: 'untranslatedPropertyAssign', data: { prop: 'label' } }
+        ]
+      },
+      {
+        code: `node.textContent = 'Save';`,
+        errors: [
+          {
+            messageId: 'untranslatedPropertyAssign',
+            data: { prop: 'textContent' }
+          }
+        ]
+      },
+      {
+        code: `img.alt = 'A diagram';`,
+        errors: [
+          { messageId: 'untranslatedPropertyAssign', data: { prop: 'alt' } }
+        ]
+      },
+      // A custom list replaces the default one
+      {
+        code: `el.placeholder = 'Search';`,
+        options: [{ checkAssignments: ['placeholder'] }],
+        errors: [
+          {
+            messageId: 'untranslatedPropertyAssign',
+            data: { prop: 'placeholder' }
+          }
+        ]
+      },
+      // Lumino widget titles fall out of `label` / `caption` being listed
+      {
+        code: `widget.title.label = 'Source';`,
+        errors: [
+          { messageId: 'untranslatedPropertyAssign', data: { prop: 'label' } }
+        ]
+      },
+      {
+        code: `widget.title.caption = 'Source file';`,
+        errors: [
+          { messageId: 'untranslatedPropertyAssign', data: { prop: 'caption' } }
+        ]
       }
     ]
   }
@@ -377,45 +472,78 @@ jsxRuleTester.run('no-untranslated-string (JSX)', noUntranslatedString, {
     // --- JSX accessibility attributes must be translated ---
     {
       code: `<button aria-label={'Close dialog'} />`,
-      errors: [{ messageId: 'untranslatedJsxText' }]
+      errors: [
+        { messageId: 'untranslatedJsxAttribute', data: { prop: 'aria-label' } }
+      ]
     },
     {
       code: `<div title={'My tooltip'} />`,
-      errors: [{ messageId: 'untranslatedJsxText' }]
+      errors: [
+        { messageId: 'untranslatedJsxAttribute', data: { prop: 'title' } }
+      ]
     },
     {
       code: `<span aria-description={'Describes something'} />`,
-      errors: [{ messageId: 'untranslatedJsxText' }]
+      errors: [
+        {
+          messageId: 'untranslatedJsxAttribute',
+          data: { prop: 'aria-description' }
+        }
+      ]
     },
     {
       code: `<span aria-description="Describes something" />`,
-      errors: [{ messageId: 'untranslatedJsxText' }]
+      errors: [
+        {
+          messageId: 'untranslatedJsxAttribute',
+          data: { prop: 'aria-description' }
+        }
+      ]
     }
   ]
 });
 
+// checkJsxAttributes tests
 jsxRuleTester.run(
-  'no-untranslated-string (JSX, checkAllLabels)',
+  'no-untranslated-string (JSX, checkJsxAttributes)',
   noUntranslatedString,
   {
     valid: [
-      // Not flagged unless the option is enabled
-      { code: `<MyCheckbox label="Enable feature" />` },
+      { code: `<MyCheckbox label={trans.__('Enable feature')} />` },
+      // An empty list disables the check
       {
-        code: `<MyCheckbox label={trans.__('Enable feature')} />`,
-        options: [{ checkAllLabels: true }]
+        code: `<MyCheckbox label="Enable feature" />`,
+        options: [{ checkJsxAttributes: [] }]
+      },
+      // A custom list replaces the default one
+      {
+        code: `<MyCheckbox label="Enable feature" />`,
+        options: [{ checkJsxAttributes: ['placeholder'] }]
       }
     ],
     invalid: [
       {
         code: `<MyCheckbox label="Enable feature" />`,
-        options: [{ checkAllLabels: true }],
-        errors: [{ messageId: 'untranslatedLabelProp' }]
+        errors: [
+          { messageId: 'untranslatedJsxAttribute', data: { prop: 'label' } }
+        ]
       },
       {
         code: `<MyCheckbox label={'Enable feature'} />`,
-        options: [{ checkAllLabels: true }],
-        errors: [{ messageId: 'untranslatedLabelProp' }]
+        errors: [
+          { messageId: 'untranslatedJsxAttribute', data: { prop: 'label' } }
+        ]
+      },
+      // A custom list replaces the default one
+      {
+        code: `<MyInput placeholder="Search" label="Enable feature" />`,
+        options: [{ checkJsxAttributes: ['placeholder'] }],
+        errors: [
+          {
+            messageId: 'untranslatedJsxAttribute',
+            data: { prop: 'placeholder' }
+          }
+        ]
       }
     ]
   }

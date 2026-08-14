@@ -41,7 +41,28 @@ function makeProjectConfig(projectName) {
     },
     rules: {
       'jupyter/command-described-by': 'error',
-      'jupyter/no-untranslated-string': 'error',
+      // Options are spelled out (they match the rule defaults) so the
+      // downstream run visibly exercises each list.
+      'jupyter/no-untranslated-string': [
+        'error',
+        {
+          checkProperties: ['label', 'category'],
+          checkJsxAttributes: [
+            'aria-label',
+            'aria-description',
+            'title',
+            'label'
+          ],
+          checkAssignments: [
+            'title',
+            'ariaLabel',
+            'alt',
+            'textContent',
+            'label',
+            'caption'
+          ]
+        }
+      ],
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error',
       'jupyter/no-translation-concatenation': 'error',
