@@ -53,6 +53,8 @@ export const DEFAULT_LONG_LIVED_TYPES: readonly string[] = [
   'ILabShell',
   'ILanguageServerManager',
   'IRenderMimeRegistry',
+  'ISessionConnection',
+  'ISessionContext',
   'ISettingRegistry',
   'IShell',
   'IStateDB',
@@ -451,11 +453,11 @@ export interface LifetimeContext {
   longLivedTypes: ReadonlySet<string>;
 }
 
-/** Resolves the symbol name of an expression's static type, if available. */
-function typeNameOf(
+/** Resolves the symbol of an expression's static type, if available. */
+function typeSymbolOf(
   node: TSESTree.Node,
   context: LifetimeContext
-): string | null {
+): ts.Symbol | null {
   const { checker, services } = context;
   if (!checker || !services || !services.esTreeNodeToTSNodeMap) {
     return null;
@@ -486,10 +488,74 @@ function typeNameOf(
         // Keep the un-aliased symbol.
       }
     }
-    return symbol.getName();
+    return symbol;
   } catch {
     return null;
   }
+}
+
+/** Resolves the symbol name of an expression's static type, if available. */
+function typeNameOf(
+  node: TSESTree.Node,
+  context: LifetimeContext
+): string | null {
+  const symbol = typeSymbolOf(node, context);
+  return symbol ? symbol.getName() : null;
+}
+
+/**
+ * The namespace path of an expression's static type, outermost first:
+ * `ISessionConnection` declared in `namespace Session` comes back as
+ * `['Session', 'ISessionConnection']`.
+ */
+function typeNamePathOf(
+  node: TSESTree.Node,
+  context: LifetimeContext
+): string[] {
+  const symbol = typeSymbolOf(node, context);
+  if (!symbol || !context.checker) {
+    return [];
+  }
+  let qualified: string;
+  try {
+    qualified = context.checker.getFullyQualifiedName(symbol);
+  } catch {
+    return [symbol.getName()];
+  }
+  // A module-scoped symbol is qualified by its quoted specifier, which may
+  // itself contain dots (`"@jupyterlab/services"`, `"./foo.bar"`).
+  const withoutModule = qualified.replace(/^(["'])(?:(?!\1).)*\1\.?/, '');
+  const segments = (withoutModule || qualified).split('.').filter(Boolean);
+  return segments.length > 0 ? segments : [symbol.getName()];
+}
+
+/**
+ * The `longLivedTypes` entry matching this expression's static type, or null.
+ *
+ * An entry matches when it is a suffix of the type's namespace path, so
+ * `Session.ISessionConnection` and a bare `ISessionConnection` both match
+ * `Session.ISessionConnection` while `Session.ISessionConnection` does not
+ * match some unrelated top-level `ISessionConnection`.
+ */
+function matchLongLivedType(
+  node: TSESTree.Node,
+  context: LifetimeContext
+): string | null {
+  const path = typeNamePathOf(node, context);
+  if (path.length === 0) {
+    return null;
+  }
+  for (const entry of context.longLivedTypes) {
+    const wanted = entry.split('.').filter(Boolean);
+    if (wanted.length === 0 || wanted.length > path.length) {
+      continue;
+    }
+    const offset = path.length - wanted.length;
+    if (wanted.every((segment, i) => segment === path[offset + i])) {
+      return entry;
+    }
+  }
+  return null;
 }
 
 function isWidgetTyped(node: TSESTree.Node, context: LifetimeContext): boolean {
@@ -764,8 +830,8 @@ function isLongLivedService(
   // configured entry) is not matched against itself.
   const start = chain.root?.type === 'ThisExpression' ? 1 : 0;
   for (let i = start; i < chain.prefixes.length; i++) {
-    const name = typeNameOf(chain.prefixes[i], context);
-    if (!name || !context.longLivedTypes.has(name)) {
+    const name = matchLongLivedType(chain.prefixes[i], context);
+    if (!name) {
       continue;
     }
     let blocked = false;
