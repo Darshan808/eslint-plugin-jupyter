@@ -55,6 +55,16 @@ const PRELUDE = `
           readonly ready: ISignal<IEditor, void>;
           dispose(): void;
         }
+        namespace Session {
+          export interface ISessionConnection {
+            readonly kernelChanged: ISignal<ISessionConnection, void>;
+            readonly statusChanged: ISignal<ISessionConnection, string>;
+          }
+        }
+        interface ISessionContext {
+          readonly statusChanged: ISignal<ISessionContext, string>;
+          readonly session: Session.ISessionConnection | null;
+        }
         declare const Signal: {
           clearData(obj: unknown): void;
         };
@@ -456,6 +466,37 @@ ruleTester.run('prefer-signal-this-arg', preferSignalThisArg, {
           private _onChanged(): void {
             console.log('changed');
           }
+        }
+      `,
+      errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
+    },
+    {
+      // A kernel session context outlives the widgets built on the document it
+      // belongs to.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Indicator {
+          wire(context: ISessionContext): void {
+            context.statusChanged.connect(() => this._onStatus());
+          }
+          dispose(): void {
+            Signal.clearData(this);
+          }
+          private _onStatus(): void {}
+        }
+      `,
+      errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
+    },
+    {
+      // Same for the kernel connection itself, matched by the qualified
+      // `Session.ISessionConnection` entry in the default list.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Handler extends Widget {
+          wire(connection: Session.ISessionConnection): void {
+            connection.kernelChanged.connect(() => this._onKernel());
+          }
+          private _onKernel(): void {}
         }
       `,
       errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
