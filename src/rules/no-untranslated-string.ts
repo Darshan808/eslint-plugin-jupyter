@@ -100,24 +100,70 @@ const noUntranslatedString = createRule({
       untranslatedDialogButtonLabel:
         'Dialog button "label" option has an untranslated string literal. Wrap it with trans.__().',
       untranslatedJsxText:
-        'JSX text content has an untranslated string literal. Wrap it with {trans.__(...)}'
+        'JSX text content has an untranslated string literal. Wrap it with {trans.__(...)}',
+      untranslatedLabelProp:
+        '"label" has an untranslated string literal. Wrap it with trans.__().'
     },
     schema: [
       {
         type: 'object',
         properties: {
-          enforcePunctuation: { type: 'boolean' }
+          enforcePunctuation: { type: 'boolean' },
+          checkAllLabels: { type: 'boolean' }
         },
         additionalProperties: false
       }
     ]
   },
-  defaultOptions: [{ enforcePunctuation: false }],
+  defaultOptions: [{ enforcePunctuation: false, checkAllLabels: false }],
 
   create(context) {
-    const enforcePunctuation =
-      (context.options[0] as { enforcePunctuation?: boolean })
-        ?.enforcePunctuation ?? false;
+    const options = context.options[0] as
+      | { enforcePunctuation?: boolean; checkAllLabels?: boolean }
+      | undefined;
+    const enforcePunctuation = options?.enforcePunctuation ?? false;
+    const checkAllLabels = options?.checkAllLabels ?? false;
+
+    // Nodes already reported by a more specific branch (e.g. addCommand or a
+    // Dialog button builder), so the generic `label` check does not duplicate
+    // them. Enclosing calls are visited before the properties they contain.
+    const reportedNodes = new Set<TSESTree.Node>();
+
+    function report(
+      node: TSESTree.Node,
+      messageId:
+        | 'untranslatedCommandProp'
+        | 'untranslatedSetAttribute'
+        | 'untranslatedPropertyAssign'
+        | 'untranslatedTitleProp'
+        | 'untranslatedDialogOption'
+        | 'untranslatedDialogButtonLabel'
+        | 'untranslatedJsxText'
+        | 'untranslatedLabelProp',
+      data?: Record<string, string>
+    ): void {
+      reportedNodes.add(node);
+      context.report({ node, messageId, data });
+    }
+
+    /**
+     * Returns the message id to use for a JSX attribute, or null when the
+     * attribute is not monitored.
+     */
+    function getJsxAttrMessageId(
+      attrName: string | null
+    ): 'untranslatedJsxText' | 'untranslatedLabelProp' | null {
+      if (!attrName) {
+        return null;
+      }
+      if (MONITORED_JSX_ATTRS.includes(attrName)) {
+        return 'untranslatedJsxText';
+      }
+      if (checkAllLabels && attrName === 'label') {
+        return 'untranslatedLabelProp';
+      }
+      return null;
+    }
 
     return {
       CallExpression(node) {
@@ -134,11 +180,7 @@ const noUntranslatedString = createRule({
           for (const propName of MONITORED_COMMAND_PROPS) {
             const prop = properties.get(propName);
             if (prop && isRawStringNode(prop.value)) {
-              context.report({
-                node: prop.value,
-                messageId: 'untranslatedCommandProp',
-                data: { prop: propName }
-              });
+              report(prop.value, 'untranslatedCommandProp', { prop: propName });
             }
           }
           return;
@@ -159,10 +201,8 @@ const noUntranslatedString = createRule({
           }
           const attrValueArg = node.arguments[1];
           if (isRawStringNode(attrValueArg)) {
-            context.report({
-              node: attrValueArg,
-              messageId: 'untranslatedSetAttribute',
-              data: { attr: attrNameArg.value }
+            report(attrValueArg, 'untranslatedSetAttribute', {
+              attr: attrNameArg.value
             });
           }
           return;
@@ -181,10 +221,8 @@ const noUntranslatedString = createRule({
           for (const propName of MONITORED_DIALOG_PROPS) {
             const prop = properties.get(propName);
             if (prop && isRawStringNode(prop.value)) {
-              context.report({
-                node: prop.value,
-                messageId: 'untranslatedDialogOption',
-                data: { prop: propName }
+              report(prop.value, 'untranslatedDialogOption', {
+                prop: propName
               });
             }
           }
@@ -203,10 +241,7 @@ const noUntranslatedString = createRule({
           const properties = getObjectProperties(optionsArg);
           const labelProp = properties.get('label');
           if (labelProp && isRawStringNode(labelProp.value)) {
-            context.report({
-              node: labelProp.value,
-              messageId: 'untranslatedDialogButtonLabel'
-            });
+            report(labelProp.value, 'untranslatedDialogButtonLabel');
           }
         }
       },
@@ -227,11 +262,7 @@ const noUntranslatedString = createRule({
         for (const propName of MONITORED_DIALOG_PROPS) {
           const prop = properties.get(propName);
           if (prop && isRawStringNode(prop.value)) {
-            context.report({
-              node: prop.value,
-              messageId: 'untranslatedDialogOption',
-              data: { prop: propName }
-            });
+            report(prop.value, 'untranslatedDialogOption', { prop: propName });
           }
         }
       },
@@ -254,10 +285,8 @@ const noUntranslatedString = createRule({
           MONITORED_ASSIGNMENT_PROPS.includes(left.property.name) &&
           isRawStringNode(node.right)
         ) {
-          context.report({
-            node: node.right,
-            messageId: 'untranslatedPropertyAssign',
-            data: { prop: left.property.name }
+          report(node.right, 'untranslatedPropertyAssign', {
+            prop: left.property.name
           });
           return;
         }
@@ -272,12 +301,32 @@ const noUntranslatedString = createRule({
           left.object.property.name === 'title' &&
           isRawStringNode(node.right)
         ) {
-          context.report({
-            node: node.right,
-            messageId: 'untranslatedTitleProp',
-            data: { prop: left.property.name }
+          report(node.right, 'untranslatedTitleProp', {
+            prop: left.property.name
           });
         }
+      },
+
+      // Any `label: 'raw string'` object property, when `checkAllLabels` is on.
+      // Runs after the more specific branches above, which mark the nodes they
+      // already reported.
+      Property(node) {
+        if (!checkAllLabels || node.computed || node.shorthand) {
+          return;
+        }
+        const keyName =
+          node.key.type === 'Identifier'
+            ? node.key.name
+            : node.key.type === 'Literal' && typeof node.key.value === 'string'
+              ? node.key.value
+              : null;
+        if (keyName !== 'label') {
+          return;
+        }
+        if (reportedNodes.has(node.value) || !isRawStringNode(node.value)) {
+          return;
+        }
+        report(node.value, 'untranslatedLabelProp');
       },
 
       // Accessibility attribute with a plain string: <span aria-label="text" />
@@ -287,14 +336,12 @@ const noUntranslatedString = createRule({
         }
         const attrName =
           node.name.type === 'JSXIdentifier' ? node.name.name : null;
-        if (!attrName || !MONITORED_JSX_ATTRS.includes(attrName)) {
+        const messageId = getJsxAttrMessageId(attrName);
+        if (!messageId) {
           return;
         }
         if (isRawStringNode(node.value)) {
-          context.report({
-            node: node.value,
-            messageId: 'untranslatedJsxText'
-          });
+          report(node.value, messageId);
         }
       },
 
@@ -304,10 +351,7 @@ const noUntranslatedString = createRule({
           node.value.trim().length > 0 &&
           (enforcePunctuation || hasLetters(node.value))
         ) {
-          context.report({
-            node,
-            messageId: 'untranslatedJsxText'
-          });
+          report(node, 'untranslatedJsxText');
         }
       },
 
@@ -321,14 +365,12 @@ const noUntranslatedString = createRule({
             node.parent.name.type === 'JSXIdentifier'
               ? node.parent.name.name
               : null;
-          if (!attrName || !MONITORED_JSX_ATTRS.includes(attrName)) {
+          const messageId = getJsxAttrMessageId(attrName);
+          if (!messageId) {
             return;
           }
           if (isRawStringNode(node.expression)) {
-            context.report({
-              node: node.expression,
-              messageId: 'untranslatedJsxText'
-            });
+            report(node.expression, messageId);
           }
           return;
         }
@@ -338,10 +380,7 @@ const noUntranslatedString = createRule({
             value !== null &&
             (enforcePunctuation ? value.trim().length > 0 : hasLetters(value))
           ) {
-            context.report({
-              node: node.expression,
-              messageId: 'untranslatedJsxText'
-            });
+            report(node.expression, 'untranslatedJsxText');
           }
         }
       }
