@@ -4,7 +4,9 @@ Require user-facing string literals to be wrapped in a translation call such as 
 
 ## Rule details
 
-The rule reports raw string literals (and template literals without expressions) in the following positions:
+The rule reports raw string literals (and template literals without expressions) in the following positions.
+
+In every position, blank strings are never flagged. Strings with no letters — such as `'/'` and `'-'` — can be translatable, but this rule only flags them when [`enforcePunctuation`](#enforcepunctuation) is on.
 
 ### 1. `commands.addCommand()` properties
 
@@ -139,6 +141,13 @@ Each `check*` option is a list of names that **replaces** the default list rathe
 ### `enforcePunctuation`
 
 Set to `true` to enforce translation of punctuation characters such as `,`, `-`, `+`, and other symbols.
+
+```ts
+// Not flagged by default; flagged when enforcePunctuation is true
+item.textContent = '/';
+anchor.textContent = '+';
+const el = <span>,</span>;
+```
 
 ### `checkProperties`
 

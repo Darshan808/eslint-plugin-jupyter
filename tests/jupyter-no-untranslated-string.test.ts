@@ -262,6 +262,7 @@ ruleTester.run(
       { code: `const opts = { [label]: 'My field' };` },
       // Property names outside the list are ignored
       { code: `const opts = { id: 'my-id', className: 'my-class' };` },
+      { code: `const opts = { label: '-' };` },
       // An empty list disables the check
       {
         code: `const opts = { label: 'My field' };`,
@@ -360,6 +361,10 @@ ruleTester.run(
       // Not in the default list
       { code: `el.className = 'my-class';` },
       { code: `el.id = 'my-id';` },
+      { code: `item.textContent = '/';` },
+      { code: `title.textContent = '-';` },
+      { code: `anchor.textContent = '¶';` },
+      { code: `widget.label = ' … ';` },
       // An empty list disables the check
       { code: `widget.label = 'Save';`, options: [{ checkAssignments: [] }] },
       // Dropping `label` also drops the Lumino widget title check
@@ -425,6 +430,49 @@ ruleTester.run(
         code: `widget.title.caption = 'Source file';`,
         errors: [
           { messageId: 'untranslatedPropertyAssign', data: { prop: 'caption' } }
+        ]
+      }
+    ]
+  }
+);
+
+// enforcePunctuation applies to every position, not just JSX
+ruleTester.run(
+  'no-untranslated-string (enforcePunctuation)',
+  noUntranslatedString,
+  {
+    valid: [
+      // Blank strings stay ignored even with enforcePunctuation on
+      {
+        code: `item.textContent = '';`,
+        options: [{ enforcePunctuation: true }]
+      },
+      {
+        code: `const opts = { label: '   ' };`,
+        options: [{ enforcePunctuation: true }]
+      }
+    ],
+    invalid: [
+      {
+        code: `item.textContent = '/';`,
+        options: [{ enforcePunctuation: true }],
+        errors: [
+          {
+            messageId: 'untranslatedPropertyAssign',
+            data: { prop: 'textContent' }
+          }
+        ]
+      },
+      {
+        code: `const opts = { label: '-' };`,
+        options: [{ enforcePunctuation: true }],
+        errors: [{ messageId: 'untranslatedProperty', data: { prop: 'label' } }]
+      },
+      {
+        code: `commands.addCommand('sep', { label: '-', execute: () => {} });`,
+        options: [{ enforcePunctuation: true }],
+        errors: [
+          { messageId: 'untranslatedCommandProp', data: { prop: 'label' } }
         ]
       }
     ]
