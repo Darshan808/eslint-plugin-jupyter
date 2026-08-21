@@ -488,8 +488,8 @@ ruleTester.run('prefer-signal-this-arg', preferSignalThisArg, {
       errors: [{ messageId: 'preferThisArg', suggestions: 1 }]
     },
     {
-      // Same for the kernel connection itself, matched by the qualified
-      // `Session.ISessionConnection` entry in the default list.
+      // Same for the kernel connection itself, matched by the bare
+      // `ISessionConnection` entry in the default list (which matches any namespace).
       filename: 'tests/type-aware-fixture.ts',
       code: `${PRELUDE}
         class Handler extends Widget {
