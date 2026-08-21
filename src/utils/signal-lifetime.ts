@@ -535,7 +535,10 @@ function typeNamePathOf(
  * An entry matches when it is a suffix of the type's namespace path, so
  * `Session.ISessionConnection` and a bare `ISessionConnection` both match
  * `Session.ISessionConnection` while `Session.ISessionConnection` does not
- * match some unrelated top-level `ISessionConnection`.
+ * match some unrelated top-level `ISessionConnection`. When several entries
+ * match, the longest wins: a list carrying both `IContext` and
+ * `DocumentRegistry.IContext` reports the qualified one regardless of the order
+ * they were configured in.
  */
 function matchLongLivedType(
   node: TSESTree.Node,
@@ -545,17 +548,20 @@ function matchLongLivedType(
   if (path.length === 0) {
     return null;
   }
+  let best: string | null = null;
+  let bestLength = 0;
   for (const entry of context.longLivedTypes) {
     const wanted = entry.split('.').filter(Boolean);
-    if (wanted.length === 0 || wanted.length > path.length) {
+    if (wanted.length <= bestLength || wanted.length > path.length) {
       continue;
     }
     const offset = path.length - wanted.length;
     if (wanted.every((segment, i) => segment === path[offset + i])) {
-      return entry;
+      best = entry;
+      bestLength = wanted.length;
     }
   }
-  return null;
+  return best;
 }
 
 function isWidgetTyped(node: TSESTree.Node, context: LifetimeContext): boolean {
