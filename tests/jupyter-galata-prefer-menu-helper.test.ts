@@ -39,9 +39,33 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     {
       code: `await page.click('.jp-PauseOnExceptions-menu >> text=Continue');`
     },
-    // `getByRole` chains are not matched at all
+    // `getByRole('menuitem', { name })` carries no scope: this is just as likely
+    // a context menu item, so only exact top-level labels or a popup container
+    // in the same chain are reported
     {
       code: `await page.getByRole('menuitem', { name: 'Open in Terminal' }).click();`
+    },
+    {
+      code: `await page.getByRole('menuitem', { name: 'Open from Path' }).click();`
+    },
+    // A non-menu role with a menu-shaped name is not a menu
+    {
+      code: `await page.getByRole('button', { name: 'File' }).click();`
+    },
+    // A dynamic role must not leak a bare `text=File` that looks unscoped
+    {
+      code: `await page.getByRole(role, { name: 'File' }).click();`
+    },
+    {
+      code: `await page.getByRole('menuitem', { name: someVar }).click();`
+    },
+    // `data-command` is not menu evidence: Lumino's CommandPalette renderer
+    // emits it too, and JupyterLab/JupyterLite put it on toolbar buttons
+    {
+      code: `await page.click('jp-button[data-command="running:show-modal"]');`
+    },
+    {
+      code: `await page.click('[data-command="notebook:create-new"] >> text="Python 3"');`
     },
     // Right-clicks open the context menu, not the main menu
     {
@@ -123,6 +147,16 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
       code: `await page.getByText('File').click();`,
       errors: [{ messageId: 'preferMenuOpen' }]
     },
+    // `getByRole('menuitem', { name })` on an exact top-level label is the
+    // dominant menu bar idiom in the Notebook and JupyterLite UI tests
+    {
+      code: `await page.getByRole('menuitem', { name: 'File' }).click();`,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    {
+      code: `await page.getByRole('menuitem', { name: 'Settings' }).click();`,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
 
     // Item clicks inside an open popup menu
     {
@@ -144,6 +178,11 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
       code: `await page.click('.lm-Menu li[role="menuitem"]:has-text("File")');`,
       errors: [{ messageId: 'preferClickMenuItem' }]
     },
+    // A popup container scoping a `getByRole` item is enough evidence
+    {
+      code: `await page.locator('.lm-Menu').getByRole('menuitem', { name: 'Editor' }).click();`,
+      errors: [{ messageId: 'preferClickMenuItem' }]
+    },
 
     // Menu markup without an identifiable item label
     {
@@ -152,6 +191,11 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     },
     {
       code: `await page.click('li[role="menuitem"]');`,
+      errors: [{ messageId: 'preferMenuHelper' }]
+    },
+    // `data-type="submenu"` is stamped by Lumino on any submenu-opening item
+    {
+      code: `await page.locator('li[data-type=submenu]', { hasText: /^Theme$/ }).click();`,
       errors: [{ messageId: 'preferMenuHelper' }]
     }
   ]

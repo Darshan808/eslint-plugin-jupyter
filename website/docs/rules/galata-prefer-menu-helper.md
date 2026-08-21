@@ -14,11 +14,11 @@ Galata UI tests often walk the main menu with raw Playwright selectors such as `
 
 ## Rule details
 
-The rule flags Playwright clicks on the `page` fixture — both direct calls (`page.click(selector)`) and locator chains (`page.locator(...).getByText(...).click()`, including `.first()`/`.last()`/`.nth()` steps) — when the selector or text contains a known menu marker:
+The rule flags Playwright clicks on the `page` fixture — both direct calls (`page.click(selector)`) and locator chains (`page.locator(...).getByText(...).click()`, `page.getByRole('menuitem', { name }).click()`, including `.first()`/`.last()`/`.nth()` steps) — when the selector or text contains a known menu marker:
 
 - a menu bar item: a single-segment `#jp-mainmenu-*` id, or an exact top-level menu label (`File`, `Edit`, `View`, `Run`, `Kernel`, `Tabs`, `Settings`, `Help`), reported as `preferMenuOpen`;
 - an item inside an open menu: the Lumino popup classes (`.lm-Menu`, `.lm-Menu-item`, `.lm-Menu-content`, …), a `role="menu"` container, or a `#jp-mainmenu-<menu>-<submenu>` id together with an item label, reported as `preferClickMenuItem`;
-- any other interaction on menu markup, reported as the generic `preferMenuHelper`.
+- any other interaction on menu markup — including Lumino's `data-type="submenu"` — reported as the generic `preferMenuHelper`.
 
 ## Incorrect
 
@@ -28,6 +28,7 @@ await page.click('.lm-Menu ul[role="menu"] >> text=New');
 await page.click('#jp-mainmenu-file-new >> text=Terminal');
 await page.click('li[role="menuitem"]:has-text("Kernel")');
 await page.locator('.lm-MenuBar-item').getByText('File').click();
+await page.getByRole('menuitem', { name: 'Settings' }).click();
 ```
 
 ## Correct

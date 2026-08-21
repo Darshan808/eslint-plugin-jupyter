@@ -12,6 +12,7 @@ import {
 type MessageIds = 'preferMenuOpen' | 'preferClickMenuItem' | 'preferMenuHelper';
 type Options = [];
 
+// JupyterLab's main menu bar
 const TOP_LEVEL_MENU_LABELS = 'File|Edit|View|Run|Kernel|Tabs|Settings|Help';
 
 // The entire selector is a bare text query for a top-level menu label:
@@ -44,8 +45,10 @@ const POPUP_CONTAINER_PATTERN =
   /\blm-Menu\b|role\s*=\s*["']menu["']|#jp-mainmenu-[a-z]+-[a-z-]+/;
 
 // Menu markup that does not resolve menu bar vs popup on its own: Lumino gives
-// `role="menuitem"` to both menu bar items and popup items.
-const MENU_MARKUP_PATTERN = /role\s*=\s*["']menuitem["']|lm-MenuBar\b/;
+// `role="menuitem"` to both menu bar items and popup items, and stamps
+// `data-type="submenu"` on any item that opens a submenu.
+const MENU_MARKUP_PATTERN =
+  /role\s*=\s*["']menuitem["']|lm-MenuBar\b|data-type\s*=\s*["']?submenu/;
 
 const TEXT_SELECTOR_PATTERN = /text=|has-text\(/;
 
@@ -109,6 +112,19 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
           (hasMenuMarkup && SCOPED_MENU_BAR_LABEL_PATTERN.test(selectorText));
 
         if (!hasTopLevelMarker && !hasPopupContainer && !hasMenuMarkup) {
+          return;
+        }
+
+        // `getByRole('menuitem', { name })` carries no scope at all: a menu bar
+        // item, a main menu item, and a right-click context menu item are all
+        // `role="menuitem"` with an accessible name. Only an exact top-level
+        // label is unambiguous enough to report on that evidence alone; a
+        // deeper item needs a real popup container in the same chain. The rest
+        // is left to the planned context menu rule.
+        const viaGetByRole = match.selectorParts.some(
+          part => part.method === 'getByRole'
+        );
+        if (viaGetByRole && !hasTopLevelMarker && !hasPopupContainer) {
           return;
         }
 
