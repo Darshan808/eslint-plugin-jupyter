@@ -32,6 +32,11 @@ const FOREIGN_CONTEXT_PATTERN =
 const EDITOR_TARGET_PATTERN =
   /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea-editor(?![\w-])|\.jp-CodeMirrorEditor|\.cm-editor(?![\w-])|\.cm-content(?![\w-])/;
 
+// A cell's *input* area, as opposed to anything else a cell contains. CodeMirror
+// markup also renders inside cell outputs (an ipywidget text area, a nested
+// editor), so an editor target counts only with an input area in the same chain.
+const INPUT_AREA_PATTERN = /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea[\w-]*/;
+
 // The cell element itself, not a widget rendered inside it. The `(?![\w-])`
 // anchors keep `jp-Cell-inputCollapser`, `jp-CellToolbar`, … out.
 const CELL_TARGET_PATTERN =
@@ -47,9 +52,14 @@ const RUN_SHORTCUT_PATTERN =
 // the text engine's shorthand.
 const CONTENT_ENGINE_PATTERN = /^(?:text|id|data-testid|role|xpath)\s*=|^["']/;
 
-// `:has-text("…")` and friends embed page content inside an otherwise CSS
-// segment; their arguments are stripped before any token matching.
-const TEXT_PSEUDO_PATTERN = /:(?:has-text|text|text-is|text-matches)\([^)]*\)/g;
+// Playwright engines that only *filter* the preceding segment rather than
+// selecting anything of their own, so the real target is the segment before.
+const PASSTHROUGH_ENGINE_PATTERN = /^(?:nth|visible)\s*=/;
+
+// The argument of a pseudo-class is a different selector branch, or page
+// content: `.widget:not(.jp-Cell)` is not a cell and `:has-text("x")` is text.
+// Stripping innermost-first also unwraps nesting such as `:not(:has(.jp-Cell))`.
+const PSEUDO_ARGUMENT_PATTERN = /:[\w-]+\([^()]*\)/g;
 
 // Quoted attribute *values* are content too: `[title="jp-Cell"]` is not a cell.
 const QUOTED_VALUE_PATTERN = /"[^"]*"|'[^']*'/g;
@@ -62,17 +72,58 @@ const EDIT_GESTURES: ReadonlySet<string> = new Set([
 const CLICK_GESTURES: ReadonlySet<string> = new Set(['click', 'dblclick']);
 
 interface SelectorSegment {
+  /** The segment as written, used for the deliberately broad scope exclusion. */
+  raw: string;
   /** The segment text; for CSS segments, stripped of embedded page content. */
   text: string;
   /** True when the segment is markup rather than matched page content. */
   isCss: boolean;
 }
 
-/** Removes the page content embedded in a CSS segment. */
+/** Removes the page content and side branches embedded in a CSS segment. */
 function stripContent(cssSegment: string): string {
-  return cssSegment
-    .replace(TEXT_PSEUDO_PATTERN, '')
-    .replace(QUOTED_VALUE_PATTERN, '');
+  let stripped = cssSegment;
+  for (;;) {
+    const next = stripped.replace(PSEUDO_ARGUMENT_PATTERN, '');
+    if (next === stripped) {
+      break;
+    }
+    stripped = next;
+  }
+  return stripped.replace(QUOTED_VALUE_PATTERN, '');
+}
+
+/**
+ * The `button` option of a click: `'left'` when absent or explicitly left,
+ * `'other'` for any other or non-static value. Only a primary click selects a
+ * notebook cell — a right click opens the context menu, a middle click has no
+ * cell binding at all, and an unknown value could be either.
+ */
+function clickButton(node: TSESTree.CallExpression): 'left' | 'other' {
+  for (const arg of node.arguments) {
+    if (arg.type !== 'ObjectExpression') {
+      continue;
+    }
+    for (const prop of arg.properties) {
+      if (prop.type === 'SpreadElement') {
+        return 'other';
+      }
+      if (
+        prop.computed ||
+        !(
+          (prop.key.type === 'Identifier' && prop.key.name === 'button') ||
+          (prop.key.type === 'Literal' && prop.key.value === 'button')
+        )
+      ) {
+        continue;
+      }
+      if (prop.value.type === 'Literal' && prop.value.value === 'left') {
+        continue;
+      }
+      return 'other';
+    }
+  }
+  return 'left';
 }
 
 /**
@@ -107,20 +158,21 @@ function selectorSegments(
     // `getByTestId()`, … all match content. A direct `page.click(sel)` call
     // always takes a selector.
     if (match.viaLocatorChain && method !== 'locator') {
-      segments.push({ text: raw, isCss: false });
+      segments.push({ raw, text: raw, isCss: false });
       continue;
     }
 
     // A selector string may itself chain engines with `>>`.
     for (const piece of raw.split('>>')) {
       const trimmed = piece.trim();
-      if (trimmed.length === 0) {
+      if (trimmed.length === 0 || PASSTHROUGH_ENGINE_PATTERN.test(trimmed)) {
+        // `>> nth=0` filters the preceding segment; it is not a target.
         continue;
       }
       segments.push(
         CONTENT_ENGINE_PATTERN.test(trimmed)
-          ? { text: trimmed, isCss: false }
-          : { text: stripContent(trimmed), isCss: true }
+          ? { raw: trimmed, text: trimmed, isCss: false }
+          : { raw: trimmed, text: stripContent(trimmed), isCss: true }
       );
     }
   }
@@ -238,7 +290,11 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
       messageId: MessageIds
     ): void {
       const statement = enclosingBodyStatement(node);
-      if (statement) {
+      // Only an interaction that is a statement in its own right is known to
+      // run: `if (hasCell) await page.locator('.jp-Cell').click();` hangs off
+      // an `IfStatement` and may never execute, so it must not arm the gate
+      // for a following keyboard shortcut.
+      if (statement?.type === 'ExpressionStatement') {
         reportedStatements.add(statement);
       }
       context.report({ node, messageId });
@@ -258,7 +314,7 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
       // is the shortcut completing a raw cell interaction already flagged
       // here.
       const statement = enclosingBodyStatement(node);
-      if (!statement) {
+      if (statement?.type !== 'ExpressionStatement') {
         return;
       }
       const previous = previousSiblingStatement(statement);
@@ -275,8 +331,10 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
         return;
       }
 
-      // Right-clicks open the context menu, which has no notebook helper.
-      if (match.isRightClick) {
+      // Only a primary click selects a cell: a right click opens the context
+      // menu, which has no notebook helper, and a middle or unknown button has
+      // no cell binding to replace.
+      if (clickButton(node) !== 'left') {
         return;
       }
 
@@ -286,9 +344,7 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
       }
 
       // The console, the file editor and dialogs reuse cell markup.
-      if (
-        segments.some(segment => FOREIGN_CONTEXT_PATTERN.test(segment.text))
-      ) {
+      if (segments.some(segment => FOREIGN_CONTEXT_PATTERN.test(segment.raw))) {
         return;
       }
 
@@ -311,7 +367,13 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
         return;
       }
       const target = targetToken(lastSegment);
-      const targetsEditor = EDITOR_TARGET_PATTERN.test(target);
+      // CodeMirror markup also renders inside a cell's *output*, so an editor
+      // target additionally needs an input area somewhere in the chain.
+      const targetsEditor =
+        EDITOR_TARGET_PATTERN.test(target) &&
+        segments.some(
+          segment => segment.isCss && INPUT_AREA_PATTERN.test(segment.text)
+        );
       const targetsCell = CELL_TARGET_PATTERN.test(target);
       if (!targetsEditor && !targetsCell) {
         return;

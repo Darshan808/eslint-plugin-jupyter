@@ -130,6 +130,27 @@ ruleTester.run(
       {
         code: `await page.click('.jp-Cell >> text=Run');`
       },
+      // A pseudo-class argument is a different selector branch, not the target
+      {
+        code: `await page.locator('.widget:not(.jp-Cell) .cm-content').fill('x');`
+      },
+      {
+        code: `await page.locator('.jp-Notebook:not(:has(.jp-Cell)) .cm-content').fill('x');`
+      },
+      // CodeMirror also renders inside a cell's output, not just its input area
+      {
+        code: `await page.locator('.jp-Cell .jp-OutputArea-output .cm-content').fill('x');`
+      },
+      // Only a primary click selects a cell
+      {
+        code: `await page.locator('.jp-Cell').click({ button: 'middle' });`
+      },
+      {
+        code: `await page.locator('.jp-Cell').click({ button: btn });`
+      },
+      {
+        code: `await page.locator('.jp-Cell').click({ ...options });`
+      },
       // An interpolated selector hides the scope it was written with
       {
         code: 'await page.locator(`.jp-Cell-inputArea >> ${sel}`).click();'
@@ -165,6 +186,24 @@ ruleTester.run(
       },
       {
         code: `await page.locator("${CELL_EDITOR_CHAIN}").type('import math');`,
+        errors: [{ messageId: 'preferSetCell' }]
+      },
+      {
+        code: `await page.locator("${CELL_EDITOR_CHAIN}").pressSequentially('import math');`,
+        errors: [{ messageId: 'preferSetCell' }]
+      },
+      // An explicit left button is still the primary click
+      {
+        code: `await page.locator('.jp-Cell').click({ button: 'left' });`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // `nth=` only filters the preceding segment; the cell is still the target
+      {
+        code: `await page.click('.jp-Cell >> nth=0');`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      {
+        code: `await page.locator('.jp-Cell-inputArea >> nth=0').fill('x');`,
         errors: [{ messageId: 'preferSetCell' }]
       },
       {
@@ -204,6 +243,15 @@ ruleTester.run(
       // one report for the click, none for the shortcut.
       {
         code: `await page.locator('.jp-Cell-inputArea').click();\nawait expect(x).toBeVisible();\nawait page.keyboard.press('Shift+Enter');`,
+        errors: [{ messageId: 'preferEnterCellEditingMode' }]
+      },
+      // A conditionally executed interaction does not arm the keyboard gate
+      {
+        code: `if (hasCell) await page.locator('.jp-Cell-inputArea').click();\nawait page.keyboard.press('Shift+Enter');`,
+        errors: [{ messageId: 'preferEnterCellEditingMode' }]
+      },
+      {
+        code: `await page.locator('.jp-Cell-inputArea').click();\nif (run) await page.keyboard.press('Shift+Enter');`,
         errors: [{ messageId: 'preferEnterCellEditingMode' }]
       },
       // A flagged interaction in a *different* block does not carry over
