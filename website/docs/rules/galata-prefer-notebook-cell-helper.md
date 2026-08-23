@@ -13,18 +13,18 @@ The rule only reports when it can prove, statically, that the interaction target
 A selector interaction is reported when **all** of the following hold:
 
 - the chain is rooted at the `page` fixture (`page.click(sel)`, or `page.locator(sel).first().click()`);
-- every selector argument is a fully static string — an interpolated selector such as ``page.locator(`${scope} .jp-Cell`)`` hides the scope it was written with, so it is skipped;
+- every selector argument resolves to a static string. Resolution follows `const` bindings, so the shared `const cellSelector = '… .jp-Cell'` idiom is seen through; a selector interpolating a value that is not statically known, such as ``page.locator(`${getScope()} .jp-Cell`)``, hides the scope it was written with and is skipped;
 - the selector carries a cell **root** token (`.jp-Cell*`, `.jp-CodeCell`, `.jp-MarkdownCell`, `.jp-RawCell`, `.jp-Notebook-cell`, `[data-windowed-list-index]`) as an actual CSS class or attribute.
 - the selector is not scoped to a widget the notebook helper does not drive (`.jp-CodeConsole`, `.jp-Dialog`, `.jp-FileEditor`, `.jp-Terminal`);
 
 The gesture then selects the message:
 
-| Gesture                             | Target          | Suggested helper                                   |
-| ----------------------------------- | --------------- | -------------------------------------------------- |
-| `fill`, `type`, `pressSequentially` | cell editor     | `page.notebook.setCell()` / `addCell()`            |
-| `click`, `dblclick`                 | cell editor     | `page.notebook.enterCellEditingMode()`             |
-| `click`, `dblclick`                 | the cell itself | `page.notebook.selectCells()` / `getCellLocator()` |
-| `press` with a run shortcut         | cell or editor  | `page.notebook.runCell()` / `run()`                |
+| Gesture                             | Target                       | Suggested helper                                   |
+| ----------------------------------- | ---------------------------- | -------------------------------------------------- |
+| `fill`, `type`, `pressSequentially` | cell editor                  | `page.notebook.setCell()` / `addCell()`            |
+| `click`, `dblclick`                 | cell editor                  | `page.notebook.enterCellEditingMode()`             |
+| `click`, `dblclick`                 | the cell or its input prompt | `page.notebook.selectCells()` / `getCellLocator()` |
+| `press` with a run shortcut         | cell or editor               | `page.notebook.runCell()` / `run()`                |
 
 ### Bare keyboard shortcuts
 
@@ -40,9 +40,7 @@ The rule does not report on:
 
 - locators held in variables (`const cell = page.locator('.jp-Cell'); await cell.click();`) or anything derived from `page.notebook.getCellLocator()`;
 - bare run shortcuts that are not adjacent to a flagged raw cell interaction;
-- fully or partially interpolated selectors.
-
-These are deliberate: each of them would require guessing at the target, and a wrong guess is a false positive.
+- selectors interpolating a value that is not statically known;
 
 ## Incorrect
 

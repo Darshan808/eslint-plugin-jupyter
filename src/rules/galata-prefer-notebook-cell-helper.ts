@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/utils';
+import { ASTUtils, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { createRule } from '../utils/create-rule';
 import {
   SelectorInteractionMatch,
@@ -38,9 +38,11 @@ const EDITOR_TARGET_PATTERN =
 const INPUT_AREA_PATTERN = /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea[\w-]*/;
 
 // The cell element itself, not a widget rendered inside it. The `(?![\w-])`
-// anchors keep `jp-Cell-inputCollapser`, `jp-CellToolbar`, … out.
+// anchors keep `jp-Cell-inputCollapser`, `jp-CellToolbar`, … out. The input
+// prompt counts: `selectCells()` clicks the cell at `{ x: 15, y: 5 }`, which is
+// that same gutter, so clicking it *is* the helper's own gesture.
 const CELL_TARGET_PATTERN =
-  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Notebook-cell(?![\w-])|\[data-windowed-list-index/;
+  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Notebook-cell(?![\w-])|\[data-windowed-list-index|\.jp-InputArea-prompt(?![\w-])/;
 
 // The JupyterLab notebook run shortcuts. `ControlOrMeta+Enter` is Playwright's
 // platform-neutral spelling. Any other key on a cell is not a run.
@@ -127,32 +129,64 @@ function clickButton(node: TSESTree.CallExpression): 'left' | 'other' {
 }
 
 /**
+ * True when a click carries a modifier the notebook helper cannot reproduce.
+ * `selectCells(start, end)` shift-clicks the end cell, so `['Shift']` is
+ * covered; `Control`/`Meta` toggle an individual cell into the selection,
+ * which has no helper, and a non-static value could be either.
+ */
+function hasUnsupportedModifiers(node: TSESTree.CallExpression): boolean {
+  for (const arg of node.arguments) {
+    if (arg.type !== 'ObjectExpression') {
+      continue;
+    }
+    for (const prop of arg.properties) {
+      if (
+        prop.type !== 'Property' ||
+        prop.computed ||
+        !(
+          (prop.key.type === 'Identifier' && prop.key.name === 'modifiers') ||
+          (prop.key.type === 'Literal' && prop.key.value === 'modifiers')
+        )
+      ) {
+        continue;
+      }
+      if (prop.value.type !== 'ArrayExpression') {
+        return true;
+      }
+      const supported = prop.value.elements.every(
+        element => element?.type === 'Literal' && element.value === 'Shift'
+      );
+      if (!supported) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * The selector chain flattened into engine segments, root-to-tip, with each
  * one marked as markup or as matched page content.
  *
  * A class name found in page content proves nothing about the widget being
  * driven — `page.getByText('jp-Cell')` clicks the literal text `jp-Cell`
  * wherever it is rendered — so content segments are kept out of every token
- * test. Returns null when any part is not a fully static string, since an
- * interpolated selector hides the scope it was written with.
+ * test. Returns null when any part does not resolve to a static string, since
+ * an interpolated selector hides the scope it was written with. Resolution
+ * follows `const` bindings, so the shared
+ * ``const cellSelector = '… .jp-Cell'`` idiom is still seen through.
  */
 function selectorSegments(
-  match: SelectorInteractionMatch
+  match: SelectorInteractionMatch,
+  scope: TSESLint.Scope.Scope
 ): SelectorSegment[] | null {
   const segments: SelectorSegment[] = [];
   for (const { method, argNode } of match.selectorParts) {
-    let raw: string | null = null;
-    if (argNode.type === 'Literal') {
-      raw = typeof argNode.value === 'string' ? argNode.value : null;
-    } else if (
-      argNode.type === 'TemplateLiteral' &&
-      argNode.expressions.length === 0
-    ) {
-      raw = argNode.quasis[0]?.value.cooked ?? null;
-    }
-    if (raw === null) {
+    const resolved = ASTUtils.getStaticValue(argNode, scope);
+    if (!resolved || typeof resolved.value !== 'string') {
       return null;
     }
+    const raw = resolved.value;
 
     // In a locator chain only `locator()` takes a selector; `getByText()`,
     // `getByTestId()`, … all match content. A direct `page.click(sel)` call
@@ -334,11 +368,14 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
       // Only a primary click selects a cell: a right click opens the context
       // menu, which has no notebook helper, and a middle or unknown button has
       // no cell binding to replace.
-      if (clickButton(node) !== 'left') {
+      if (clickButton(node) !== 'left' || hasUnsupportedModifiers(node)) {
         return;
       }
 
-      const segments = selectorSegments(match);
+      const segments = selectorSegments(
+        match,
+        context.sourceCode.getScope(node)
+      );
       if (segments === null) {
         return;
       }

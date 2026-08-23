@@ -151,6 +151,30 @@ ruleTester.run(
       {
         code: `await page.locator('.jp-Cell').click({ ...options });`
       },
+      // The input prompt only selects a cell when a cell root proves the scope
+      {
+        code: `await page.locator('.jp-InputArea-prompt').click();`
+      },
+      {
+        code: `await page.locator('.jp-CodeConsole .jp-InputArea-prompt').click();`
+      },
+      // `selectCells()` cannot reproduce a Control/Meta toggle click
+      {
+        code: `await page.locator('.jp-Cell .jp-InputArea-prompt').click({ modifiers: ['Control'] });`
+      },
+      {
+        code: `await page.locator('.jp-Cell .jp-InputArea-prompt').click({ modifiers: mods });`
+      },
+      // A resolved `const` still has to survive every other gate
+      {
+        code: `const scope = '.jp-CodeConsole';\nawait page.locator(\`\${scope} .jp-Cell .jp-InputArea-prompt\`).click();`
+      },
+      {
+        code: `let scope = '.jp-Cell';\nscope = other;\nawait page.locator(\`\${scope} .jp-InputArea-prompt\`).click();`
+      },
+      {
+        code: `const scope = getSelector();\nawait page.locator(\`\${scope} .jp-Cell\`).click();`
+      },
       // An interpolated selector hides the scope it was written with
       {
         code: 'await page.locator(`.jp-Cell-inputArea >> ${sel}`).click();'
@@ -195,6 +219,21 @@ ruleTester.run(
       // An explicit left button is still the primary click
       {
         code: `await page.locator('.jp-Cell').click({ button: 'left' });`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // Clicking the input prompt selects the cell: `selectCells()` clicks the
+      // same gutter, and shift-clicks for a range (cells-motion.spec.ts)
+      {
+        code: `await page.locator('.jp-Cell .jp-InputArea-prompt').click();`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      {
+        code: `await page.locator('.jp-Cell .jp-InputArea-prompt').click({ modifiers: ['Shift'] });`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // A selector shared through a `const` is still statically known
+      {
+        code: `const cellSelector = '[role="main"] >> .jp-NotebookPanel >> .jp-Cell';\nawait page.locator(\`\${cellSelector} >> nth=2 >> .jp-InputArea-prompt\`).click();`,
         errors: [{ messageId: 'preferSelectCells' }]
       },
       // `nth=` only filters the preceding segment; the cell is still the target
