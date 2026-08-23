@@ -108,6 +108,40 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     // Anchored on the right: trailing selector parts are not a bare label
     {
       code: `await page.click('text=File >> nth=0');`
+    },
+    // A popup opened by an earlier right-click is the context menu, which
+    // `page.menu.clickMenuItem` does not drive. The right-click need not be the
+    // immediately preceding statement.
+    {
+      code: `
+        await page.click('.jp-DirListing-item', { button: 'right' });
+        await page.hover('text=Open With');
+        await page.click('.lm-Menu li[role="menuitem"]:has-text("Editor")');
+      `
+    },
+    // Same, via the Galata context menu helper
+    {
+      code: `
+        const contextMenu = await page.menu.openContextMenuLocator('.jp-DirListing-content');
+        await page.click('text=Open With');
+        await page.click('.lm-Menu-itemLabel >> text=Notebook');
+      `
+    },
+    // Menu markup with no item label, inside a context menu
+    {
+      code: `
+        await page.click('.jp-DirListing-item', { button: 'right' });
+        await page.click('span.lm-Menu-itemLabel');
+      `
+    },
+    // The lookback reaches out of a nested block
+    {
+      code: `
+        await page.click('.jp-DirListing-item', { button: 'right' });
+        if (shouldOpen) {
+          await page.click('.lm-Menu ul[role="menu"] >> text=Editor');
+        }
+      `
     }
   ],
 
@@ -197,6 +231,41 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     {
       code: `await page.locator('li[data-type=submenu]', { hasText: /^Theme$/ }).click();`,
       errors: [{ messageId: 'preferMenuHelper' }]
+    },
+
+    // A menu bar click after an unrelated right-click re-opens the main menu,
+    // so the popup items below it are main menu items again. This is the
+    // `documentation/general.test.ts` shape.
+    {
+      code: `
+        await page.click('text=README.md', { button: 'right' });
+        await page.click('text=Open With');
+        await page.click('text=Markdown Preview');
+        await page.click('text=File');
+        await page.click('.lm-Menu ul[role="menu"] >> text=New');
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
+    },
+    // `#jp-mainmenu-…` is main menu evidence on its own: no context menu
+    // carries that id, so the lookback never applies.
+    {
+      code: `
+        await page.click('.jp-DirListing-item', { button: 'right' });
+        await page.click('#jp-mainmenu-file-new >> text=Terminal');
+      `,
+      errors: [{ messageId: 'preferClickMenuItem' }]
+    },
+    // `page.menu.open` re-opens the main menu just as a menu bar click does
+    {
+      code: `
+        await page.click('.jp-DirListing-item', { button: 'right' });
+        await page.menu.open('Settings');
+        await page.click('.lm-Menu ul[role="menu"] >> text=Theme');
+      `,
+      errors: [{ messageId: 'preferClickMenuItem' }]
     }
   ]
 });
