@@ -18,6 +18,7 @@ import requireSignalCleanup from './rules/require-signal-cleanup';
 import requireSignalThisArg from './rules/require-signal-this-arg';
 import preferSignalThisArg from './rules/prefer-signal-this-arg';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
+import galataPreferNotebookCellHelper from './rules/galata-prefer-notebook-cell-helper';
 import requireDisposableOwnership from './rules/require-disposable-ownership';
 import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
@@ -39,6 +40,7 @@ const plugin = {
     'require-signal-this-arg': requireSignalThisArg,
     'prefer-signal-this-arg': preferSignalThisArg,
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
+    'galata-prefer-notebook-cell-helper': galataPreferNotebookCellHelper,
     'require-disposable-ownership': requireDisposableOwnership,
     'require-disposable-transfer': requireDisposableTransfer,
     'incorrect-translator-usage': incorrectTranslatorUsage
@@ -75,7 +77,8 @@ const plugin = {
         files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
-          'jupyter/galata-prefer-filebrowser-helper': 'warn'
+          'jupyter/galata-prefer-filebrowser-helper': 'warn',
+          'jupyter/galata-prefer-notebook-cell-helper': 'warn'
         }
       }
     ],
@@ -107,7 +110,8 @@ const plugin = {
           ],
           rules: {
             'jupyter/require-soft-assertions-before-snapshots': 'warn',
-            'jupyter/galata-prefer-filebrowser-helper': 'warn'
+            'jupyter/galata-prefer-filebrowser-helper': 'warn',
+            'jupyter/galata-prefer-notebook-cell-helper': 'warn'
           }
         }
       ]

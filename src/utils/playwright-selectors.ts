@@ -29,6 +29,8 @@ export const INTERACTION_METHODS: ReadonlySet<string> = new Set([
   'hover',
   'tap',
   'fill',
+  'type',
+  'pressSequentially',
   'check',
   'uncheck',
   'selectOption',
