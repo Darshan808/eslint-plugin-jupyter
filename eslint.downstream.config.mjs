@@ -140,7 +140,8 @@ function makeTestConfig(projectName) {
         playwright: playwrightStub
       },
       rules: {
-        'jupyter/galata-prefer-filebrowser-helper': 'error'
+        'jupyter/galata-prefer-filebrowser-helper': 'error',
+        'jupyter/galata-prefer-notebook-cell-helper': 'error'
       },
       languageOptions: {
         parser: resolvedParser,
