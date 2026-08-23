@@ -14,7 +14,8 @@ A selector interaction is reported when **all** of the following hold:
 
 - the chain is rooted at the `page` fixture (`page.click(sel)`, or `page.locator(sel).first().click()`);
 - every selector argument resolves to a static string. Resolution follows `const` bindings, so the shared `const cellSelector = '… .jp-Cell'` idiom is seen through; a selector interpolating a value that is not statically known, such as ``page.locator(`${getScope()} .jp-Cell`)``, hides the scope it was written with and is skipped;
-- the selector carries a cell **root** token (`.jp-Cell*`, `.jp-CodeCell`, `.jp-MarkdownCell`, `.jp-RawCell`, `.jp-Notebook-cell`, `[data-windowed-list-index]`) as an actual CSS class or attribute.
+- the selector carries a cell **root** token (`.jp-Cell*`, `.jp-CodeCell`, `.jp-MarkdownCell`, `.jp-RawCell`, `.jp-Notebook-cell`) as an actual CSS class or attribute.
+- the selector has no union (`,`) or sibling combinator (`+`, `~`), which would let the cell token sit in a branch the gesture never lands in;
 - the selector is not scoped to a widget the notebook helper does not drive (`.jp-CodeConsole`, `.jp-Dialog`, `.jp-FileEditor`, `.jp-Terminal`);
 
 The gesture then selects the message:
@@ -28,7 +29,7 @@ The gesture then selects the message:
 
 ### Bare keyboard shortcuts
 
-A bare `page.keyboard.press('Control+Enter')` is reported **only** when the immediately preceding statement in the same block was itself reported by this rule, and only when both are unconditional statements — an interaction hanging off `if (hasCell) …` may never run, so it does not arm the gate.
+A bare `page.keyboard.press('Control+Enter')` is reported **only** when the immediately preceding statement in the same block was itself reported by this rule. Both have to be statements of that block: an interaction hanging off `if (hasCell) …` is skipped by a shortcut written after the `if`, so it does not arm the gate. Two statements sharing a block — a conditional block included — always run together, so that pairing does report.
 
 The reason is that a bare keyboard press carries no context: the rule sees the string `'Shift+Enter'` and nothing else, so it cannot tell which widget has focus (the console binds it to `console:run-forced`, and Galata ships no console helper to suggest instead), which cell index to pass to `runCell()`, or whether the binding is itself the thing under test — `cells.test.ts` has `test('Run code cell with Ctrl + Enter')`, and both notebook scroll tests press the key precisely _because_ `runCell()` switches to command mode first.
 

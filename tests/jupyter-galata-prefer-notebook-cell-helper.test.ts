@@ -201,6 +201,46 @@ ruleTester.run(
       // A `page.notebook` call never arms the keyboard gate
       {
         code: `await page.notebook.enterCellEditingMode(0);\nawait page.keyboard.press('Shift+Enter');`
+      },
+      // A windowed-list row is not proof of a notebook cell: the marker comes
+      // from the shared `WindowedList` widget, not from the notebook
+      {
+        code: `await page.locator('[data-windowed-list-index="0"]').click();`
+      },
+      {
+        code: `await page.locator('[data-windowed-list-indexed]').click();`
+      },
+      // A union or a sibling combinator puts the cell token in another branch
+      {
+        code: `await page.locator('.other, .jp-Cell').click();`
+      },
+      {
+        code: `await page.locator('.jp-Cell + .jp-InputArea-editor').click();`
+      },
+      {
+        code: `await page.locator('.jp-Cell ~ .jp-Cell-inputArea').click();`
+      },
+      // Playwright's other test-id engines match content, not markup
+      {
+        code: `await page.locator('data-test-id=.jp-Cell').click();`
+      },
+      {
+        code: `await page.locator('data-test=.jp-Cell').click();`
+      },
+      // A computed or spread option key could be `button`/`modifiers`/`trial`
+      {
+        code: `await page.locator('.jp-Cell').click({ ['button']: 'right' });`
+      },
+      {
+        code: `await page.locator('.jp-Cell').click({ button: 'left', ['modifiers']: ['Control'] });`
+      },
+      // `trial` runs the actionability checks without clicking anything
+      {
+        code: `await page.locator('.jp-Cell').click({ trial: true });`
+      },
+      // A toolbar inside the editor host is not the editor host
+      {
+        code: `await page.locator('.jp-Cell-inputArea .jp-CodeMirrorEditorToolbar').click();`
       }
     ],
     invalid: [
@@ -297,6 +337,25 @@ ruleTester.run(
       {
         code: `if (a) {\n  await page.locator('.jp-Cell-inputArea').click();\n}\nawait page.keyboard.press('Shift+Enter');`,
         errors: [{ messageId: 'preferEnterCellEditingMode' }]
+      },
+      // A `trial: false` click is a real click
+      {
+        code: `await page.locator('.jp-Cell').click({ trial: false });`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // A cell class still anchors a windowed-list row
+      {
+        code: `await page.locator('.jp-Cell[data-windowed-list-index="0"]').click();`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // Two statements sharing a conditional block always run together, so the
+      // shortcut really is finishing the flagged interaction
+      {
+        code: `if (run) {\n  await page.locator('.jp-Cell-inputArea').click();\n  await page.keyboard.press('Shift+Enter');\n}`,
+        errors: [
+          { messageId: 'preferEnterCellEditingMode' },
+          { messageId: 'preferRunCell' }
+        ]
       },
       {
         code: `await page.locator("${CELL_EDITOR_CHAIN}").fill('print("hello")');\nawait page.keyboard.press('Control+Enter');`,

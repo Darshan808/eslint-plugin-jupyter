@@ -19,7 +19,7 @@ type Options = [];
 
 // A cell *root* token, required somewhere in the selector chain.
 const CELL_CONTEXT_PATTERN =
-  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)[\w-]*|\.jp-Notebook-cell|\[data-windowed-list-index/;
+  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)[\w-]*|\.jp-Notebook-cell/;
 
 // Widgets that reuse cell markup but that `page.notebook` does not drive: the
 // console hosts real `.jp-Cell` widgets, and the file selector dialog embeds
@@ -30,7 +30,7 @@ const FOREIGN_CONTEXT_PATTERN =
 // The editor host inside a cell input area. Only consulted once
 // CELL_CONTEXT_PATTERN has already proven a cell root is in the same chain.
 const EDITOR_TARGET_PATTERN =
-  /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea-editor(?![\w-])|\.jp-CodeMirrorEditor|\.cm-editor(?![\w-])|\.cm-content(?![\w-])/;
+  /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea-editor(?![\w-])|\.jp-CodeMirrorEditor(?![\w-])|\.cm-editor(?![\w-])|\.cm-content(?![\w-])/;
 
 // A cell's *input* area, as opposed to anything else a cell contains. CodeMirror
 // markup also renders inside cell outputs (an ipywidget text area, a nested
@@ -42,7 +42,7 @@ const INPUT_AREA_PATTERN = /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea[\w-]*/;
 // prompt counts: `selectCells()` clicks the cell at `{ x: 15, y: 5 }`, which is
 // that same gutter, so clicking it *is* the helper's own gesture.
 const CELL_TARGET_PATTERN =
-  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Notebook-cell(?![\w-])|\[data-windowed-list-index|\.jp-InputArea-prompt(?![\w-])/;
+  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Notebook-cell(?![\w-])|\.jp-InputArea-prompt(?![\w-])/;
 
 // The JupyterLab notebook run shortcuts. `ControlOrMeta+Enter` is Playwright's
 // platform-neutral spelling. Any other key on a cell is not a run.
@@ -52,7 +52,8 @@ const RUN_SHORTCUT_PATTERN =
 // Playwright selector engines whose argument is matched against page content
 // rather than markup, in the `engine=body` form. A bare `"quoted"` segment is
 // the text engine's shorthand.
-const CONTENT_ENGINE_PATTERN = /^(?:text|id|data-testid|role|xpath)\s*=|^["']/;
+const CONTENT_ENGINE_PATTERN =
+  /^(?:text|id|data-testid|data-test-id|data-test|role|xpath)\s*=|^["']/;
 
 // Playwright engines that only *filter* the preceding segment rather than
 // selecting anything of their own, so the real target is the segment before.
@@ -65,6 +66,12 @@ const PSEUDO_ARGUMENT_PATTERN = /:[\w-]+\([^()]*\)/g;
 
 // Quoted attribute *values* are content too: `[title="jp-Cell"]` is not a cell.
 const QUOTED_VALUE_PATTERN = /"[^"]*"|'[^']*'/g;
+
+// A union (`.other, .jp-Cell`) or a sibling combinator (`.jp-Cell + .cm-editor`)
+// breaks the ancestor relationship the token checks assume: the cell token can
+// then sit in a branch the gesture never lands in. Checked after the content
+// strip above, so `:nth-child(2n+1)` and `:has-text("a, b")` are unaffected.
+const AMBIGUOUS_STRUCTURE_PATTERN = /[,+~]/;
 
 const EDIT_GESTURES: ReadonlySet<string> = new Set([
   'fill',
@@ -96,68 +103,59 @@ function stripContent(cssSegment: string): string {
 }
 
 /**
- * The `button` option of a click: `'left'` when absent or explicitly left,
- * `'other'` for any other or non-static value. Only a primary click selects a
- * notebook cell — a right click opens the context menu, a middle click has no
- * cell binding at all, and an unknown value could be either.
+ * True when a literal is a `modifiers` entry `selectCells()` reproduces.
+ * `selectCells(start, end)` shift-clicks the end cell, so `['Shift']` is
+ * covered; `Control`/`Meta` toggle an individual cell into the selection,
+ * which has no helper at all.
  */
-function clickButton(node: TSESTree.CallExpression): 'left' | 'other' {
-  for (const arg of node.arguments) {
-    if (arg.type !== 'ObjectExpression') {
-      continue;
-    }
-    for (const prop of arg.properties) {
-      if (prop.type === 'SpreadElement') {
-        return 'other';
-      }
-      if (
-        prop.computed ||
-        !(
-          (prop.key.type === 'Identifier' && prop.key.name === 'button') ||
-          (prop.key.type === 'Literal' && prop.key.value === 'button')
-        )
-      ) {
-        continue;
-      }
-      if (prop.value.type === 'Literal' && prop.value.value === 'left') {
-        continue;
-      }
-      return 'other';
-    }
-  }
-  return 'left';
+function isSupportedModifier(element: TSESTree.Node | null): boolean {
+  return element?.type === 'Literal' && element.value === 'Shift';
 }
 
 /**
- * True when a click carries a modifier the notebook helper cannot reproduce.
- * `selectCells(start, end)` shift-clicks the end cell, so `['Shift']` is
- * covered; `Control`/`Meta` toggle an individual cell into the selection,
- * which has no helper, and a non-static value could be either.
+ * True when the interaction's options object holds anything the notebook
+ * helper cannot reproduce, so that only the plain gesture is ever reported:
+ *
+ * - `button` — only a primary click selects a cell; a right click opens the
+ *   context menu and a middle click has no cell binding at all.
+ * - `modifiers` — see `isSupportedModifier`.
+ * - `trial` — Playwright runs the actionability checks and then performs no
+ *   click, so suggesting `selectCells()` would turn a no-op into a selection.
+ *
+ * An unknown key is treated as unsupported: a computed key or a spread could
+ * carry any of the above, and a non-static value could be either.
  */
-function hasUnsupportedModifiers(node: TSESTree.CallExpression): boolean {
+function hasUnsupportedOptions(node: TSESTree.CallExpression): boolean {
   for (const arg of node.arguments) {
     if (arg.type !== 'ObjectExpression') {
       continue;
     }
     for (const prop of arg.properties) {
-      if (
-        prop.type !== 'Property' ||
-        prop.computed ||
-        !(
-          (prop.key.type === 'Identifier' && prop.key.name === 'modifiers') ||
-          (prop.key.type === 'Literal' && prop.key.value === 'modifiers')
-        )
-      ) {
-        continue;
-      }
-      if (prop.value.type !== 'ArrayExpression') {
+      if (prop.type === 'SpreadElement' || prop.computed) {
         return true;
       }
-      const supported = prop.value.elements.every(
-        element => element?.type === 'Literal' && element.value === 'Shift'
-      );
-      if (!supported) {
-        return true;
+      const key =
+        prop.key.type === 'Identifier'
+          ? prop.key.name
+          : prop.key.type === 'Literal'
+            ? prop.key.value
+            : null;
+
+      if (key === 'button') {
+        if (!(prop.value.type === 'Literal' && prop.value.value === 'left')) {
+          return true;
+        }
+      } else if (key === 'modifiers') {
+        if (
+          prop.value.type !== 'ArrayExpression' ||
+          !prop.value.elements.every(isSupportedModifier)
+        ) {
+          return true;
+        }
+      } else if (key === 'trial') {
+        if (!(prop.value.type === 'Literal' && prop.value.value === false)) {
+          return true;
+        }
       }
     }
   }
@@ -324,10 +322,11 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
       messageId: MessageIds
     ): void {
       const statement = enclosingBodyStatement(node);
-      // Only an interaction that is a statement in its own right is known to
-      // run: `if (hasCell) await page.locator('.jp-Cell').click();` hangs off
-      // an `IfStatement` and may never execute, so it must not arm the gate
-      // for a following keyboard shortcut.
+      // Only an interaction that is a statement in its own right can be
+      // compared with its siblings: `if (hasCell) await cell.click();` hangs
+      // off an `IfStatement`, so a shortcut after the `if` runs even when the
+      // click did not and must not be armed by it. Two statements sharing a
+      // block do always run together, conditional block or not.
       if (statement?.type === 'ExpressionStatement') {
         reportedStatements.add(statement);
       }
@@ -365,10 +364,7 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
         return;
       }
 
-      // Only a primary click selects a cell: a right click opens the context
-      // menu, which has no notebook helper, and a middle or unknown button has
-      // no cell binding to replace.
-      if (clickButton(node) !== 'left' || hasUnsupportedModifiers(node)) {
+      if (hasUnsupportedOptions(node)) {
         return;
       }
 
@@ -382,6 +378,17 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
 
       // The console, the file editor and dialogs reuse cell markup.
       if (segments.some(segment => FOREIGN_CONTEXT_PATTERN.test(segment.raw))) {
+        return;
+      }
+
+      // A union or a sibling combinator puts the cell token in a branch the
+      // gesture need not land in, so the chain proves nothing about the target.
+      if (
+        segments.some(
+          segment =>
+            segment.isCss && AMBIGUOUS_STRUCTURE_PATTERN.test(segment.text)
+        )
+      ) {
         return;
       }
 
