@@ -14,9 +14,9 @@ A selector interaction is reported when **all** of the following hold:
 
 - the chain is rooted at the `page` fixture (`page.click(sel)`, or `page.locator(sel).first().click()`);
 - every selector argument is a fully static string — an interpolated selector such as ``page.locator(`${scope} .jp-Cell`)`` hides the scope it was written with, so it is skipped;
-- the selector carries a cell **root** token (`.jp-Cell*`, `.jp-CodeCell`, `.jp-MarkdownCell`, `.jp-RawCell`, `.jp-Notebook-cell`, `data-windowed-list-index`).
+- the selector carries a cell **root** token (`.jp-Cell*`, `.jp-CodeCell`, `.jp-MarkdownCell`, `.jp-RawCell`, `.jp-Notebook-cell`, `[data-windowed-list-index]`) as an actual CSS class or attribute.
 - the selector is not scoped to a widget the notebook helper does not drive (`.jp-CodeConsole`, `.jp-Dialog`, `.jp-FileEditor`, `.jp-Terminal`);
-- the **trailing** selector segment is the cell or its editor, not something merely rendered inside it. Clicking `.jp-Cell [data-jp-item-name="delete-cell"] jp-button` or `.jp-Cell-inputCollapser` has no helper to recommend, so it is not reported.
+- the **trailing** selector segment is markup, not a text match and resolves to the cell or its editor, not something merely rendered inside it. Clicking `.jp-Cell [data-jp-item-name="delete-cell"] jp-button` or `.jp-Cell-inputCollapser` has no helper to recommend, so it is not reported.
 
 The gesture then selects the message:
 

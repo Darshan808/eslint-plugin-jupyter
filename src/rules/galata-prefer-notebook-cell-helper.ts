@@ -7,7 +7,6 @@ import { TSESTree } from '@typescript-eslint/utils';
 import { createRule } from '../utils/create-rule';
 import {
   SelectorInteractionMatch,
-  combineStaticSelectorText,
   matchSelectorInteraction
 } from '../utils/playwright-selectors';
 
@@ -20,7 +19,7 @@ type Options = [];
 
 // A cell *root* token, required somewhere in the selector chain.
 const CELL_CONTEXT_PATTERN =
-  /jp-(?:Cell|CodeCell|MarkdownCell|RawCell)[\w-]*|jp-Notebook-cell|data-windowed-list-index/;
+  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)[\w-]*|\.jp-Notebook-cell|\[data-windowed-list-index/;
 
 // Widgets that reuse cell markup but that `page.notebook` does not drive: the
 // console hosts real `.jp-Cell` widgets, and the file selector dialog embeds
@@ -31,17 +30,29 @@ const FOREIGN_CONTEXT_PATTERN =
 // The editor host inside a cell input area. Only consulted once
 // CELL_CONTEXT_PATTERN has already proven a cell root is in the same chain.
 const EDITOR_TARGET_PATTERN =
-  /jp-Cell-inputArea(?![\w-])|jp-InputArea-editor(?![\w-])|jp-CodeMirrorEditor|cm-editor(?![\w-])|cm-content(?![\w-])/;
+  /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea-editor(?![\w-])|\.jp-CodeMirrorEditor|\.cm-editor(?![\w-])|\.cm-content(?![\w-])/;
 
 // The cell element itself, not a widget rendered inside it. The `(?![\w-])`
 // anchors keep `jp-Cell-inputCollapser`, `jp-CellToolbar`, … out.
 const CELL_TARGET_PATTERN =
-  /jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|jp-Notebook-cell(?![\w-])|data-windowed-list-index/;
+  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Notebook-cell(?![\w-])|\[data-windowed-list-index/;
 
 // The JupyterLab notebook run shortcuts. `ControlOrMeta+Enter` is Playwright's
 // platform-neutral spelling. Any other key on a cell is not a run.
 const RUN_SHORTCUT_PATTERN =
   /^(?:Shift|Control|Alt|Meta|ControlOrMeta)\+Enter$/;
+
+// Playwright selector engines whose argument is matched against page content
+// rather than markup, in the `engine=body` form. A bare `"quoted"` segment is
+// the text engine's shorthand.
+const CONTENT_ENGINE_PATTERN = /^(?:text|id|data-testid|role|xpath)\s*=|^["']/;
+
+// `:has-text("…")` and friends embed page content inside an otherwise CSS
+// segment; their arguments are stripped before any token matching.
+const TEXT_PSEUDO_PATTERN = /:(?:has-text|text|text-is|text-matches)\([^)]*\)/g;
+
+// Quoted attribute *values* are content too: `[title="jp-Cell"]` is not a cell.
+const QUOTED_VALUE_PATTERN = /"[^"]*"|'[^']*'/g;
 
 const EDIT_GESTURES: ReadonlySet<string> = new Set([
   'fill',
@@ -50,34 +61,79 @@ const EDIT_GESTURES: ReadonlySet<string> = new Set([
 ]);
 const CLICK_GESTURES: ReadonlySet<string> = new Set(['click', 'dblclick']);
 
-/**
- * The element the gesture actually lands on: the trailing segment of the
- * selector, after the last `>>` combinator or descendant space.
- */
-function lastSelectorSegment(selectorText: string): string {
-  const segments = selectorText.split(/\s*>>\s*|\s+/).filter(Boolean);
-  return segments[segments.length - 1] ?? '';
+interface SelectorSegment {
+  /** The segment text; for CSS segments, stripped of embedded page content. */
+  text: string;
+  /** True when the segment is markup rather than matched page content. */
+  isCss: boolean;
+}
+
+/** Removes the page content embedded in a CSS segment. */
+function stripContent(cssSegment: string): string {
+  return cssSegment
+    .replace(TEXT_PSEUDO_PATTERN, '')
+    .replace(QUOTED_VALUE_PATTERN, '');
 }
 
 /**
- * The combined selector text, but only when *every* part is fully static.
+ * The selector chain flattened into engine segments, root-to-tip, with each
+ * one marked as markup or as matched page content.
+ *
+ * A class name found in page content proves nothing about the widget being
+ * driven — `page.getByText('jp-Cell')` clicks the literal text `jp-Cell`
+ * wherever it is rendered — so content segments are kept out of every token
+ * test. Returns null when any part is not a fully static string, since an
+ * interpolated selector hides the scope it was written with.
  */
-function fullyStaticSelectorText(
+function selectorSegments(
   match: SelectorInteractionMatch
-): string | null {
-  for (const { argNode } of match.selectorParts) {
-    if (argNode.type === 'TemplateLiteral') {
-      if (argNode.expressions.length > 0) {
-        return null;
-      }
+): SelectorSegment[] | null {
+  const segments: SelectorSegment[] = [];
+  for (const { method, argNode } of match.selectorParts) {
+    let raw: string | null = null;
+    if (argNode.type === 'Literal') {
+      raw = typeof argNode.value === 'string' ? argNode.value : null;
     } else if (
-      argNode.type !== 'Literal' ||
-      typeof argNode.value !== 'string'
+      argNode.type === 'TemplateLiteral' &&
+      argNode.expressions.length === 0
     ) {
+      raw = argNode.quasis[0]?.value.cooked ?? null;
+    }
+    if (raw === null) {
       return null;
     }
+
+    // In a locator chain only `locator()` takes a selector; `getByText()`,
+    // `getByTestId()`, … all match content. A direct `page.click(sel)` call
+    // always takes a selector.
+    if (match.viaLocatorChain && method !== 'locator') {
+      segments.push({ text: raw, isCss: false });
+      continue;
+    }
+
+    // A selector string may itself chain engines with `>>`.
+    for (const piece of raw.split('>>')) {
+      const trimmed = piece.trim();
+      if (trimmed.length === 0) {
+        continue;
+      }
+      segments.push(
+        CONTENT_ENGINE_PATTERN.test(trimmed)
+          ? { text: trimmed, isCss: false }
+          : { text: stripContent(trimmed), isCss: true }
+      );
+    }
   }
-  return combineStaticSelectorText(match);
+  return segments.length > 0 ? segments : null;
+}
+
+/**
+ * The element the gesture actually lands on: the last simple selector of the
+ * trailing segment, after any descendant/child/sibling combinator.
+ */
+function targetToken(segment: SelectorSegment): string {
+  const simples = segment.text.split(/[\s>+~]+/).filter(Boolean);
+  return simples[simples.length - 1] ?? '';
 }
 
 /** The string value of an argument, or null when it is not a static string. */
@@ -224,26 +280,37 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
         return;
       }
 
-      const selectorText = fullyStaticSelectorText(match);
-      if (selectorText === null) {
+      const segments = selectorSegments(match);
+      if (segments === null) {
         return;
       }
 
       // The console, the file editor and dialogs reuse cell markup.
-      if (FOREIGN_CONTEXT_PATTERN.test(selectorText)) {
+      if (
+        segments.some(segment => FOREIGN_CONTEXT_PATTERN.test(segment.text))
+      ) {
         return;
       }
 
-      // Without a cell root somewhere in the chain there is no proof this is a
-      // notebook cell at all.
-      if (!CELL_CONTEXT_PATTERN.test(selectorText)) {
+      // Without a cell root token somewhere in the chain there is no proof
+      // this is a notebook cell at all.
+      if (
+        !segments.some(
+          segment => segment.isCss && CELL_CONTEXT_PATTERN.test(segment.text)
+        )
+      ) {
         return;
       }
 
       // `page.notebook` has nothing to offer for a widget merely *rendered
       // inside* a cell (an output link, the delete-cell button, the input
-      // collapser), so the gesture has to land on the cell or its editor.
-      const target = lastSelectorSegment(selectorText);
+      // collapser), nor for a gesture aimed at matched text, so the gesture
+      // has to land on the cell or its editor.
+      const lastSegment = segments[segments.length - 1];
+      if (!lastSegment.isCss) {
+        return;
+      }
+      const target = targetToken(lastSegment);
       const targetsEditor = EDITOR_TARGET_PATTERN.test(target);
       const targetsCell = CELL_TARGET_PATTERN.test(target);
       if (!targetsEditor && !targetsCell) {

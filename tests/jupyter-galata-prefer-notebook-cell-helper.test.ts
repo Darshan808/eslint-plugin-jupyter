@@ -100,6 +100,36 @@ ruleTester.run(
       {
         code: `const cell = page.locator('.jp-Cell');\nawait cell.click();`
       },
+      // Page *content* is not markup: a cell class name appearing in matched
+      // text or in an attribute value proves nothing about the widget
+      {
+        code: `await page.getByText('jp-Cell').click();`
+      },
+      {
+        code: `await page.click('text=jp-Cell');`
+      },
+      {
+        code: `await page.click('text=".jp-Cell"');`
+      },
+      {
+        code: `await page.getByTestId('jp-Cell').click();`
+      },
+      {
+        code: `await page.locator('[title="jp-Cell"]').click();`
+      },
+      {
+        code: `await page.locator('.jp-Toolbar :has-text("jp-Cell")').click();`
+      },
+      {
+        code: `await page.locator('[aria-label="Code Cell Content"]').fill('x');`
+      },
+      // The gesture lands on matched text inside the cell, not on the cell
+      {
+        code: `await page.locator('.jp-Cell').getByText('output').click();`
+      },
+      {
+        code: `await page.click('.jp-Cell >> text=Run');`
+      },
       // An interpolated selector hides the scope it was written with
       {
         code: 'await page.locator(`.jp-Cell-inputArea >> ${sel}`).click();'
@@ -155,6 +185,11 @@ ruleTester.run(
       },
       {
         code: `await page.click('.jp-Notebook-cell:nth-child(1)');`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // Content stripped, the surviving markup token still proves a cell
+      {
+        code: `await page.locator('.jp-Cell:has-text("print")').click();`,
         errors: [{ messageId: 'preferSelectCells' }]
       },
       {
