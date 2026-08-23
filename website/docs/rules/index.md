@@ -6,6 +6,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 
 - [command-described-by](./command-described-by)
 - [galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)
+- [galata-prefer-notebook-cell-helper](./galata-prefer-notebook-cell-helper)
 - [incorrect-translator-usage](./incorrect-translator-usage)
 - [no-dynamic-translation](./no-dynamic-translation)
 - [no-schema-enum](./no-schema-enum)
@@ -44,6 +45,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/require-signal-this-arg](./require-signal-this-arg)                                   | `error`  |
 | [jupyter/prefer-signal-this-arg](./prefer-signal-this-arg)                                     | `warn`   |
 | [jupyter/galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)                 | `warn` ¹ |
+| [jupyter/galata-prefer-notebook-cell-helper](./galata-prefer-notebook-cell-helper)             | `warn` ¹ |
 | [jupyter/no-schema-enum](./no-schema-enum)                                                     | `warn` ² |
 | [jupyter/no-pageconfig-base-url](./no-pageconfig-base-url)                                     | `warn`   |
 | [jupyter/incorrect-translator-usage](./incorrect-translator-usage)                             | `warn`   |

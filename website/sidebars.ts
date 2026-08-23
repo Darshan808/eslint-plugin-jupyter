@@ -21,6 +21,7 @@ const sidebars: SidebarsConfig = {
         'rules/index',
         'rules/command-described-by',
         'rules/galata-prefer-filebrowser-helper',
+        'rules/galata-prefer-notebook-cell-helper',
         'rules/incorrect-translator-usage',
         'rules/no-dynamic-translation',
         'rules/no-pageconfig-base-url',
