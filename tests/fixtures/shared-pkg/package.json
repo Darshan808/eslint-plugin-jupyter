@@ -1,0 +1,22 @@
+{
+  "name": "@myorg/example-extension",
+  "version": "0.1.0",
+  "private": true,
+  "jupyterlab": {
+    "extension": true,
+    "sharedPackages": {
+      "@myorg/host-provided": {
+        "singleton": true,
+        "bundled": false
+      },
+      "@myorg/bundled-here": {
+        "singleton": true,
+        "bundled": true
+      },
+      "@myorg/shared-default": {
+        "singleton": true
+      },
+      "@myorg/not-shared": false
+    }
+  }
+}

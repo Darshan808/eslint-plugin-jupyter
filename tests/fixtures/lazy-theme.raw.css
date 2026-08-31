@@ -1,0 +1,426 @@
+/*
+ * Copyright (c) Jupyter Development Team.
+ * Distributed under the terms of the Modified BSD License.
+ */
+
+/* A raw stylesheet, inlined into the bundle as text. */
+.jp-Sample-item-0 {
+  color: #000000;
+  padding: 0px 0px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-1 {
+  color: #000003;
+  padding: 1px 1px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-2 {
+  color: #000006;
+  padding: 2px 2px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-3 {
+  color: #000009;
+  padding: 3px 3px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-4 {
+  color: #00000c;
+  padding: 4px 4px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-5 {
+  color: #00000f;
+  padding: 5px 5px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-6 {
+  color: #000012;
+  padding: 6px 6px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-7 {
+  color: #000015;
+  padding: 7px 0px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-8 {
+  color: #000018;
+  padding: 8px 1px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-9 {
+  color: #00001b;
+  padding: 9px 2px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-10 {
+  color: #00001e;
+  padding: 10px 3px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-11 {
+  color: #000021;
+  padding: 11px 4px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-12 {
+  color: #000024;
+  padding: 0px 5px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-13 {
+  color: #000027;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-14 {
+  color: #00002a;
+  padding: 2px 0px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-15 {
+  color: #00002d;
+  padding: 3px 1px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-16 {
+  color: #000030;
+  padding: 4px 2px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-17 {
+  color: #000033;
+  padding: 5px 3px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-18 {
+  color: #000036;
+  padding: 6px 4px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-19 {
+  color: #000039;
+  padding: 7px 5px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-20 {
+  color: #00003c;
+  padding: 8px 6px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-21 {
+  color: #00003f;
+  padding: 9px 0px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-22 {
+  color: #000042;
+  padding: 10px 1px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-23 {
+  color: #000045;
+  padding: 11px 2px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-24 {
+  color: #000048;
+  padding: 0px 3px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-25 {
+  color: #00004b;
+  padding: 1px 4px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-26 {
+  color: #00004e;
+  padding: 2px 5px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-27 {
+  color: #000051;
+  padding: 3px 6px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-28 {
+  color: #000054;
+  padding: 4px 0px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-29 {
+  color: #000057;
+  padding: 5px 1px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-30 {
+  color: #00005a;
+  padding: 6px 2px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-31 {
+  color: #00005d;
+  padding: 7px 3px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-32 {
+  color: #000060;
+  padding: 8px 4px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-33 {
+  color: #000063;
+  padding: 9px 5px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-34 {
+  color: #000066;
+  padding: 10px 6px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-35 {
+  color: #000069;
+  padding: 11px 0px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-36 {
+  color: #00006c;
+  padding: 0px 1px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-37 {
+  color: #00006f;
+  padding: 1px 2px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-38 {
+  color: #000072;
+  padding: 2px 3px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-39 {
+  color: #000075;
+  padding: 3px 4px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-40 {
+  color: #000078;
+  padding: 4px 5px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-41 {
+  color: #00007b;
+  padding: 5px 6px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-42 {
+  color: #00007e;
+  padding: 6px 0px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-43 {
+  color: #000081;
+  padding: 7px 1px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-44 {
+  color: #000084;
+  padding: 8px 2px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-45 {
+  color: #000087;
+  padding: 9px 3px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-46 {
+  color: #00008a;
+  padding: 10px 4px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-47 {
+  color: #00008d;
+  padding: 11px 5px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-48 {
+  color: #000090;
+  padding: 0px 6px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-49 {
+  color: #000093;
+  padding: 1px 0px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-50 {
+  color: #000096;
+  padding: 2px 1px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-51 {
+  color: #000099;
+  padding: 3px 2px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-52 {
+  color: #00009c;
+  padding: 4px 3px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-53 {
+  color: #00009f;
+  padding: 5px 4px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-54 {
+  color: #0000a2;
+  padding: 6px 5px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-55 {
+  color: #0000a5;
+  padding: 7px 6px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-56 {
+  color: #0000a8;
+  padding: 8px 0px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-57 {
+  color: #0000ab;
+  padding: 9px 1px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-58 {
+  color: #0000ae;
+  padding: 10px 2px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-59 {
+  color: #0000b1;
+  padding: 11px 3px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-60 {
+  color: #0000b4;
+  padding: 0px 4px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-61 {
+  color: #0000b7;
+  padding: 1px 5px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-62 {
+  color: #0000ba;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-63 {
+  color: #0000bd;
+  padding: 3px 0px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-64 {
+  color: #0000c0;
+  padding: 4px 1px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-65 {
+  color: #0000c3;
+  padding: 5px 2px;
+  border-radius: 0px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-66 {
+  color: #0000c6;
+  padding: 6px 3px;
+  border-radius: 1px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-67 {
+  color: #0000c9;
+  padding: 7px 4px;
+  border-radius: 2px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-68 {
+  color: #0000cc;
+  padding: 8px 5px;
+  border-radius: 3px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
+.jp-Sample-item-69 {
+  color: #0000cf;
+  padding: 9px 6px;
+  border-radius: 4px;
+  background-image: linear-gradient(to right, #fff, #eee);
+}
