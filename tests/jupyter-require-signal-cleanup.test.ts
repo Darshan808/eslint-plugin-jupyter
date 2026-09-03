@@ -54,6 +54,21 @@ const PRELUDE = `
         interface INotebookModel {
           readonly contentChanged: ISignal<INotebookModel, void>;
         }
+        namespace Session {
+          export interface ISessionConnection {
+            readonly kernelChanged: ISignal<ISessionConnection, void>;
+            readonly statusChanged: ISignal<ISessionConnection, string>;
+          }
+        }
+        interface ISessionContext {
+          readonly statusChanged: ISignal<ISessionContext, string>;
+          readonly session: Session.ISessionConnection | null;
+        }
+        declare class SessionContext implements ISessionContext {
+          readonly statusChanged: ISignal<ISessionContext, string>;
+          readonly session: Session.ISessionConnection | null;
+          dispose(): void;
+        }
         declare const Signal: {
           clearData(obj: unknown): void;
         };
@@ -353,6 +368,43 @@ ruleTester.run('require-signal-cleanup', requireSignalCleanup, {
       options: [{ longLivedTypes: ['ServiceManager'] }]
     },
     {
+      // A namespace-qualified entry does not match an unrelated top-level type
+      // that happens to share only the last segment.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        interface IOtherConnection {
+          readonly statusChanged: ISignal<IOtherConnection, string>;
+        }
+        class Handler implements IDisposable {
+          constructor(connection: IOtherConnection) {
+            connection.statusChanged.connect(this._onStatus, this);
+          }
+          readonly isDisposed = false;
+          dispose(): void {}
+          private _onStatus(): void {}
+        }
+      `,
+      options: [{ longLivedTypes: ['Session.IOtherConnection'] }]
+    },
+    {
+      // A session context the class constructs and disposes itself dies with
+      // the receiver, allowlisted type or not.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Runner implements IDisposable {
+          constructor() {
+            this._sessionContext.statusChanged.connect(this._onStatus, this);
+          }
+          readonly isDisposed = false;
+          dispose(): void {
+            this._sessionContext.dispose();
+          }
+          private _onStatus(): void {}
+          private _sessionContext = new SessionContext();
+        }
+      `
+    },
+    {
       // Cleanup reached through a namespace import of `@lumino/signaling`.
       filename: 'tests/type-aware-fixture.ts',
       code: `${PRELUDE}
@@ -440,6 +492,74 @@ ruleTester.run('require-signal-cleanup', requireSignalCleanup, {
         }
       `,
       errors: [{ messageId: 'serviceOutlivesReceiver' }]
+    },
+    {
+      // A kernel session context is owned by the document, not by the objects
+      // built on it: it stays alive for as long as the document is open.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Indicator implements IDisposable {
+          constructor(context: ISessionContext) {
+            context.statusChanged.connect(this._onStatus, this);
+          }
+          readonly isDisposed = false;
+          dispose(): void {}
+          private _onStatus(): void {}
+        }
+      `,
+      errors: [
+        {
+          messageId: 'serviceOutlivesReceiver',
+          data: { sender: 'context', typeName: 'ISessionContext' }
+        }
+      ]
+    },
+    {
+      // The kernel connection itself. The default list names it bare, which
+      // matches whatever namespace it is declared in.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Handler implements IDisposable {
+          constructor(connection: Session.ISessionConnection) {
+            connection.kernelChanged.connect(this._onKernel, this);
+          }
+          readonly isDisposed = false;
+          dispose(): void {}
+          private _onKernel(): void {}
+        }
+      `,
+      errors: [
+        {
+          messageId: 'serviceOutlivesReceiver',
+          data: { sender: 'connection', typeName: 'ISessionConnection' }
+        }
+      ]
+    },
+    {
+      // A qualified entry also matches a hop partway along the sender chain:
+      // here only the session connection is allowlisted, not the context it
+      // hangs off.
+      filename: 'tests/type-aware-fixture.ts',
+      code: `${PRELUDE}
+        class Handler implements IDisposable {
+          constructor(context: ISessionContext) {
+            context.session!.kernelChanged.connect(this._onKernel, this);
+          }
+          readonly isDisposed = false;
+          dispose(): void {}
+          private _onKernel(): void {}
+        }
+      `,
+      options: [{ longLivedTypes: ['Session.ISessionConnection'] }],
+      errors: [
+        {
+          messageId: 'serviceOutlivesReceiver',
+          data: {
+            sender: 'context.session',
+            typeName: 'Session.ISessionConnection'
+          }
+        }
+      ]
     },
     {
       // A custom longLivedTypes entry is honoured.

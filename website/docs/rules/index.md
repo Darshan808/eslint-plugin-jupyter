@@ -15,6 +15,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 - [no-untranslated-string](./no-untranslated-string)
 - [plugin-activation-args](./plugin-activation-args)
 - [plugin-description](./plugin-description)
+- [prefer-lazy-imports](./prefer-lazy-imports)
 - [prefer-signal-this-arg](./prefer-signal-this-arg)
 - [require-signal-cleanup](./require-signal-cleanup)
 - [require-signal-this-arg](./require-signal-this-arg)
@@ -49,9 +50,13 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/no-schema-enum](./no-schema-enum)                                                     | `warn` ² |
 | [jupyter/no-pageconfig-base-url](./no-pageconfig-base-url)                                     | `warn`   |
 | [jupyter/incorrect-translator-usage](./incorrect-translator-usage)                             | `warn`   |
+| [jupyter/prefer-lazy-imports](./prefer-lazy-imports)                                           | `warn` ³ |
 
 ¹ Applied only to `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.
-² Applied only to `**/schema/*.json` files
+
+² Applied only to `**/schema/*.json` files.
+
+³ Turned off for `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files, where mock plugins would otherwise be reported.
 
 These defaults are the same in both `jupyterPlugin.configs.recommended` (flat config) and `plugin:@jupyter/eslint-plugin/recommended-legacy`.
 
