@@ -274,6 +274,36 @@ function enclosingBodyStatement(node: TSESTree.Node): TSESTree.Node | null {
   return null;
 }
 
+/**
+ * The expression a locator-holding identifier was assigned, or null when the
+ * binding must not be followed.
+ *
+ * Only a `const` declared with an initializer is followed. `const` is what
+ * makes the assignment the single write, so the expression read here is the
+ * one the gesture acts on; a `let` could hold a different locator by then.
+ */
+function resolveLocatorBinding(
+  node: TSESTree.Identifier,
+  scope: TSESLint.Scope.Scope
+): TSESTree.Node | null {
+  const variable = ASTUtils.findVariable(scope, node);
+  if (!variable || variable.defs.length !== 1) {
+    return null;
+  }
+  const declarator = variable.defs[0].node;
+  if (declarator.type !== 'VariableDeclarator' || !declarator.init) {
+    return null;
+  }
+  const declaration = declarator.parent;
+  if (
+    declaration?.type !== 'VariableDeclaration' ||
+    declaration.kind !== 'const'
+  ) {
+    return null;
+  }
+  return declarator.init;
+}
+
 function previousSiblingStatement(
   statement: TSESTree.Node
 ): TSESTree.Node | null {
@@ -359,7 +389,10 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
     }
 
     function checkSelectorInteraction(node: TSESTree.CallExpression): void {
-      const match = matchSelectorInteraction(node);
+      const scope = context.sourceCode.getScope(node);
+      const match = matchSelectorInteraction(node, identifier =>
+        resolveLocatorBinding(identifier, scope)
+      );
       if (!match) {
         return;
       }
@@ -368,10 +401,7 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
         return;
       }
 
-      const segments = selectorSegments(
-        match,
-        context.sourceCode.getScope(node)
-      );
+      const segments = selectorSegments(match, scope);
       if (segments === null) {
         return;
       }

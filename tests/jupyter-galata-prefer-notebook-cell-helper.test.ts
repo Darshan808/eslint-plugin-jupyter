@@ -96,10 +96,6 @@ ruleTester.run(
       {
         code: `await popup.locator('.jp-Cell-inputArea').click();`
       },
-      // Locators held in variables are out of scope (notebook-edit.test.ts)
-      {
-        code: `const cell = page.locator('.jp-Cell');\nawait cell.click();`
-      },
       // Page *content* is not markup: a cell class name appearing in matched
       // text or in an attribute value proves nothing about the widget
       {
@@ -241,6 +237,32 @@ ruleTester.run(
       // A toolbar inside the editor host is not the editor host
       {
         code: `await page.locator('.jp-Cell-inputArea .jp-CodeMirrorEditorToolbar').click();`
+      },
+      // A reassignable binding could hold a different locator by the time the
+      // gesture runs, so only a `const` is followed
+      {
+        code: `let cell = page.locator('.jp-Cell');\ncell = other;\nawait cell.click();`
+      },
+      {
+        code: `function run(cell) {\n  return cell.click();\n}`
+      },
+      // A binding that is not a `page` chain stays out of reach, which keeps
+      // the `getCellLocator()` idiom silent (notebook-edit.test.ts)
+      {
+        code: `const cell = await page.notebook.getCellLocator(0);\nawait cell!.locator('.jp-InputArea-prompt').click();`
+      },
+      {
+        code: `const cell = frame.locator('.jp-Cell');\nawait cell.click();`
+      },
+      // Following the binding does not skip any of the other checks
+      {
+        code: `const cell = page.locator('.jp-CodeConsole .jp-Cell');\nawait cell.locator('.jp-InputArea-prompt').click();`
+      },
+      {
+        code: `const cell = page.locator(selector);\nawait cell.locator('.jp-InputArea-prompt').click();`
+      },
+      {
+        code: `const cell = page.locator('.jp-Cell');\nawait cell.click({ modifiers: ['Control'] });`
       }
     ],
     invalid: [
@@ -360,6 +382,40 @@ ruleTester.run(
       {
         code: `await page.locator("${CELL_EDITOR_CHAIN}").fill('print("hello")');\nawait page.keyboard.press('Control+Enter');`,
         errors: [{ messageId: 'preferSetCell' }, { messageId: 'preferRunCell' }]
+      },
+      // A locator held in a `const` is the same chain written over two
+      // statements (notebook/ui-tests/test/console.spec.ts)
+      {
+        code: `const cellInput = page.locator("${CELL_EDITOR_CHAIN}").first();\nawait cellInput.fill('a = 1');`,
+        errors: [{ messageId: 'preferSetCell' }]
+      },
+      {
+        code: `const cellInput = page.locator("${CELL_EDITOR_CHAIN}").first();\nawait cellInput.press('Shift+Enter');`,
+        errors: [{ messageId: 'preferRunCell' }]
+      },
+      // The binding may carry only part of the chain
+      // (notebook/ui-tests/test/notebook.spec.ts)
+      {
+        code: `const firstCell = page.locator('.jp-Cell').first();\nawait firstCell.locator('.jp-InputArea-prompt').click();`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // A `!` on the binding does not hide the chain
+      {
+        code: `const cell = page.locator('.jp-Cell');\nawait cell!.click();`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // A binding assigned from another binding
+      {
+        code: `const cell = page.locator('.jp-Cell');\nconst prompt = cell.locator('.jp-InputArea-prompt');\nawait prompt.click();`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // The resolved chain arms the keyboard shortcut like an inline one
+      {
+        code: `const cell = page.locator('.jp-Cell-inputArea');\nawait cell.click();\nawait page.keyboard.press('Shift+Enter');`,
+        errors: [
+          { messageId: 'preferEnterCellEditingMode' },
+          { messageId: 'preferRunCell' }
+        ]
       }
     ]
   }

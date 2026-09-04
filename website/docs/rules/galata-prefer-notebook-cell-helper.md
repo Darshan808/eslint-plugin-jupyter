@@ -12,7 +12,7 @@ The rule only reports when it can prove, statically, that the interaction target
 
 A selector interaction is reported when **all** of the following hold:
 
-- the chain is rooted at the `page` fixture (`page.click(sel)`, or `page.locator(sel).first().click()`);
+- the chain is rooted at the `page` fixture (`page.click(sel)`, or `page.locator(sel).first().click()`), directly or through a `const` holding a locator;
 - every selector argument resolves to a static string. Resolution follows `const` bindings, so the shared `const cellSelector = '… .jp-Cell'` idiom is seen through; a selector interpolating a value that is not statically known, such as ``page.locator(`${getScope()} .jp-Cell`)``, hides the scope it was written with and is skipped;
 - the selector carries a cell **root** token (`.jp-Cell*`, `.jp-CodeCell`, `.jp-MarkdownCell`, `.jp-RawCell`, `.jp-Notebook-cell`) as an actual CSS class or attribute.
 - the selector has no union (`,`) or sibling combinator (`+`, `~`), which would let the cell token sit in a branch the gesture never lands in;
@@ -39,7 +39,7 @@ Note that "the test does not want to wait for the kernel" is _not_ a reason to s
 
 The rule does not report on:
 
-- locators held in variables (`const cell = page.locator('.jp-Cell'); await cell.click();`) or anything derived from `page.notebook.getCellLocator()`;
+- locators held in a `let` or a parameter, or anything derived from `page.notebook.getCellLocator()`;
 - bare run shortcuts that are not adjacent to a flagged raw cell interaction;
 - selectors interpolating a value that is not statically known;
 

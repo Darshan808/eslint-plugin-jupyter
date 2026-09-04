@@ -87,8 +87,33 @@ export interface SelectorInteractionMatch {
   isRightClick: boolean;
 }
 
+/**
+ * Resolves an identifier holding a locator to the expression it was assigned,
+ * or returns null when the binding must not be followed. Passed in by a rule
+ * that has a scope to look the name up in.
+ */
+export type LocatorBindingResolver = (
+  node: TSESTree.Identifier
+) => TSESTree.Node | null;
+
 function isPageIdentifier(node: TSESTree.Node): boolean {
   return node.type === 'Identifier' && node.name === 'page';
+}
+
+/** Strips the `!` and `as T` wrappers a locator expression may carry. */
+function unwrapAssertions(node: TSESTree.Node): TSESTree.Node {
+  let current = node;
+  while (
+    current.type === 'TSNonNullExpression' ||
+    current.type === 'TSAsExpression' ||
+    current.type === 'AwaitExpression'
+  ) {
+    current =
+      current.type === 'AwaitExpression'
+        ? current.argument
+        : current.expression;
+  }
+  return current;
 }
 
 function firstArgument(
@@ -122,13 +147,29 @@ export function isRightClick(node: TSESTree.CallExpression): boolean {
  * `page.locator(a).getByText(b).first()`, and returns the selector arguments
  * in root-to-tip order. Returns null when the chain is not rooted at `page`,
  * contains a non-locator call, or carries no selector argument at all.
+ *
+ * With a `resolveBinding` callback the walk also steps through an identifier
+ * holding a locator, so that `const cell = page.locator(a); cell.click();`
+ * reaches the same `page` root as the inline form.
  */
 function collectLocatorChainSelectors(
-  node: TSESTree.Node
+  node: TSESTree.Node,
+  resolveBinding?: LocatorBindingResolver
 ): SelectorPart[] | null {
   const selectors: SelectorPart[] = [];
-  let current: TSESTree.Node = node;
-  for (;;) {
+  let current: TSESTree.Node = unwrapAssertions(node);
+  // A binding may itself be assigned from another binding, so the walk can
+  // alternate between resolving a name and stepping down a call. The bound
+  // stops a cycle such as `const a = b, b = a` from looping.
+  for (let steps = 0; steps < 32; steps++) {
+    if (current.type === 'Identifier') {
+      const resolved = resolveBinding ? resolveBinding(current) : null;
+      if (!resolved) {
+        return null;
+      }
+      current = unwrapAssertions(resolved);
+      continue;
+    }
     if (current.type !== 'CallExpression') {
       return null;
     }
@@ -148,11 +189,13 @@ function collectLocatorChainSelectors(
     } else if (!CHAIN_PASSTHROUGH_METHODS.has(callee.property.name)) {
       return null;
     }
-    if (isPageIdentifier(callee.object)) {
+    const object = unwrapAssertions(callee.object);
+    if (isPageIdentifier(object)) {
       return selectors.length > 0 ? selectors : null;
     }
-    current = callee.object;
+    current = object;
   }
+  return null;
 }
 
 /**
@@ -164,9 +207,14 @@ function collectLocatorChainSelectors(
  *   `page.locator('#filebrowser').getByText('notebooks').dblclick()`
  *
  * Returns null for any other shape
+ *
+ * `resolveBinding` is optional. Without it a chain has to be written inline
+ * from `page`; with it a locator held in a variable is followed to its
+ * assignment first.
  */
 export function matchSelectorInteraction(
-  node: TSESTree.CallExpression
+  node: TSESTree.CallExpression,
+  resolveBinding?: LocatorBindingResolver
 ): SelectorInteractionMatch | null {
   const { callee } = node;
   if (callee.type !== 'MemberExpression' || callee.computed) {
@@ -195,7 +243,10 @@ export function matchSelectorInteraction(
   }
 
   // page.locator(selector).getByText(...).click(...)
-  const selectorParts = collectLocatorChainSelectors(callee.object);
+  const selectorParts = collectLocatorChainSelectors(
+    callee.object,
+    resolveBinding
+  );
   return selectorParts
     ? {
         callNode: node,
