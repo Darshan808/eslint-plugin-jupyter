@@ -248,6 +248,29 @@ ruleTester.run(
       {
         code: `await page.locator('.jp-Cell').click({ trial: true });`
       },
+      // Options the helper cannot reproduce: a triple click selects editor
+      // text, `force` skips the checks the helper relies on, and an explicit
+      // position aims somewhere other than the gutter `selectCells()` clicks
+      {
+        code: `await page.locator('.jp-Cell').click({ clickCount: 3 });`
+      },
+      {
+        code: `await page.locator('.jp-Cell').click({ force: true });`
+      },
+      {
+        code: `await page.locator('.jp-Cell').click({ position: { x: 200, y: 40 } });`
+      },
+      // nbdime rows are not notebook cells, whichever prompt name they use
+      {
+        code: `await page.locator('.jp-Cell-diff .jp-InputPrompt').click();`
+      },
+      {
+        code: `await page.locator('.jp-Cell-merge .cm-content').fill('x');`
+      },
+      // Neither is the cell tag editor or the cell toolbar
+      {
+        code: `await page.locator('.jp-CellTags .jp-InputArea-prompt').click();`
+      },
       // A toolbar inside the editor host is not the editor host
       {
         code: `await page.locator('.jp-Cell-inputArea .jp-CodeMirrorEditorToolbar').click();`
@@ -419,6 +442,17 @@ ruleTester.run(
           { messageId: 'preferEnterCellEditingMode' },
           { messageId: 'preferRunCell' }
         ]
+      },
+      // `jp-InputPrompt` and `jp-InputArea-prompt` are the same element
+      // (jupyter-chat attachments.spec.ts)
+      {
+        code: `await page.locator('.jp-Cell >> nth=1 >> .jp-InputPrompt').click();`,
+        errors: [{ messageId: 'preferSelectCells' }]
+      },
+      // A waiting option changes nothing about the gesture
+      {
+        code: `await page.locator('.jp-Cell').click({ timeout: 100 });`,
+        errors: [{ messageId: 'preferSelectCells' }]
       },
       // A cell root and an editor target are enough; naming the input area is
       // not required (jupyter-collaboration notebook.spec.ts)

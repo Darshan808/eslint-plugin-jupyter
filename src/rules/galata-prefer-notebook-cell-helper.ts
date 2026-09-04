@@ -17,9 +17,12 @@ type MessageIds =
   | 'preferRunCell';
 type Options = [];
 
-// A cell *root* token, required somewhere in the selector chain.
+// A cell *root* token, required somewhere in the selector chain. The list of
+// `jp-Cell-` names is closed: an open tail would also accept `jp-CellToolbar`,
+// `jp-CellTags` and the `jp-Cell-diff`/`jp-Cell-merge` rows nbdime renders,
+// none of which is a notebook cell.
 const CELL_CONTEXT_PATTERN =
-  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)[\w-]*|\.jp-Notebook-cell/;
+  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Cell-(?:footer|header|input(?:Area|Collapser|Wrapper)|output(?:Area|Collapser|Wrapper))(?![\w-])|\.jp-Notebook-cell(?![\w-])/;
 
 // Widgets that reuse cell markup but that `page.notebook` does not drive: the
 // console hosts real `.jp-Cell` widgets, and the file selector dialog embeds
@@ -40,9 +43,11 @@ const OUTPUT_AREA_PATTERN = /\.jp-Cell-outputArea|\.jp-OutputArea/;
 // The cell element itself, not a widget rendered inside it. The `(?![\w-])`
 // anchors keep `jp-Cell-inputCollapser`, `jp-CellToolbar`, … out. The input
 // prompt counts: `selectCells()` clicks the cell at `{ x: 15, y: 5 }`, which is
-// that same gutter, so clicking it *is* the helper's own gesture.
+// that same gutter, so clicking it *is* the helper's own gesture. Both prompt
+// names select the one element: `InputArea` adds `jp-InputArea-prompt` to the
+// widget whose own constructor added `jp-InputPrompt`.
 const CELL_TARGET_PATTERN =
-  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Notebook-cell(?![\w-])|\.jp-InputArea-prompt(?![\w-])/;
+  /\.jp-(?:Cell|CodeCell|MarkdownCell|RawCell)(?![\w-])|\.jp-Notebook-cell(?![\w-])|\.jp-Input(?:Area-prompt|Prompt)(?![\w-])/;
 
 // The JupyterLab notebook run shortcuts. `ControlOrMeta+Enter` is Playwright's
 // platform-neutral spelling. Any other key on a cell is not a run.
@@ -112,6 +117,17 @@ function isSupportedModifier(element: TSESTree.Node | null): boolean {
   return element?.type === 'Literal' && element.value === 'Shift';
 }
 
+// Options that change only how long Playwright waits, never what the gesture
+// does, so the notebook helper still reproduces it. Every other key is checked
+// by name below or rejected: `clickCount` makes a triple click that selects
+// editor text, `force` skips the actionability checks the helper relies on, and
+// `position` aims somewhere other than the gutter `selectCells()` clicks.
+const NEUTRAL_OPTION_KEYS: ReadonlySet<string> = new Set([
+  'timeout',
+  'noWaitAfter',
+  'delay'
+]);
+
 /**
  * True when the interaction's options object holds anything the notebook
  * helper cannot reproduce, so that only the plain gesture is ever reported:
@@ -122,8 +138,8 @@ function isSupportedModifier(element: TSESTree.Node | null): boolean {
  * - `trial` — Playwright runs the actionability checks and then performs no
  *   click, so suggesting `selectCells()` would turn a no-op into a selection.
  *
- * An unknown key is treated as unsupported: a computed key or a spread could
- * carry any of the above, and a non-static value could be either.
+ * Any other key is unsupported unless it is in `NEUTRAL_OPTION_KEYS`, and a
+ * computed key or a spread is unsupported because it could carry any of them.
  */
 function hasUnsupportedOptions(node: TSESTree.CallExpression): boolean {
   for (const arg of node.arguments) {
@@ -156,6 +172,8 @@ function hasUnsupportedOptions(node: TSESTree.CallExpression): boolean {
         if (!(prop.value.type === 'Literal' && prop.value.value === false)) {
           return true;
         }
+      } else if (typeof key !== 'string' || !NEUTRAL_OPTION_KEYS.has(key)) {
+        return true;
       }
     }
   }
