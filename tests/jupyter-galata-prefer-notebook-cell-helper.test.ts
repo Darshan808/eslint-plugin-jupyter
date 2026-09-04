@@ -133,9 +133,15 @@ ruleTester.run(
       {
         code: `await page.locator('.jp-Notebook:not(:has(.jp-Cell)) .cm-content').fill('x');`
       },
-      // CodeMirror also renders inside a cell's output, not just its input area
+      // A mime renderer or a widget can put an editor in a cell's output
       {
         code: `await page.locator('.jp-Cell .jp-OutputArea-output .cm-content').fill('x');`
+      },
+      {
+        code: `await page.locator('.jp-Cell-outputArea .cm-content').fill('x');`
+      },
+      {
+        code: `await page.locator('.jp-Cell >> .jp-OutputArea >> .cm-editor').click();`
       },
       // Only a primary click selects a cell
       {
@@ -382,6 +388,16 @@ ruleTester.run(
       {
         code: `await page.locator("${CELL_EDITOR_CHAIN}").fill('print("hello")');\nawait page.keyboard.press('Control+Enter');`,
         errors: [{ messageId: 'preferSetCell' }, { messageId: 'preferRunCell' }]
+      },
+      // A cell root and an editor target are enough; naming the input area is
+      // not required (jupyter-collaboration notebook.spec.ts)
+      {
+        code: `await page.locator('.jp-Cell >> .cm-editor').first().click();`,
+        errors: [{ messageId: 'preferEnterCellEditingMode' }]
+      },
+      {
+        code: `await page.locator('.jp-Cell .cm-content').fill('a = 1');`,
+        errors: [{ messageId: 'preferSetCell' }]
       },
       // A locator held in a `const` is the same chain written over two
       // statements (notebook/ui-tests/test/console.spec.ts)

@@ -32,10 +32,10 @@ const FOREIGN_CONTEXT_PATTERN =
 const EDITOR_TARGET_PATTERN =
   /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea-editor(?![\w-])|\.jp-CodeMirrorEditor(?![\w-])|\.cm-editor(?![\w-])|\.cm-content(?![\w-])/;
 
-// A cell's *input* area, as opposed to anything else a cell contains. CodeMirror
-// markup also renders inside cell outputs (an ipywidget text area, a nested
-// editor), so an editor target counts only with an input area in the same chain.
-const INPUT_AREA_PATTERN = /\.jp-Cell-inputArea(?![\w-])|\.jp-InputArea[\w-]*/;
+// A cell's output area. JupyterLab itself puts no editor there, but a mime
+// renderer or a widget can, so an editor target scoped to an output is not the
+// cell's own input and has no `setCell()` to suggest.
+const OUTPUT_AREA_PATTERN = /\.jp-Cell-outputArea|\.jp-OutputArea/;
 
 // The cell element itself, not a widget rendered inside it. The `(?![\w-])`
 // anchors keep `jp-Cell-inputCollapser`, `jp-CellToolbar`, … out. The input
@@ -389,9 +389,15 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
     }
 
     function checkSelectorInteraction(node: TSESTree.CallExpression): void {
-      const scope = context.sourceCode.getScope(node);
+      // Most call expressions are not interactions at all, and
+      // `matchSelectorInteraction` rejects them on the callee alone, so the
+      // scope is looked up only once something actually needs it.
+      let scope: TSESLint.Scope.Scope | null = null;
+      const currentScope = (): TSESLint.Scope.Scope =>
+        (scope ??= context.sourceCode.getScope(node));
+
       const match = matchSelectorInteraction(node, identifier =>
-        resolveLocatorBinding(identifier, scope)
+        resolveLocatorBinding(identifier, currentScope())
       );
       if (!match) {
         return;
@@ -401,7 +407,7 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
         return;
       }
 
-      const segments = selectorSegments(match, scope);
+      const segments = selectorSegments(match, currentScope());
       if (segments === null) {
         return;
       }
@@ -441,12 +447,11 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
         return;
       }
       const target = targetToken(lastSegment);
-      // CodeMirror markup also renders inside a cell's *output*, so an editor
-      // target additionally needs an input area somewhere in the chain.
+      // An editor scoped to the cell's output is not the cell's input.
       const targetsEditor =
         EDITOR_TARGET_PATTERN.test(target) &&
-        segments.some(
-          segment => segment.isCss && INPUT_AREA_PATTERN.test(segment.text)
+        !segments.some(
+          segment => segment.isCss && OUTPUT_AREA_PATTERN.test(segment.text)
         );
       const targetsCell = CELL_TARGET_PATTERN.test(target);
       if (!targetsEditor && !targetsCell) {
