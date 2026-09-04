@@ -29,7 +29,7 @@ The gesture then selects the message:
 
 ### Bare keyboard shortcuts
 
-A bare `page.keyboard.press('Control+Enter')` is reported **only** when the immediately preceding statement in the same block was itself reported by this rule. Both have to be statements of that block: an interaction hanging off `if (hasCell) …` is skipped by a shortcut written after the `if`, so it does not arm the gate. Two statements sharing a block — a conditional block included — always run together, so that pairing does report.
+A bare `page.keyboard.press('Control+Enter')` is reported **only** when the preceding statement in the same block, skipping any `expect` assertions, was itself reported by this rule. Both have to be statements of that block: an interaction hanging off `if (hasCell) …` is skipped by a shortcut written after the `if`, so it does not arm the gate. Two statements sharing a block — a conditional block included — always run together, so that pairing does report.
 
 The reason is that a bare keyboard press carries no context: the rule sees the string `'Shift+Enter'` and nothing else, so it cannot tell which widget has focus (the console binds it to `console:run-forced`, and Galata ships no console helper to suggest instead), which cell index to pass to `runCell()`, or whether the binding is itself the thing under test — `cells.test.ts` has `test('Run code cell with Ctrl + Enter')`, and both notebook scroll tests press the key precisely _because_ `runCell()` switches to command mode first.
 

@@ -200,6 +200,14 @@ ruleTester.run(
       {
         code: `await page.notebook.setCell(0, 'code', loopedInput);\nawait page.keyboard.press('Control+Enter');`
       },
+      // Stepping over assertions does not reach past a `page.notebook` call
+      // (notebook-scroll.test.ts, windowed-notebook.test.ts)
+      {
+        code: `await page.notebook.runCell(2, true);\nawait expect(thirdCell).not.toBeInViewport({ ratio: 0.2 });\nawait page.keyboard.press('Control+Enter');`
+      },
+      {
+        code: `const output = await page.notebook.getCellTextOutput(0);\nexpect(output).toBe(null);\nawait page.keyboard.press('Control+Enter');`
+      },
       // A `page.notebook` call never arms the keyboard gate
       {
         code: `await page.notebook.enterCellEditingMode(0);\nawait page.keyboard.press('Shift+Enter');`
@@ -346,10 +354,17 @@ ruleTester.run(
         code: `await page.press('.jp-Cell', 'ControlOrMeta+Enter');`,
         errors: [{ messageId: 'preferRunCell' }]
       },
-      // The keyboard gate only arms on the *immediately* preceding statement:
-      // one report for the click, none for the shortcut.
+      // An assertion between the two does not break the pairing
       {
         code: `await page.locator('.jp-Cell-inputArea').click();\nawait expect(x).toBeVisible();\nawait page.keyboard.press('Shift+Enter');`,
+        errors: [
+          { messageId: 'preferEnterCellEditingMode' },
+          { messageId: 'preferRunCell' }
+        ]
+      },
+      // Any other statement in between does
+      {
+        code: `await page.locator('.jp-Cell-inputArea').click();\nawait page.waitForTimeout(500);\nawait page.keyboard.press('Shift+Enter');`,
         errors: [{ messageId: 'preferEnterCellEditingMode' }]
       },
       // A conditionally executed interaction does not arm the keyboard gate
@@ -388,6 +403,22 @@ ruleTester.run(
       {
         code: `await page.locator("${CELL_EDITOR_CHAIN}").fill('print("hello")');\nawait page.keyboard.press('Control+Enter');`,
         errors: [{ messageId: 'preferSetCell' }, { messageId: 'preferRunCell' }]
+      },
+      // An assertion between the interaction and the shortcut is stepped over
+      // (notebook/ui-tests/test/notebook.spec.ts)
+      {
+        code: `await page.locator('.jp-Cell .jp-InputArea-prompt').click();\nawait expect(firstCell).toBeFocused();\nawait page.keyboard.press('Shift+Enter');`,
+        errors: [
+          { messageId: 'preferSelectCells' },
+          { messageId: 'preferRunCell' }
+        ]
+      },
+      {
+        code: `await page.locator('.jp-Cell-inputArea').click();\nawait expect.soft(cell).toBeVisible();\nexpect(count).toBe(1);\nawait page.keyboard.press('Shift+Enter');`,
+        errors: [
+          { messageId: 'preferEnterCellEditingMode' },
+          { messageId: 'preferRunCell' }
+        ]
       },
       // A cell root and an editor target are enough; naming the input area is
       // not required (jupyter-collaboration notebook.spec.ts)

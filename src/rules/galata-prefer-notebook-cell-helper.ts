@@ -304,6 +304,31 @@ function resolveLocatorBinding(
   return declarator.init;
 }
 
+/**
+ * True for a statement that only asserts: `expect(x).toBe(y)`,
+ * `await expect(x).toBeVisible()`, `await expect.soft(x).not.toBeInViewport()`.
+ * An assertion performs no gesture of its own, so a run shortcut written after
+ * one is still finishing the interaction before it.
+ */
+function isAssertionStatement(statement: TSESTree.Node): boolean {
+  if (statement.type !== 'ExpressionStatement') {
+    return false;
+  }
+  let current: TSESTree.Node = statement.expression;
+  if (current.type === 'AwaitExpression') {
+    current = current.argument;
+  }
+  // Walk the call chain down to its root: `expect(x).not.toBe(y)` → `expect`.
+  while (
+    current.type === 'CallExpression' ||
+    current.type === 'MemberExpression'
+  ) {
+    current =
+      current.type === 'CallExpression' ? current.callee : current.object;
+  }
+  return current.type === 'Identifier' && current.name === 'expect';
+}
+
 function previousSiblingStatement(
   statement: TSESTree.Node
 ): TSESTree.Node | null {
@@ -380,7 +405,12 @@ const galataPreferNotebookCellHelper = createRule<Options, MessageIds>({
       if (statement?.type !== 'ExpressionStatement') {
         return;
       }
-      const previous = previousSiblingStatement(statement);
+      // Assertions in between are stepped over: a test routinely checks the
+      // state the interaction left before running the cell.
+      let previous = previousSiblingStatement(statement);
+      while (previous && isAssertionStatement(previous)) {
+        previous = previousSiblingStatement(previous);
+      }
       if (!previous || !reportedStatements.has(previous)) {
         return;
       }
