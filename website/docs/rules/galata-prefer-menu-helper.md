@@ -28,7 +28,7 @@ A locator held in a `const` is followed to its declaration, so `const item = pag
 
 ### Which menu is open
 
-Lumino gives every menu the same markup. The main menu, the right-click context menu and any dropdown opened from a toolbar button all render as `.lm-Menu` with `role="menu"` content and `role="menuitem"` items, and `page.menu` only walks the main menu. So a selector made only of popup markup is reported only when the main menu was opened first, by a menu bar click or by `page.menu.openLocator` / `page.menu.open` / `page.menu.clickMenuItem` earlier in the same test. A `#jp-mainmenu-*` id names a main menu popup on its own and needs no opener.
+Lumino gives every menu the same markup. The main menu, the right-click context menu and any dropdown opened from a toolbar button all render as `.lm-Menu` with `role="menu"` content and `role="menuitem"` items, or `role="menuitemcheckbox"` where the item toggles, and `page.menu` only walks the main menu. So a selector made only of popup markup is reported only when the main menu was opened first, by a menu bar click or by `page.menu.openLocator` / `page.menu.open` / `page.menu.clickMenuItem` earlier in the same test. A `#jp-mainmenu-*` id names a main menu popup on its own and needs no opener.
 
 `getByRole('menuitem', { name })` is the same case with even less to go on, since the menu bar, the main menu and the context menu all use that role. The opener above it is what makes the item reportable.
 

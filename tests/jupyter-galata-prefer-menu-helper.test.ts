@@ -54,6 +54,17 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
         await page.getByRole('menuitem', { name: 'Open in Terminal' }).click();
       `
     },
+    // A toggleable item is the same case: `role="menuitemcheckbox"` appears on
+    // context menu items and on dropdowns too
+    {
+      code: `await page.getByRole('menuitemcheckbox', { name: 'Show Line Numbers' }).click();`
+    },
+    {
+      code: `
+        await page.locator('.jp-Cell').click({ button: 'right' });
+        await page.getByRole('menuitemcheckbox', { name: 'Show Line Numbers' }).click();
+      `
+    },
     // A non-menu role with a menu-shaped name is not a menu
     {
       code: `await page.getByRole('button', { name: 'File' }).click();`
@@ -348,6 +359,18 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
       code: `
         await page.getByRole('menuitem', { name: 'File' }).click();
         await page.getByRole('menuitem', { name: 'Open from Path' }).click();
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
+    },
+    // Lumino gives a toggleable item `role="menuitemcheckbox"`, which the View
+    // and Settings menus are full of
+    {
+      code: `
+        await page.getByRole('menuitem', { name: 'View' }).click();
+        await page.getByRole('menuitemcheckbox', { name: 'Show Line Numbers' }).click();
       `,
       errors: [
         { messageId: 'preferMenuOpen' },

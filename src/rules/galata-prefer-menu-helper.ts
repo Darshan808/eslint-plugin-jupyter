@@ -73,8 +73,12 @@ const MENU_BAR_CONTAINER_PATTERN = /lm-MenuBar\b/;
 // Menu markup that does not resolve menu bar vs popup on its own: Lumino gives
 // `role="menuitem"` to both menu bar items and popup items, and stamps
 // `data-type="submenu"` on any item that opens a submenu.
+//
+// A toggleable item gets `role="menuitemcheckbox"` instead, which the View and
+// Settings menus are full of, so both roles count. A submenu item gets no role
+// at all and is reached through `data-type` instead.
 const MENU_MARKUP_PATTERN =
-  /role\s*=\s*["']menuitem["']|lm-MenuBar\b|data-type\s*=\s*["']?submenu/;
+  /role\s*=\s*["']menuitem(?:checkbox)?["']|lm-MenuBar\b|data-type\s*=\s*["']?submenu/;
 
 // Any item label in the selector, whatever spelling it uses. Its presence is
 // what makes a menu path suggestible, so `preferClickMenuItem` can be reported
