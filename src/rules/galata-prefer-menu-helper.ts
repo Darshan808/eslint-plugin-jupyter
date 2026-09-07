@@ -81,11 +81,15 @@ const MENU_MARKUP_PATTERN =
 // instead of the generic message.
 const TEXT_SELECTOR_PATTERN = new RegExp(`text=|${TEXT_PSEUDO_CLASS}`);
 
-// Menu items are activated with a single click, and `MenuHelper` has no
-// equivalent for any other gesture — so there is nothing useful to suggest for
-// one. Every other gesture (`dblclick`, `hover`, `tap`, `press`, `fill`, …) is
-// left alone: a menu-ish selector combined with one of them means the test is
-// doing something else.
+// Menu items are activated with a single click, so a click is the gesture the
+// rule reads. `dblclick`, `tap`, `press` and `fill` are left alone: a menu-ish
+// selector combined with one of them means the test is doing something else.
+//
+// `hover` is the exception, and it is left alone anyway. `openLocator` opens a
+// submenu by hovering its parent item, so a hover on a menu item does have a
+// helper form, and reporting one would be defensible. It is skipped because a
+// hover is also how a test positions the pointer for a screenshot, which is
+// what the single corpus site doing it wants.
 const MENU_INTERACTION_METHOD = 'click';
 
 interface MenuEvidence {
