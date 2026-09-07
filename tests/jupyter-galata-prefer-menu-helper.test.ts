@@ -253,6 +253,18 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
       `,
       errors: [{ messageId: 'preferMenuOpen' }]
     },
+    // An item label in a `:text()` pseudo-class is still a path to suggest, so
+    // this is `preferClickMenuItem` and not the generic message
+    {
+      code: `
+        await page.click('text=File');
+        await page.click('.lm-Menu-itemLabel:text("Open from Path…")');
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
+    },
     // A test title naming the menu counts too. This one screenshots the open
     // menu without ever selecting it, which is the `documentation` shape.
     {
@@ -274,6 +286,28 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     {
       code: `await page.click('.lm-MenuBar-item >> text=File');`,
       errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    // Playwright's text pseudo-classes carry the label too. The second form is
+    // what Galata's own `getMenuBarItemLocator` builds.
+    {
+      code: `await page.click('.lm-MenuBar-itemLabel:text("File")');`,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    {
+      code: `await page.click('li:has(div.lm-MenuBar-itemLabel:text-is("File"))');`,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    // The menu bar's own class names the target whatever the label is, so a
+    // menu an extension added is covered even though the label list is not
+    {
+      code: `await page.click('.lm-MenuBar-itemLabel:text("Jupytext")');`,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    // The popup a menu bar click opened carries both classes, and the popup
+    // wins: this is an item click, not a menu bar click
+    {
+      code: `await page.click('.lm-Menu.lm-MenuBar-menu >> text=New');`,
+      errors: [{ messageId: 'preferClickMenuItem' }]
     },
     // Locator chain: parts are joined with a space, not `>>`
     {

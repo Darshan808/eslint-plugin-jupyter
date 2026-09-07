@@ -16,9 +16,11 @@ Galata UI tests often walk the main menu with raw Playwright selectors such as `
 
 The rule flags Playwright clicks on the `page` fixture — both direct calls (`page.click(selector)`) and locator chains (`page.locator(...).getByText(...).click()`, `page.getByRole('menuitem', { name }).click()`, including `.first()`/`.last()`/`.nth()` steps) — when the selector or text contains a known menu marker:
 
-- a menu bar item: an exact top-level menu label (`File`, `Edit`, `View`, `Run`, `Kernel`, `Tabs`, `Settings`, `Help`), reported as `preferMenuOpen`;
+- a menu bar item: the `.lm-MenuBar*` classes, or an exact top-level menu label (`File`, `Edit`, `View`, `Run`, `Kernel`, `Tabs`, `Settings`, `Help`), reported as `preferMenuOpen`;
 - an item inside an open menu: the Lumino popup classes (`.lm-Menu`, `.lm-Menu-item`, `.lm-Menu-content`, …), a `role="menu"` container, or any `#jp-mainmenu-*` id together with an item label, reported as `preferClickMenuItem`;
 - any other interaction on menu markup — including Lumino's `data-type="submenu"` — reported as the generic `preferMenuHelper`.
+
+Labels are read from `text=`, from `getByText` and from Playwright's text pseudo-classes, so `:has-text("File")`, `:text("File")` and `:text-is("File")` all count. The menu bar classes name the target whatever the label is, so a menu an extension added is covered even though the built-in label list is not.
 
 A `#jp-mainmenu-*` selector matches an open menu at every depth, not the menu bar item that opens it: `#jp-mainmenu-tabs` is the open Tabs menu and `#jp-mainmenu-file-new` is the open File > New submenu.
 

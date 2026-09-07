@@ -24,17 +24,26 @@ const BARE_MENU_BAR_LABEL_PATTERN = new RegExp(
   `^text=["']?(?:${TOP_LEVEL_MENU_LABELS})["']?$`
 );
 
+// Playwright's text pseudo-classes, which take the label in parentheses:
+// `:has-text("File")`, `:text("File")`, `:text-is("File")`. Galata's own
+// `getMenuBarItemLocator` builds `li:has(div.lm-MenuBar-itemLabel:text-is(…))`,
+// so a test copying that shape has to be read here too.
+const TEXT_PSEUDO_CLASS = ':?(?:has-)?text(?:-is)?\\(';
+
 // A top-level menu label inside a larger selector. Only trusted when the same
 // selector also carries menu markup (see MENU_MARKUP_PATTERN), e.g.
 // `li[role="menuitem"]:has-text("File")`.
 //
-// The left boundary accepts a plain space as well as `>>` because a locator
-// chain such as `page.locator('.lm-MenuBar-item').getByText('File')` is joined
-// into `.lm-MenuBar-item text=File`. The right boundary deliberately does not:
+// The left boundary of the `text=` form accepts a plain space as well as `>>`
+// because a locator chain such as
+// `page.locator('.lm-MenuBar-item').getByText('File')` is joined into
+// `.lm-MenuBar-item text=File`. The right boundary deliberately does not:
 // allowing a space there would make `text=File Browser` match the label `File`.
+// The pseudo-class form needs no boundary, because its closing parenthesis is
+// one.
 const SCOPED_MENU_BAR_LABEL_PATTERN = new RegExp(
   `(?:^|>>\\s*|\\s)text=["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\s*(?:$|>>)` +
-    `|has-text\\(["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\)`
+    `|${TEXT_PSEUDO_CLASS}["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\)`
 );
 
 // Any `#jp-mainmenu-…` id, top-level menu or submenu.
@@ -57,13 +66,20 @@ const MAIN_MENU_ID_PATTERN = /#jp-mainmenu-/;
 const POPUP_CONTAINER_PATTERN =
   /\blm-Menu\b|role\s*=\s*["']menu["']|#jp-mainmenu-/;
 
+// The menu bar itself. Unlike a popup it is always on screen, so a selector
+// carrying this needs nothing before it to say which menu it is on.
+const MENU_BAR_CONTAINER_PATTERN = /lm-MenuBar\b/;
+
 // Menu markup that does not resolve menu bar vs popup on its own: Lumino gives
 // `role="menuitem"` to both menu bar items and popup items, and stamps
 // `data-type="submenu"` on any item that opens a submenu.
 const MENU_MARKUP_PATTERN =
   /role\s*=\s*["']menuitem["']|lm-MenuBar\b|data-type\s*=\s*["']?submenu/;
 
-const TEXT_SELECTOR_PATTERN = /text=|has-text\(/;
+// Any item label in the selector, whatever spelling it uses. Its presence is
+// what makes a menu path suggestible, so `preferClickMenuItem` can be reported
+// instead of the generic message.
+const TEXT_SELECTOR_PATTERN = new RegExp(`text=|${TEXT_PSEUDO_CLASS}`);
 
 // Menu items are activated with a single click, and `MenuHelper` has no
 // equivalent for any other gesture — so there is nothing useful to suggest for
@@ -82,11 +98,15 @@ function readMenuEvidence(selectorText: string): MenuEvidence {
   const hasPopupContainer = POPUP_CONTAINER_PATTERN.test(selectorText);
   const hasMenuMarkup = MENU_MARKUP_PATTERN.test(selectorText);
 
-  // A top-level label is only trusted unscoped (`text=File` and nothing else)
-  // or next to menu markup (`li[role="menuitem"]:has-text("File")`). Any other
-  // scope means the label is some other piece of UI text. No id appears here:
-  // every `#jp-mainmenu-…` names a popup, so it is a container instead.
+  // The menu bar's own class names the target outright, whatever label it
+  // carries, so a third-party menu such as `Git` is covered by it even though
+  // the label list is not. Failing that, a top-level label is trusted unscoped
+  // (`text=File` and nothing else) or next to menu markup
+  // (`li[role="menuitem"]:has-text("File")`). Any other scope means the label
+  // is some other piece of UI text. No id appears here: every `#jp-mainmenu-…`
+  // names a popup, so it is a container instead.
   const hasTopLevelMarker =
+    MENU_BAR_CONTAINER_PATTERN.test(selectorText) ||
     BARE_MENU_BAR_LABEL_PATTERN.test(selectorText) ||
     (hasMenuMarkup && SCOPED_MENU_BAR_LABEL_PATTERN.test(selectorText));
 
@@ -396,9 +416,12 @@ function isMainMenuTraversal(
   node: TSESTree.Node,
   selectorText: string
 ): boolean {
-  // No context menu and no dropdown carries a `#jp-mainmenu-…` id, so the
-  // selector settles it regardless of what came before.
-  if (MAIN_MENU_ID_PATTERN.test(selectorText)) {
+  // No context menu and no dropdown carries a `#jp-mainmenu-…` id, and none is
+  // inside the menu bar, so either settles it regardless of what came before.
+  if (
+    MAIN_MENU_ID_PATTERN.test(selectorText) ||
+    MENU_BAR_CONTAINER_PATTERN.test(selectorText)
+  ) {
     return true;
   }
   return findMenuOrigin(node) === 'menubar';
