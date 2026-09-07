@@ -91,6 +91,15 @@ function readMenuEvidence(selectorText: string): MenuEvidence {
   return { hasPopupContainer, hasMenuMarkup, hasTopLevelMarker };
 }
 
+// `MenuHelper` methods that leave the main menu open. `open` and `getMenuItem`
+// are deprecated in favour of the `…Locator` forms, and both spellings appear
+// in current suites, so both are recognized.
+const MENU_OPENING_HELPERS: ReadonlySet<string> = new Set([
+  'open',
+  'openLocator',
+  'clickMenuItem'
+]);
+
 // Which kind of menu a call leaves open on screen.
 type MenuOrigin = 'menubar' | 'context';
 
@@ -104,11 +113,12 @@ function menuOriginOf(node: TSESTree.CallExpression): MenuOrigin | null {
     if (callee.property.name.startsWith('openContextMenu')) {
       return 'context';
     }
-    // `page.menu.open(path)` / `page.menu.clickMenuItem(path)` both leave the
-    // main menu open — the helper form of a menu bar click.
+    // The helper form of a menu bar click. `openLocator` clicks the first path
+    // part and hovers the rest; `open` delegates to it; `clickMenuItem` calls
+    // it and then clicks the item. `getMenuItemLocator` is not here: it walks
+    // the same path but clicks and hovers nothing, so it opens no menu.
     if (
-      (callee.property.name === 'open' ||
-        callee.property.name === 'clickMenuItem') &&
+      MENU_OPENING_HELPERS.has(callee.property.name) &&
       callee.object.type === 'MemberExpression' &&
       callee.object.property.type === 'Identifier' &&
       callee.object.property.name === 'menu'
@@ -402,11 +412,11 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
     },
     messages: {
       preferMenuOpen:
-        'Prefer `page.menu.open(path)` (or `page.menu.clickMenuItem(path)`) over clicking the main menu bar directly.',
+        'Prefer `page.menu.openLocator(path)` (or `page.menu.clickMenuItem(path)`) over clicking the main menu bar directly.',
       preferClickMenuItem:
         "Prefer `page.menu.clickMenuItem(path)` (e.g. `'File>New>Terminal'`) over raw selectors to click a menu item.",
       preferMenuHelper:
-        'Prefer the Galata `page.menu` helper (e.g. `page.menu.open(path)`, `page.menu.isOpen(path)`) over raw main menu selectors.'
+        'Prefer the Galata `page.menu` helper (e.g. `page.menu.openLocator(path)`, `page.menu.isOpen(path)`) over raw main menu selectors.'
     },
     schema: []
   },

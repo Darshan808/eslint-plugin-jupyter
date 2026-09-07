@@ -436,6 +436,15 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
         await page.click('.lm-Menu ul[role="menu"] >> text=Theme');
       `,
       errors: [{ messageId: 'preferClickMenuItem' }]
+    },
+    // …and so does `openLocator`, the spelling the messages recommend
+    {
+      code: `
+        await page.click('.jp-DirListing-item', { button: 'right' });
+        await page.menu.openLocator('Settings');
+        await page.click('.lm-Menu ul[role="menu"] >> text=Theme');
+      `,
+      errors: [{ messageId: 'preferClickMenuItem' }]
     }
   ]
 });

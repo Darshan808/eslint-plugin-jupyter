@@ -10,7 +10,7 @@ Galata UI tests often walk the main menu with raw Playwright selectors such as `
 - depend on whatever menu happens to be open and on hover timing, so any leftover menu state changes the target;
 - repeat the same multi-step traversal across many test files.
 
-`page.menu.clickMenuItem('File>New>Terminal')` closes any open menu first, walks nested menus consistently, and waits for each submenu to become active. `page.menu.open(path)`, `page.menu.isOpen(path)`, and `page.menu.getMenuItem(path)` cover the remaining cases.
+`page.menu.clickMenuItem('File>New>Terminal')` closes any open menu first, walks nested menus consistently, and waits for each submenu to become active. `page.menu.openLocator(path)`, `page.menu.isOpen(path)` and `page.menu.getMenuItemLocator(path)` cover the remaining cases. The `page.menu.open(path)` and `page.menu.getMenuItem(path)` spellings return an `ElementHandle` and are deprecated in favour of those two.
 
 ## Rule details
 
@@ -24,7 +24,7 @@ A locator held in a `const` is followed to its declaration, so `const item = pag
 
 ### Which menu is open
 
-Lumino gives every menu the same markup. The main menu, the right-click context menu and any dropdown opened from a toolbar button all render as `.lm-Menu` with `role="menu"` content and `role="menuitem"` items, and `page.menu` only walks the main menu. So a selector made only of popup markup is reported only when the main menu was opened first, by a menu bar click or by `page.menu.open` / `page.menu.clickMenuItem` earlier in the same test. A `#jp-mainmenu-*` id names a main menu popup on its own and needs no opener.
+Lumino gives every menu the same markup. The main menu, the right-click context menu and any dropdown opened from a toolbar button all render as `.lm-Menu` with `role="menu"` content and `role="menuitem"` items, and `page.menu` only walks the main menu. So a selector made only of popup markup is reported only when the main menu was opened first, by a menu bar click or by `page.menu.openLocator` / `page.menu.open` / `page.menu.clickMenuItem` earlier in the same test. A `#jp-mainmenu-*` id names a main menu popup on its own and needs no opener.
 
 A right-click before the item click means the open popup is the context menu, and the rule stays silent. The lookback stops at the enclosing test callback and at any named helper function, so one test's menu state never carries into the next.
 
@@ -64,7 +64,7 @@ await page.getByRole('menuitem', { name: 'Settings' }).click();
 
 ```ts
 await page.menu.clickMenuItem('File>New>Terminal');
-await page.menu.open('File');
+await page.menu.openLocator('File');
 await page.menu.closeAll();
 ```
 
