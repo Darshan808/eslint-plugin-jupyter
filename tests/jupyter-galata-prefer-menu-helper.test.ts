@@ -274,10 +274,16 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
       code: `await page.locator('.lm-MenuBar-item').getByText('File').click();`,
       errors: [{ messageId: 'preferMenuOpen' }]
     },
-    // A single-segment menu bar item id
+    // Every `#jp-mainmenu-…` id names a popup, never the menu bar `li`, so a
+    // click on the id alone lands on the open menu and there is no path to
+    // suggest. The nesting depth of the id changes nothing.
     {
       code: `await page.click('#jp-mainmenu-tabs');`,
-      errors: [{ messageId: 'preferMenuOpen' }]
+      errors: [{ messageId: 'preferMenuHelper' }]
+    },
+    {
+      code: `await page.click('#jp-mainmenu-tabs >> text=Lorenz.ipynb');`,
+      errors: [{ messageId: 'preferClickMenuItem' }]
     },
     // Chain form of a bare top-level label
     {

@@ -37,23 +37,25 @@ const SCOPED_MENU_BAR_LABEL_PATTERN = new RegExp(
     `|has-text\\(["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\)`
 );
 
-// A single-segment id, e.g. `#jp-mainmenu-tabs`, as opposed to a nested one
-// like `#jp-mainmenu-file-new`. `MenuFactory` puts the id on the `Menu` widget,
-// so both name a popup and neither names the menu bar `li`; the single-segment
-// form is the popup a menu bar click opens, so `page.menu.open(label)` is the
-// call that produces it.
-const TOP_LEVEL_MENU_ID_PATTERN = /#jp-mainmenu-[a-z]+(?![a-z-])/;
-
-// Any `#jp-mainmenu-…` id, top-level menu or submenu. Only JupyterLab's main
-// menu carries these ids, so they say which menu is open on their own, without
-// the lookback in `findMenuOrigin`.
+// Any `#jp-mainmenu-…` id, top-level menu or submenu.
+//
+// Every one of these names a popup, never a menu bar item. `MenuFactory` sets
+// the id with `menu.id = item.id`, `Widget.id` writes it to `this.node.id`,
+// and a `Menu`'s node is the `div` it adds `lm-Menu` to. Lumino's
+// `MenuBar.Renderer.renderItem` builds the menu bar `li` from a class name, a
+// dataset and ARIA attributes, and gives it no id at all. So `#jp-mainmenu-tabs`
+// is the Tabs popup and `#jp-mainmenu-file-new` is the File > New popup; they
+// differ by nesting depth only.
+//
+// Only JupyterLab's main menu carries these ids, so they say which menu is open
+// on their own, without the lookback in `findMenuOrigin`.
 const MAIN_MENU_ID_PATTERN = /#jp-mainmenu-/;
 
 // Markers proving the selector is scoped inside an open popup menu. Note that
 // `\blm-Menu\b` cannot match inside `lm-MenuBar` (there is no word boundary
 // between `u` and `B`) but does match `lm-Menu-item`, `lm-Menu-content`, …
 const POPUP_CONTAINER_PATTERN =
-  /\blm-Menu\b|role\s*=\s*["']menu["']|#jp-mainmenu-[a-z]+-[a-z-]+/;
+  /\blm-Menu\b|role\s*=\s*["']menu["']|#jp-mainmenu-/;
 
 // Menu markup that does not resolve menu bar vs popup on its own: Lumino gives
 // `role="menuitem"` to both menu bar items and popup items, and stamps
@@ -82,9 +84,9 @@ function readMenuEvidence(selectorText: string): MenuEvidence {
 
   // A top-level label is only trusted unscoped (`text=File` and nothing else)
   // or next to menu markup (`li[role="menuitem"]:has-text("File")`). Any other
-  // scope means the label is some other piece of UI text.
+  // scope means the label is some other piece of UI text. No id appears here:
+  // every `#jp-mainmenu-…` names a popup, so it is a container instead.
   const hasTopLevelMarker =
-    TOP_LEVEL_MENU_ID_PATTERN.test(selectorText) ||
     BARE_MENU_BAR_LABEL_PATTERN.test(selectorText) ||
     (hasMenuMarkup && SCOPED_MENU_BAR_LABEL_PATTERN.test(selectorText));
 
