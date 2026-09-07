@@ -284,16 +284,67 @@ function collectMenuOrigins(
 }
 
 /**
+ * One block's answers so far: `prefix[i]` is the last menu-opening gesture in
+ * `body.slice(0, i)`, and `scanned` says how many statements have been folded
+ * in. Entry 0 is always null.
+ */
+interface BlockScan {
+  prefix: (MenuOrigin | null)[];
+  scanned: number;
+  latest: { origin: MenuOrigin; start: number } | null;
+}
+type PrefixCache = WeakMap<TSESTree.Node, BlockScan>;
+
+/**
+ * The last menu-opening gesture among the first `index` statements of `block`.
+ *
+ * Each statement is read once per block and the running answer is kept, because
+ * a file that walks a menu many times asks about the same statements once per
+ * gesture; reading them again each time costs the square of their number. The
+ * scan grows only as far as it has been asked to, so a block with one gesture
+ * near the top never reads the rest of it.
+ */
+function originBeforeStatement(
+  block: TSESTree.Node,
+  body: TSESTree.Node[],
+  index: number,
+  cache: PrefixCache
+): MenuOrigin | null {
+  let scan = cache.get(block);
+  if (!scan) {
+    scan = { prefix: [null], scanned: 0, latest: null };
+    cache.set(block, scan);
+  }
+  while (scan.scanned < index) {
+    const found: { origin: MenuOrigin; start: number }[] = [];
+    collectMenuOrigins(body[scan.scanned], found);
+    for (const hit of found) {
+      if (!scan.latest || hit.start > scan.latest.start) {
+        scan.latest = hit;
+      }
+    }
+    scan.prefix.push(scan.latest?.origin ?? null);
+    scan.scanned++;
+  }
+  return scan.prefix[index];
+}
+
+/**
  * The kind of menu that was last opened before `node` runs, or `null` when
  * nothing in the enclosing scopes says.
  *
- * Statements preceding `node` are scanned innermost block first, then outward,
- * and the last menu-opening gesture in source order wins — clicking `File`
- * after a right-click replaces the context menu with the main menu. The walk
- * stops at the enclosing test callback or named helper, so one test's menu
+ * Statements preceding `node` are read innermost block first, then outward, and
+ * the last menu-opening gesture in source order wins — clicking `File` after a
+ * right-click replaces the context menu with the main menu. An inner block's
+ * preceding statements all come after an outer block's, so the innermost block
+ * with an answer holds the latest one and the walk can stop there. The walk
+ * also stops at the enclosing test callback or named helper, so one test's menu
  * state never reaches the next (see `isLookbackBoundary`).
  */
-function findMenuOrigin(node: TSESTree.Node): MenuOrigin | null {
+function findMenuOrigin(
+  node: TSESTree.Node,
+  cache: PrefixCache
+): MenuOrigin | null {
   let current: TSESTree.Node = node;
   let parent = current.parent;
 
@@ -307,13 +358,9 @@ function findMenuOrigin(node: TSESTree.Node): MenuOrigin | null {
 
     const index = body ? body.indexOf(current) : -1;
     if (body && index > 0) {
-      const found: { origin: MenuOrigin; start: number }[] = [];
-      for (const statement of body.slice(0, index)) {
-        collectMenuOrigins(statement, found);
-      }
-      if (found.length > 0) {
-        found.sort((a, b) => a.start - b.start);
-        return found[found.length - 1].origin;
+      const origin = originBeforeStatement(parent, body, index, cache);
+      if (origin) {
+        return origin;
       }
     }
 
@@ -422,7 +469,8 @@ function testMentionsMenuMarkup(node: TSESTree.Node): boolean {
  */
 function isMainMenuTraversal(
   node: TSESTree.Node,
-  selectorText: string
+  selectorText: string,
+  cache: PrefixCache
 ): boolean {
   // No context menu and no dropdown carries a `#jp-mainmenu-…` id, and none is
   // inside the menu bar, so either settles it regardless of what came before.
@@ -432,7 +480,7 @@ function isMainMenuTraversal(
   ) {
     return true;
   }
-  return findMenuOrigin(node) === 'menubar';
+  return findMenuOrigin(node, cache) === 'menubar';
 }
 
 const galataPreferMenuHelper = createRule<Options, MessageIds>({
@@ -455,6 +503,9 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
   },
   defaultOptions: [],
   create(context) {
+    // Keyed by block node, so it is per file without being reset by hand.
+    const prefixCache: PrefixCache = new WeakMap();
+
     return {
       CallExpression(node) {
         // Most call expressions are not interactions at all, and
@@ -510,7 +561,7 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
           viaGetByRole &&
           !hasTopLevelMarker &&
           !hasPopupContainer &&
-          findMenuOrigin(node) !== 'menubar'
+          findMenuOrigin(node, prefixCache) !== 'menubar'
         ) {
           return;
         }
@@ -538,7 +589,7 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
         // Everything left is a click inside some open popup menu. Which one it
         // is has to come from what opened it; a context menu belongs to the
         // planned context menu rule, and a toolbar dropdown to no rule at all.
-        if (!isMainMenuTraversal(node, selectorText)) {
+        if (!isMainMenuTraversal(node, selectorText, prefixCache)) {
           return;
         }
 
