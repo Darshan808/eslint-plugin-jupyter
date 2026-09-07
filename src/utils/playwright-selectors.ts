@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/utils';
+import { ASTUtils, TSESLint, TSESTree } from '@typescript-eslint/utils';
 
 /**
  * Playwright locator-producing methods.
@@ -101,6 +101,40 @@ export interface SelectorInteractionMatch {
 export type LocatorBindingResolver = (
   node: TSESTree.Identifier
 ) => TSESTree.Node | null;
+
+/**
+ * The expression a locator-holding identifier was assigned, or null when the
+ * binding must not be followed. A locator held in a variable then reaches the
+ * same `page` root as the inline chain.
+ *
+ * Only a `const` declared with an initializer is followed. `const` is what
+ * makes the assignment the single write, so the expression read here is the
+ * one the gesture acts on; a `let` could hold a different locator by then.
+ *
+ * This is the resolver a rule normally passes as the `resolveBinding`
+ * argument of {@link matchSelectorInteraction}.
+ */
+export function resolveLocatorBinding(
+  node: TSESTree.Identifier,
+  scope: TSESLint.Scope.Scope
+): TSESTree.Node | null {
+  const variable = ASTUtils.findVariable(scope, node);
+  if (!variable || variable.defs.length !== 1) {
+    return null;
+  }
+  const declarator = variable.defs[0].node;
+  if (declarator.type !== 'VariableDeclarator' || !declarator.init) {
+    return null;
+  }
+  const declaration = declarator.parent;
+  if (
+    declaration?.type !== 'VariableDeclaration' ||
+    declaration.kind !== 'const'
+  ) {
+    return null;
+  }
+  return declarator.init;
+}
 
 function isPageIdentifier(node: TSESTree.Node): boolean {
   return node.type === 'Identifier' && node.name === 'page';

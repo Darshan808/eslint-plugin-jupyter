@@ -142,17 +142,120 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
           await page.click('.lm-Menu ul[role="menu"] >> text=Editor');
         }
       `
+    },
+    // A right-click on a locator held in a variable opens the context menu just
+    // as an inline one does
+    {
+      code: `
+        const folder = page.locator('.jp-DirListing-item');
+        await folder.click({ button: 'right' });
+        await page.click('.lm-Menu ul[role="menu"] >> text=Open in Terminal');
+      `
+    },
+    // …and so does one through a helper root the selector matcher cannot follow
+    {
+      code: `
+        await page.activity.getTabLocator('Console 1').click({ button: 'right' });
+        await page.click('.lm-Menu li[role="menuitem"]:has-text("Rename")');
+      `
+    },
+    // A Lumino menu opened from a toolbar button is neither the main menu nor
+    // the context menu, and no `page.menu` call reaches it
+    {
+      code: `
+        await page.locator('[data-jp-item-name="notifyType"]').click();
+        await page.locator('.lm-Menu').locator('.lm-Menu-item:has-text("Set Default Threshold")').click();
+      `
+    },
+    {
+      code: `await page.click('.jp-PauseOnExceptions-menu li div.lm-Menu-itemLabel:text("raised")');`
+    },
+    // Popup markup with nothing before it to say which menu is open
+    {
+      code: `await page.click('.lm-Menu ul[role="menu"] >> text=New');`
+    },
+    // One test's menu state does not reach the next
+    {
+      code: `
+        test('a', async ({ page }) => {
+          await page.click('.jp-DirListing-item', { button: 'right' });
+          await page.click('.lm-Menu ul[role="menu"] >> text=Rename');
+        });
+        test('b', async ({ page }) => {
+          await page.click('.lm-Menu ul[role="menu"] >> text=Close Tab');
+        });
+      `
+    },
+    // A named helper can be called from anywhere, so its right-click says
+    // nothing about the statements next to the call
+    {
+      code: `
+        async function openContext(page) {
+          await page.click('.jp-DirListing-item', { button: 'right' });
+        }
+        await page.click('.lm-Menu ul[role="menu"] >> text=New');
+      `
+    },
+    // A bare top-level label is just a word. `File`, `Run` and `Help` name
+    // dialog buttons and files too, so a test that never mentions menu markup
+    // is not walking the menu bar.
+    {
+      code: `
+        test('run from a dialog', async ({ page }) => {
+          await page.click('.jp-Dialog');
+          await page.getByText('Run').click();
+        });
+      `
+    },
+    {
+      code: `
+        test('open the settings editor', async ({ page }) => {
+          await page.click('text=Settings');
+          await expect(page.locator('.jp-SettingsPanel')).toBeVisible();
+        });
+      `
     }
   ],
 
   invalid: [
-    // A bare top-level menu bar label, unquoted and quoted
+    // A bare top-level menu bar label, unquoted and quoted. The label alone is
+    // just a word, so each needs the test to mention menu markup somewhere;
+    // clicking an item in the menu it opened is the usual way.
     {
-      code: `await page.click('text=File');`,
+      code: `
+        await page.click('text=File');
+        await page.click('.lm-Menu ul[role="menu"] >> text=New');
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
+    },
+    // Waiting for the popup counts as the mention, no interaction needed
+    {
+      code: `
+        await page.click('text="Tabs"');
+        await page.locator('#jp-mainmenu-tabs').waitFor();
+      `,
       errors: [{ messageId: 'preferMenuOpen' }]
     },
+    // …and so does an assertion on it
     {
-      code: `await page.click('text="Tabs"');`,
+      code: `
+        await page.click('text=Kernel');
+        await expect(page.locator('.lm-Menu-content')).toBeVisible();
+      `,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    // A test title naming the menu counts too. This one screenshots the open
+    // menu without ever selecting it, which is the `documentation` shape.
+    {
+      code: `
+        test('Tabs menu', async ({ page }) => {
+          await page.click('text="Tabs"');
+          await expect(page).toHaveScreenshot('interface_tabs_menu.png');
+        });
+      `,
       errors: [{ messageId: 'preferMenuOpen' }]
     },
     // A scoped top-level label IS trusted when the scope is menu markup.
@@ -178,8 +281,14 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     },
     // Chain form of a bare top-level label
     {
-      code: `await page.getByText('File').click();`,
-      errors: [{ messageId: 'preferMenuOpen' }]
+      code: `
+        await page.getByText('File').click();
+        await page.click('.lm-Menu ul[role="menu"] >> text=New');
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
     },
     // `getByRole('menuitem', { name })` on an exact top-level label is the
     // dominant menu bar idiom in the Notebook and JupyterLite UI tests
@@ -192,45 +301,106 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
       errors: [{ messageId: 'preferMenuOpen' }]
     },
 
-    // Item clicks inside an open popup menu
-    {
-      code: `await page.click('.lm-Menu ul[role="menu"] >> text=New');`,
-      errors: [{ messageId: 'preferClickMenuItem' }]
-    },
+    // Item clicks inside an open popup menu. Popup markup is shared with the
+    // context menu and with every toolbar dropdown, so each of these needs the
+    // menu bar click that opened the main menu.
+    //
     // Template literal: static parts still match
     {
-      code: 'await page.click(`.lm-Menu ul[role="menu"] >> text="${menuOption}"`);',
-      errors: [{ messageId: 'preferClickMenuItem' }]
+      code:
+        'await page.click(`text=Settings`);\n' +
+        'await page.click(`.lm-Menu ul[role="menu"] >> text="${menuOption}"`);',
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
     },
-    // A submenu id is multi-segment, unlike a menu bar item id
+    // A `#jp-mainmenu-…` id names a main menu popup, so it needs no opener
     {
       code: `await page.click('#jp-mainmenu-file-new >> text=Terminal');`,
       errors: [{ messageId: 'preferClickMenuItem' }]
     },
     // A popup container wins over the top-level label shape
     {
-      code: `await page.click('.lm-Menu li[role="menuitem"]:has-text("File")');`,
-      errors: [{ messageId: 'preferClickMenuItem' }]
+      code: `
+        await page.click('text=File');
+        await page.click('.lm-Menu li[role="menuitem"]:has-text("File")');
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
     },
     // A popup container scoping a `getByRole` item is enough evidence
     {
-      code: `await page.locator('.lm-Menu').getByRole('menuitem', { name: 'Editor' }).click();`,
+      code: `
+        await page.menu.open('View');
+        await page.locator('.lm-Menu').getByRole('menuitem', { name: 'Editor' }).click();
+      `,
       errors: [{ messageId: 'preferClickMenuItem' }]
     },
 
     // Menu markup without an identifiable item label
     {
-      code: `await page.click('span.lm-Menu-itemLabel');`,
-      errors: [{ messageId: 'preferMenuHelper' }]
+      code: `
+        await page.click('text=File');
+        await page.click('span.lm-Menu-itemLabel');
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferMenuHelper' }
+      ]
     },
     {
-      code: `await page.click('li[role="menuitem"]');`,
+      code: `
+        await page.menu.open('Edit');
+        await page.click('li[role="menuitem"]');
+      `,
       errors: [{ messageId: 'preferMenuHelper' }]
     },
     // `data-type="submenu"` is stamped by Lumino on any submenu-opening item
     {
-      code: `await page.locator('li[data-type=submenu]', { hasText: /^Theme$/ }).click();`,
-      errors: [{ messageId: 'preferMenuHelper' }]
+      code: `
+        await page.getByRole('menuitem', { name: 'Settings' }).click();
+        await page.locator('li[data-type=submenu]', { hasText: /^Theme$/ }).click();
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferMenuHelper' }
+      ]
+    },
+    // A locator held in a `const` reaches the same `page` root as the inline
+    // chain
+    {
+      code: `
+        const menuBar = page.locator('.lm-MenuBar-item');
+        await menuBar.getByText('File').click();
+      `,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    {
+      code: `
+        await page.click('text=File');
+        const newItem = page.locator('.lm-Menu ul[role="menu"]').getByText('New');
+        await newItem.click();
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
+    },
+    // A callback that runs where it is written keeps the menu its caller opened
+    {
+      code: `
+        await page.click('text=File');
+        await perf.measure(async () => {
+          await page.click('.lm-Menu ul[role="menu"] >> text=Close Tab');
+        });
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
     },
 
     // A menu bar click after an unrelated right-click re-opens the main menu,

@@ -3,11 +3,13 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/utils';
+import { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { createRule } from '../utils/create-rule';
 import {
   combineStaticSelectorText,
-  matchSelectorInteraction
+  isRightClick,
+  matchSelectorInteraction,
+  resolveLocatorBinding
 } from '../utils/playwright-selectors';
 
 type MessageIds = 'preferMenuOpen' | 'preferClickMenuItem' | 'preferMenuHelper';
@@ -35,13 +37,16 @@ const SCOPED_MENU_BAR_LABEL_PATTERN = new RegExp(
     `|has-text\\(["']?(?:${TOP_LEVEL_MENU_LABELS})["']?\\)`
 );
 
-// A single-segment menu bar item id, e.g. `#jp-mainmenu-tabs`, as opposed to a
-// submenu id like `#jp-mainmenu-file-new`.
-const MENU_BAR_ID_PATTERN = /#jp-mainmenu-[a-z]+(?![a-z-])/;
+// A single-segment id, e.g. `#jp-mainmenu-tabs`, as opposed to a nested one
+// like `#jp-mainmenu-file-new`. `MenuFactory` puts the id on the `Menu` widget,
+// so both name a popup and neither names the menu bar `li`; the single-segment
+// form is the popup a menu bar click opens, so `page.menu.open(label)` is the
+// call that produces it.
+const TOP_LEVEL_MENU_ID_PATTERN = /#jp-mainmenu-[a-z]+(?![a-z-])/;
 
-// Any `#jp-mainmenu-…` id, menu bar item or submenu. Only JupyterLab's main
-// menu carries these ids, so they settle the main menu vs context menu question
-// on their own (see `isContextMenuTraversal`).
+// Any `#jp-mainmenu-…` id, top-level menu or submenu. Only JupyterLab's main
+// menu carries these ids, so they say which menu is open on their own, without
+// the lookback in `findMenuOrigin`.
 const MAIN_MENU_ID_PATTERN = /#jp-mainmenu-/;
 
 // Markers proving the selector is scoped inside an open popup menu. Note that
@@ -79,7 +84,7 @@ function readMenuEvidence(selectorText: string): MenuEvidence {
   // or next to menu markup (`li[role="menuitem"]:has-text("File")`). Any other
   // scope means the label is some other piece of UI text.
   const hasTopLevelMarker =
-    MENU_BAR_ID_PATTERN.test(selectorText) ||
+    TOP_LEVEL_MENU_ID_PATTERN.test(selectorText) ||
     BARE_MENU_BAR_LABEL_PATTERN.test(selectorText) ||
     (hasMenuMarkup && SCOPED_MENU_BAR_LABEL_PATTERN.test(selectorText));
 
@@ -112,13 +117,23 @@ function menuOriginOf(node: TSESTree.CallExpression): MenuOrigin | null {
     }
   }
 
+  // A right-click is the one gesture that opens the context menu. Which element
+  // it targets does not matter here, so the chain does not have to resolve to
+  // `page` first: `const item = page.locator(a); item.click({ button:
+  // 'right' })` and `page.activity.getTabLocator(b).click({ button: 'right' })`
+  // open the context menu just as `page.click(a, { button: 'right' })` does.
+  if (
+    callee.type === 'MemberExpression' &&
+    callee.property.type === 'Identifier' &&
+    callee.property.name === MENU_INTERACTION_METHOD &&
+    isRightClick(node)
+  ) {
+    return 'context';
+  }
+
   const match = matchSelectorInteraction(node);
   if (!match) {
     return null;
-  }
-  // A right-click is the one gesture that opens the context menu.
-  if (match.isRightClick) {
-    return 'context';
   }
   if (match.interactionMethod !== MENU_INTERACTION_METHOD) {
     return null;
@@ -143,10 +158,66 @@ function isNode(value: unknown): value is TSESTree.Node {
   );
 }
 
+// Calls whose callback is stored and run later. Statements next to such a call
+// say nothing about the state its body starts in.
+const DEFERRED_CALLBACK_CALLEES: ReadonlySet<string> = new Set([
+  'test',
+  'it',
+  'describe',
+  'suite',
+  'beforeAll',
+  'beforeEach',
+  'afterAll',
+  'afterEach'
+]);
+
+function rootCalleeName(node: TSESTree.Expression): string | null {
+  let current: TSESTree.Node = node;
+  while (current.type === 'MemberExpression') {
+    current = current.object;
+  }
+  return current.type === 'Identifier' ? current.name : null;
+}
+
+/**
+ * Whether the lookback must stop before leaving `node`, and whether the scan of
+ * preceding statements must stop before entering it.
+ *
+ * A callback written inline runs where it stands, so the statements above it
+ * did run first and the walk continues through it: `perf.measure(async () => {
+ * … })` keeps the menu its caller opened. A named helper and a test callback do
+ * not. `async function openMenu(page) { … }` can be called from anywhere, and
+ * `test('b', …)` does not run after the body of `test('a', …)`, so a
+ * right-click in one test must not silence the next one.
+ */
+function isLookbackBoundary(node: TSESTree.Node): boolean {
+  if (node.type === 'FunctionDeclaration') {
+    return true;
+  }
+  if (
+    node.type !== 'FunctionExpression' &&
+    node.type !== 'ArrowFunctionExpression'
+  ) {
+    return false;
+  }
+  const parent = node.parent;
+  if (parent?.type === 'VariableDeclarator' || parent?.type === 'Property') {
+    return true;
+  }
+  return (
+    parent?.type === 'CallExpression' &&
+    parent.arguments.includes(node) &&
+    DEFERRED_CALLBACK_CALLEES.has(rootCalleeName(parent.callee) ?? '')
+  );
+}
+
 function collectMenuOrigins(
   node: TSESTree.Node,
   found: { origin: MenuOrigin; start: number }[]
 ): void {
+  if (isLookbackBoundary(node)) {
+    return;
+  }
   if (node.type === 'CallExpression') {
     const origin = menuOriginOf(node);
     if (origin) {
@@ -178,7 +249,9 @@ function collectMenuOrigins(
  *
  * Statements preceding `node` are scanned innermost block first, then outward,
  * and the last menu-opening gesture in source order wins — clicking `File`
- * after a right-click replaces the context menu with the main menu.
+ * after a right-click replaces the context menu with the main menu. The walk
+ * stops at the enclosing test callback or named helper, so one test's menu
+ * state never reaches the next (see `isLookbackBoundary`).
  */
 function findMenuOrigin(node: TSESTree.Node): MenuOrigin | null {
   let current: TSESTree.Node = node;
@@ -204,6 +277,9 @@ function findMenuOrigin(node: TSESTree.Node): MenuOrigin | null {
       }
     }
 
+    if (isLookbackBoundary(parent)) {
+      return null;
+    }
     current = parent;
     parent = parent.parent;
   }
@@ -211,26 +287,109 @@ function findMenuOrigin(node: TSESTree.Node): MenuOrigin | null {
   return null;
 }
 
+// Any mention of menu markup at all, used to confirm that a bare top-level
+// label really is the menu bar. Wider than the patterns above because it is
+// matched against every string in the test, not against a gesture's selector.
+const ANY_MENU_MARKUP_PATTERN =
+  /\blm-Menu|#jp-mainmenu-|role\s*=\s*["']?menuitem|role\s*=\s*["']?menu["']?\s*\]|data-type\s*=\s*["']?submenu/;
+
+// The word itself, matched only against a test title.
+const MENU_WORD_PATTERN = /menus?\b/i;
+
 /**
- * Whether a click on popup menu markup is walking a context menu rather than
- * the main menu.
+ * Whether the test around `node` is about a menu.
  *
- * Lumino gives every menu the same markup, so `.lm-Menu li[role="menuitem"]`
- * cannot say which menu it is on its own. The nearest preceding menu-opening
- * gesture can: a right-click (or `page.menu.openContextMenu*`) means the open
- * popup is the context menu, and `page.menu.clickMenuItem` would be the wrong
- * fix to suggest.
+ * `page.click('text=File')` carries no DOM evidence: the eight built-in labels
+ * are ordinary words, and a dialog button reading `Run` looks the same. A test
+ * that walks the menu bar names the menu somewhere, in its title or in a
+ * selector that reaches the popup it opened, so that mention is what separates
+ * the two.
+ *
+ * The title takes the bare word, because a person wrote it to describe the
+ * test. Every other string has to carry real markup: `menu` inside a selector
+ * or a file name says nothing.
  */
-function isContextMenuTraversal(
+function testMentionsMenuMarkup(node: TSESTree.Node): boolean {
+  let scope: TSESTree.Node = node;
+  while (scope.parent && !isLookbackBoundary(scope)) {
+    scope = scope.parent;
+  }
+  // The title of a `test(…)` sits next to its callback rather than inside it.
+  // It is a sentence a person wrote about what the test does, so the bare word
+  // is enough there, where in a selector it would not be.
+  const enclosingCall = scope.parent;
+  if (enclosingCall?.type === 'CallExpression') {
+    const title = enclosingCall.arguments[0];
+    if (
+      title?.type === 'Literal' &&
+      typeof title.value === 'string' &&
+      MENU_WORD_PATTERN.test(title.value)
+    ) {
+      return true;
+    }
+  }
+  let found = false;
+  const visit = (current: TSESTree.Node): void => {
+    if (found) {
+      return;
+    }
+    if (
+      (current.type === 'Literal' && typeof current.value === 'string'
+        ? ANY_MENU_MARKUP_PATTERN.test(current.value)
+        : false) ||
+      (current.type === 'TemplateElement' &&
+        ANY_MENU_MARKUP_PATTERN.test(current.value.cooked ?? ''))
+    ) {
+      found = true;
+      return;
+    }
+    for (const [key, value] of Object.entries(
+      current as unknown as Record<string, unknown>
+    )) {
+      if (key === 'parent') {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (isNode(item)) {
+            visit(item);
+          }
+        }
+      } else if (isNode(value)) {
+        visit(value);
+      }
+    }
+  };
+  visit(scope);
+  return found;
+}
+
+/**
+ * Whether a click on popup menu markup is walking the main menu.
+ *
+ * Lumino gives every menu the same markup: `.lm-Menu` for the widget node,
+ * `role="menu"` for its content, `.lm-Menu-item` and `role="menuitem"` for its
+ * items. The context menu shares it, and so does every dropdown opened from a
+ * toolbar button. JupyterLab builds six of those on its own (the console
+ * prompt menu, the debugger pause-on-exceptions menu, two file editor menus,
+ * the terminal theme menu, the table of contents toolbar menu), and extensions
+ * add more, none of which `page.menu` drives. So popup markup alone proves
+ * nothing and the rule needs the main menu to have been opened first.
+ *
+ * A `#jp-mainmenu-…` id settles it from the selector. Otherwise the last
+ * menu-opening gesture before this one has to be a menu bar click, either raw
+ * or through `page.menu.open`.
+ */
+function isMainMenuTraversal(
   node: TSESTree.Node,
   selectorText: string
 ): boolean {
-  // No context menu carries a `#jp-mainmenu-…` id, so the selector settles it
-  // regardless of what came before.
+  // No context menu and no dropdown carries a `#jp-mainmenu-…` id, so the
+  // selector settles it regardless of what came before.
   if (MAIN_MENU_ID_PATTERN.test(selectorText)) {
-    return false;
+    return true;
   }
-  return findMenuOrigin(node) === 'context';
+  return findMenuOrigin(node) === 'menubar';
 }
 
 const galataPreferMenuHelper = createRule<Options, MessageIds>({
@@ -255,7 +414,16 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
   create(context) {
     return {
       CallExpression(node) {
-        const match = matchSelectorInteraction(node);
+        // Most call expressions are not interactions at all, and
+        // `matchSelectorInteraction` rejects them on the callee alone, so the
+        // scope is looked up only once something actually needs it.
+        let scope: TSESLint.Scope.Scope | null = null;
+        const currentScope = (): TSESLint.Scope.Scope =>
+          (scope ??= context.sourceCode.getScope(node));
+
+        const match = matchSelectorInteraction(node, identifier =>
+          resolveLocatorBinding(identifier, currentScope())
+        );
         if (!match) {
           return;
         }
@@ -297,6 +465,16 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
         // A popup container proves the target sits inside an already open menu,
         // so it wins over a top-level label appearing in the same selector.
         if (hasTopLevelMarker && !hasPopupContainer) {
+          // A label on its own is just a word. `File`, `Run` and `Help` name
+          // dialog buttons and file names too, so a selector carrying nothing
+          // but the label needs the test to mention menu markup somewhere.
+          if (
+            !hasMenuMarkup &&
+            !MAIN_MENU_ID_PATTERN.test(selectorText) &&
+            !testMentionsMenuMarkup(node)
+          ) {
+            return;
+          }
           context.report({
             node: match.callNode,
             messageId: 'preferMenuOpen'
@@ -304,9 +482,10 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
           return;
         }
 
-        // The open menu may be the context menu, which `page.menu.clickMenuItem`
-        // does not drive. That belongs to the planned context menu rule.
-        if (isContextMenuTraversal(node, selectorText)) {
+        // Everything left is a click inside some open popup menu. Which one it
+        // is has to come from what opened it; a context menu belongs to the
+        // planned context menu rule, and a toolbar dropdown to no rule at all.
+        if (!isMainMenuTraversal(node, selectorText)) {
           return;
         }
 

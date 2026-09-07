@@ -7,7 +7,8 @@ import { ASTUtils, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { createRule } from '../utils/create-rule';
 import {
   SelectorInteractionMatch,
-  matchSelectorInteraction
+  matchSelectorInteraction,
+  resolveLocatorBinding
 } from '../utils/playwright-selectors';
 
 type MessageIds =
@@ -290,36 +291,6 @@ function enclosingBodyStatement(node: TSESTree.Node): TSESTree.Node | null {
     current = parent;
   }
   return null;
-}
-
-/**
- * The expression a locator-holding identifier was assigned, or null when the
- * binding must not be followed.
- *
- * Only a `const` declared with an initializer is followed. `const` is what
- * makes the assignment the single write, so the expression read here is the
- * one the gesture acts on; a `let` could hold a different locator by then.
- */
-function resolveLocatorBinding(
-  node: TSESTree.Identifier,
-  scope: TSESLint.Scope.Scope
-): TSESTree.Node | null {
-  const variable = ASTUtils.findVariable(scope, node);
-  if (!variable || variable.defs.length !== 1) {
-    return null;
-  }
-  const declarator = variable.defs[0].node;
-  if (declarator.type !== 'VariableDeclarator' || !declarator.init) {
-    return null;
-  }
-  const declaration = declarator.parent;
-  if (
-    declaration?.type !== 'VariableDeclaration' ||
-    declaration.kind !== 'const'
-  ) {
-    return null;
-  }
-  return declarator.init;
 }
 
 /**
