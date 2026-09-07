@@ -27,6 +27,8 @@ The gesture then selects the message:
 | `click`, `dblclick`                 | the cell or its input prompt | `page.notebook.selectCells()` / `getCellLocator()` |
 | `press` with a run shortcut         | cell or editor               | `page.notebook.runCell()` / `run()`                |
 
+`setCell()` presses `Control+A` first and replaces the whole source, while `type()` and `pressSequentially()` append at the caret. On a cell that is already non-empty the two write different text.
+
 ### Bare keyboard shortcuts
 
 A bare `page.keyboard.press('Control+Enter')` is reported **only** when the preceding statement in the same block, skipping any `expect` assertions, was itself reported by this rule. Both have to be statements of that block: an interaction hanging off `if (hasCell) …` is skipped by a shortcut written after the `if`, so it does not arm the gate. Two statements sharing a block — a conditional block included — always run together, so that pairing does report.
