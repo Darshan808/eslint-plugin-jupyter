@@ -1,14 +1,16 @@
 # `no-schema-enum`
 
-Disallow `enum` in settings JSON schema files; use `oneOf` with `const` and `title` instead.
+Disallow `enum` in settings JSON schema files; use `oneOf` with `const`, `title`, and an explicit `type` instead.
 
 ## Why
 
 In JupyterLab/Notebook v7+, using `enum` in a settings JSON schema prevents associating user-facing labels with values and makes the options untranslatable. The `oneOf` pattern with `const` and `title` per entry solves both problems: the `title` is what the user sees, and the `const` is the value stored — and `title` can be passed through the translation system.
 
+String-valued `oneOf` choices also need `"type": "string"` on the containing schema object. Without the explicit type, React JSON Schema Form may fail to render the setting editor control.
+
 ## Rule details
 
-The rule inspects JSON files located inside a `schema/` directory and reports any property named `"enum"` whose value is an array. It does not flag `enum` used with a non-array value, and it ignores JSON files outside of `schema/` directories.
+The rule inspects JSON files located inside a `schema/` directory and reports any property named `"enum"` whose value is an array. It also reports string-valued `oneOf` choices that are missing a sibling `"type": "string"` declaration and can automatically add it. It does not flag `enum` used with a non-array value, and it ignores JSON files outside of `schema/` directories.
 
 Requires [`jsonc-eslint-parser`](https://github.com/ota-meshi/jsonc-eslint-parser) (v2) to be configured as the parser for JSON files.
 
@@ -20,6 +22,20 @@ Requires [`jsonc-eslint-parser`](https://github.com/ota-meshi/jsonc-eslint-parse
     "defaultZoom": {
       "type": "string",
       "enum": ["fit-to-width", "fit-to-height", "100%"]
+    }
+  }
+}
+```
+
+```json
+{
+  "properties": {
+    "defaultZoom": {
+      "oneOf": [
+        { "const": "fit-to-width", "title": "Fit to width" },
+        { "const": "fit-to-height", "title": "Fit to height" },
+        { "const": "100%", "title": "100%" }
+      ]
     }
   }
 }
