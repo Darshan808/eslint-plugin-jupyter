@@ -120,7 +120,7 @@ const plugin = {
           rules: {
             'jupyter/require-soft-assertions-before-snapshots': 'warn',
             'jupyter/galata-prefer-filebrowser-helper': 'warn',
-            'jupyter/galata-prefer-menu-helper': 'warn'
+            'jupyter/galata-prefer-menu-helper': 'warn',
             'jupyter/galata-prefer-notebook-cell-helper': 'warn',
             'jupyter/prefer-lazy-imports': 'off'
           }
