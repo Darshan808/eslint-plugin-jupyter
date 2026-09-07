@@ -53,7 +53,11 @@ function makeProjectConfig(projectName) {
       'jupyter/prefer-signal-this-arg': 'error',
       'jupyter/require-disposable-ownership': 'error',
       'jupyter/require-disposable-transfer': 'error',
-      'jupyter/incorrect-translator-usage': 'error'
+      'jupyter/incorrect-translator-usage': 'error',
+      'jupyter/prefer-lazy-imports': [
+        'error',
+        { reportInteractionCallbacks: true }
+      ]
     },
     languageOptions: {
       parser: resolvedParser,
@@ -93,7 +97,8 @@ function makeDisposableTestSeverityConfig(projectName) {
     ],
     rules: {
       'jupyter/require-disposable-ownership': 'warn',
-      'jupyter/require-disposable-transfer': 'warn'
+      'jupyter/require-disposable-transfer': 'warn',
+      'jupyter/prefer-lazy-imports': 'off'
     }
   };
 }
@@ -141,7 +146,8 @@ function makeTestConfig(projectName) {
       },
       rules: {
         'jupyter/galata-prefer-filebrowser-helper': 'warn',
-        'jupyter/galata-prefer-menu-helper': 'warn'
+        'jupyter/galata-prefer-menu-helper': 'warn',
+        'jupyter/galata-prefer-notebook-cell-helper': 'warn'
       },
       languageOptions: {
         parser: resolvedParser,

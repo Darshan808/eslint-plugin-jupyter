@@ -32,6 +32,7 @@ The rule reports a one-argument `signal.connect(callback)` call only when **all*
 5. There is no matching one-argument `.disconnect(callback)` anywhere in the file — Lumino matches connections by the exact `(signal, slot, thisArg)` triple, so adding `, this` would silently break a teardown that currently works.
 6. **The fix is viable**: the class already relies on receiver-based cleanup, shown either by a `Signal.clearData(this)` / `Signal.disconnectReceiver(this)` / `Signal.disconnectAll(this)` / `Signal.disconnectBetween(sender, this)` call or a two-argument `.disconnect(callback, this)` in the class body, or by the class extending a Lumino `Widget` (whose `dispose()` calls `Signal.clearData(this)`). Without one, adding a `thisArg` would change disconnect matching and buy nothing.
 7. **The sender is proven long-lived**, by one of two arguments:
+
    - **an application-lifetime service** — the sender's type resolves to an entry in the allowlist (see [Options](#options)), with no Lumino `Widget` hop between that entry and the signal (`shell.currentWidget.title.changed` is a widget reached _through_ a service, not a long-lived sender);
    - **a model behind a view** — the receiver extends a Lumino `Widget` and some segment of the sender path is model-like by name (`model`, `sharedModel`, `context`) or by type (a name ending in `Model` or `Context`). JupyterLab routinely recycles views over a stable model: notebook windowing, "New View for Notebook", output-area reuse.
 
@@ -155,7 +156,7 @@ The rule is tuned for precision over recall — it reports only what it can prov
 
 - `longLivedTypes` (`string[]`): type names treated as application-lifetime services. **Replaces** the built-in list when provided. The default is:
 
-  `CommandRegistry`, `IDebugger`, `IDocumentManager`, `ILSPConnection`, `ILabShell`, `ILanguageServerManager`, `IRenderMimeRegistry`, `ISettingRegistry`, `IShell`, `IStateDB`, `IThemeManager`, `ServiceManager`
+  `CommandRegistry`, `IDebugger`, `IDocumentManager`, `ILSPConnection`, `ILabShell`, `ILanguageServerManager`, `IRenderMimeRegistry`, `ISessionConnection`, `ISessionContext`, `ISettingRegistry`, `IShell`, `IStateDB`, `IThemeManager`, `ServiceManager`
 
 ```json
 {

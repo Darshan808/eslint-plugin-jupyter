@@ -39,26 +39,16 @@ export function getJupyterPluginKind(
 
   // Slow path: resolve import aliases via the TS checker.
   if (checker && getTSNode && typeNode.typeName.type === 'Identifier') {
-    try {
-      const tsNameNode = getTSNode(typeNode.typeName);
-      if (tsNameNode) {
-        const symbol = checker.getSymbolAtLocation(tsNameNode);
-        if (symbol) {
-          const resolved =
-            symbol.flags & ts.SymbolFlags.Alias
-              ? checker.getAliasedSymbol(symbol)
-              : symbol;
-          const resolvedName = resolved.getName();
-          if (resolvedName === 'JupyterFrontEndPlugin') {
-            return 'frontend';
-          }
-          if (resolvedName === 'ServiceManagerPlugin') {
-            return 'service-manager';
-          }
-        }
-      }
-    } catch {
-      // Fall through if checker/mapper unavailable
+    const resolvedName = resolveTypeAlias(
+      typeNode.typeName,
+      checker,
+      getTSNode
+    );
+    if (resolvedName === 'JupyterFrontEndPlugin') {
+      return 'frontend';
+    }
+    if (resolvedName === 'ServiceManagerPlugin') {
+      return 'service-manager';
     }
   }
 
@@ -201,4 +191,174 @@ function extractTypeName(typeName: TSESTree.EntityName): string | null {
   }
 
   return null;
+}
+
+const PLUGIN_TYPE_NAMES = ['JupyterFrontEndPlugin', 'ServiceManagerPlugin'];
+
+/**
+ * Returns true when a type name refers to a JupyterLab plugin type. Only the
+ * last segment is compared, so a namespaced spelling such as
+ * `Private.JupyterFrontEndPlugin` matches too.
+ */
+function isPluginTypeName(name: string | null): boolean {
+  if (!name) {
+    return false;
+  }
+  const lastSegment = name.split('.').pop() ?? name;
+  return PLUGIN_TYPE_NAMES.includes(lastSegment);
+}
+
+/**
+ * Returns true when a type annotation mentions a JupyterLab plugin type at any
+ * depth, so arrays, unions and wrappers such as `Promise<...>` are recognised.
+ * Resolves import aliases through the TypeScript checker when it is available.
+ */
+export function typeMentionsJupyterPlugin(
+  typeNode: TSESTree.TypeNode | undefined | null,
+  checker?: ts.TypeChecker | null,
+  getTSNode?: ((n: TSESTree.Node) => ts.Node | undefined) | null,
+  depth = 0
+): boolean {
+  if (!typeNode || depth > 6) {
+    return false;
+  }
+
+  switch (typeNode.type) {
+    case 'TSTypeReference': {
+      if (isPluginTypeName(extractTypeName(typeNode.typeName))) {
+        return true;
+      }
+      if (
+        checker &&
+        getTSNode &&
+        typeNode.typeName.type === 'Identifier' &&
+        isPluginTypeName(
+          resolveTypeAlias(typeNode.typeName, checker, getTSNode)
+        )
+      ) {
+        return true;
+      }
+      return (typeNode.typeArguments?.params ?? []).some(param =>
+        typeMentionsJupyterPlugin(param, checker, getTSNode, depth + 1)
+      );
+    }
+    case 'TSArrayType':
+      return typeMentionsJupyterPlugin(
+        typeNode.elementType,
+        checker,
+        getTSNode,
+        depth + 1
+      );
+    case 'TSUnionType':
+    case 'TSIntersectionType':
+      return typeNode.types.some(type =>
+        typeMentionsJupyterPlugin(type, checker, getTSNode, depth + 1)
+      );
+    case 'TSTupleType':
+      return typeNode.elementTypes.some(type =>
+        typeMentionsJupyterPlugin(type, checker, getTSNode, depth + 1)
+      );
+    case 'TSTypeOperator':
+    case 'TSRestType':
+    case 'TSOptionalType':
+      return typeMentionsJupyterPlugin(
+        typeNode.typeAnnotation ?? null,
+        checker,
+        getTSNode,
+        depth + 1
+      );
+    case 'TSNamedTupleMember':
+      return typeMentionsJupyterPlugin(
+        typeNode.elementType,
+        checker,
+        getTSNode,
+        depth + 1
+      );
+    default:
+      return false;
+  }
+}
+
+/**
+ * Resolves an identifier through the TypeScript checker to the name it aliases,
+ * e.g. `import { JupyterFrontEndPlugin as JFEP }` gives back the original name.
+ */
+function resolveTypeAlias(
+  identifier: TSESTree.Identifier,
+  checker: ts.TypeChecker,
+  getTSNode: (n: TSESTree.Node) => ts.Node | undefined
+): string | null {
+  try {
+    const tsNode = getTSNode(identifier);
+    if (!tsNode) {
+      return null;
+    }
+    const symbol = checker.getSymbolAtLocation(tsNode);
+    if (!symbol) {
+      return null;
+    }
+    const resolved =
+      symbol.flags & ts.SymbolFlags.Alias
+        ? checker.getAliasedSymbol(symbol)
+        : symbol;
+    return resolved.getName();
+  } catch {
+    return null;
+  }
+}
+
+const PLUGIN_SHAPE_PROPERTIES = [
+  'autoStart',
+  'requires',
+  'optional',
+  'provides',
+  'description'
+];
+
+/**
+ * Returns true when a property holds something callable: a function written in
+ * place, or a name referring to one declared elsewhere.
+ */
+export function isCallableProperty(
+  property: TSESTree.Property | undefined
+): boolean {
+  if (!property) {
+    return false;
+  }
+  switch (property.value.type) {
+    case 'FunctionExpression':
+    case 'ArrowFunctionExpression':
+    case 'Identifier':
+    case 'MemberExpression':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Returns true when an object literal has the shape of a JupyterLab plugin:
+ * a string `id`, an `activate` function, and at least one of the properties
+ * which only plugins carry. Used for plugin objects written without a type
+ * annotation.
+ */
+export function looksLikePluginObject(
+  node: TSESTree.ObjectExpression
+): boolean {
+  const properties = getObjectProperties(node);
+
+  const id = properties.get('id');
+  if (
+    !id ||
+    id.value.type !== 'Literal' ||
+    typeof id.value.value !== 'string'
+  ) {
+    return false;
+  }
+
+  if (!isCallableProperty(properties.get('activate'))) {
+    return false;
+  }
+
+  return PLUGIN_SHAPE_PROPERTIES.some(name => properties.has(name));
 }
