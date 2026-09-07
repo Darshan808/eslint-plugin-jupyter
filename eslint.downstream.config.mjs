@@ -146,6 +146,7 @@ function makeTestConfig(projectName) {
       },
       rules: {
         'jupyter/galata-prefer-filebrowser-helper': 'warn',
+        'jupyter/galata-prefer-menu-helper': 'warn',
         'jupyter/galata-prefer-notebook-cell-helper': 'warn'
       },
       languageOptions: {
