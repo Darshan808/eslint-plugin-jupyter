@@ -39,14 +39,20 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     {
       code: `await page.click('.jp-PauseOnExceptions-menu >> text=Continue');`
     },
-    // `getByRole('menuitem', { name })` carries no scope: this is just as likely
-    // a context menu item, so only exact top-level labels or a popup container
-    // in the same chain are reported
+    // `getByRole('menuitem', { name })` carries no scope: with nothing to say
+    // which menu is open this is just as likely a context menu item
     {
       code: `await page.getByRole('menuitem', { name: 'Open in Terminal' }).click();`
     },
     {
       code: `await page.getByRole('menuitem', { name: 'Open from Path' }).click();`
+    },
+    // …and a right-click says the open menu is the context menu
+    {
+      code: `
+        await page.locator('.jp-DirListing-item').click({ button: 'right' });
+        await page.getByRole('menuitem', { name: 'Open in Terminal' }).click();
+      `
     },
     // A non-menu role with a menu-shaped name is not a menu
     {
@@ -300,6 +306,28 @@ ruleTester.run('galata-prefer-menu-helper', galataPreferMenuHelper, {
     // dominant menu bar idiom in the Notebook and JupyterLite UI tests
     {
       code: `await page.getByRole('menuitem', { name: 'File' }).click();`,
+      errors: [{ messageId: 'preferMenuOpen' }]
+    },
+    // The item under it carries no scope of its own, so the menu bar click is
+    // what says the open menu is the main menu
+    {
+      code: `
+        await page.getByRole('menuitem', { name: 'File' }).click();
+        await page.getByRole('menuitem', { name: 'Open from Path' }).click();
+      `,
+      errors: [
+        { messageId: 'preferMenuOpen' },
+        { messageId: 'preferClickMenuItem' }
+      ]
+    },
+    // A context menu opened after the menu bar click wins, because it opened
+    // last, so only the menu bar click is reported
+    {
+      code: `
+        await page.getByRole('menuitem', { name: 'File' }).click();
+        await page.locator('.jp-Cell').click({ button: 'right' });
+        await page.getByRole('menuitem', { name: 'Copy Image' }).click();
+      `,
       errors: [{ messageId: 'preferMenuOpen' }]
     },
     {

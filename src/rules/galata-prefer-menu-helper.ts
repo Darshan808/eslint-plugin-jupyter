@@ -462,15 +462,25 @@ const galataPreferMenuHelper = createRule<Options, MessageIds>({
         }
 
         // `getByRole('menuitem', { name })` carries no scope at all: a menu bar
-        // item, a main menu item, and a right-click context menu item are all
-        // `role="menuitem"` with an accessible name. Only an exact top-level
-        // label is unambiguous enough to report on that evidence alone; a
-        // deeper item needs a real popup container in the same chain. The rest
-        // is left to the planned context menu rule.
+        // item, a main menu item and a right-click context menu item are all
+        // `role="menuitem"` with an accessible name. An exact top-level label
+        // is unambiguous on that evidence alone, and a popup container in the
+        // same chain settles it too. Failing both, the menu bar click that
+        // opened the menu answers it, which is the
+        // `getByRole('menuitem', { name: 'File' })` then
+        // `getByRole('menuitem', { name: 'Open from Path' })` idiom of the
+        // Notebook and JupyterLite suites. With none of the three the target
+        // could be a context menu item, which the planned context menu rule
+        // covers.
         const viaGetByRole = match.selectorParts.some(
           part => part.method === 'getByRole'
         );
-        if (viaGetByRole && !hasTopLevelMarker && !hasPopupContainer) {
+        if (
+          viaGetByRole &&
+          !hasTopLevelMarker &&
+          !hasPopupContainer &&
+          findMenuOrigin(node) !== 'menubar'
+        ) {
           return;
         }
 

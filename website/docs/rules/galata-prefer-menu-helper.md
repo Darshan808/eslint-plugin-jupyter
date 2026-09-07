@@ -10,7 +10,7 @@ Galata UI tests often walk the main menu with raw Playwright selectors such as `
 - depend on whatever menu happens to be open and on hover timing, so any leftover menu state changes the target;
 - repeat the same multi-step traversal across many test files.
 
-`page.menu.clickMenuItem('File>New>Terminal')` closes any open menu first, walks nested menus consistently, and waits for each submenu to become active. `page.menu.openLocator(path)`, `page.menu.isOpen(path)` and `page.menu.getMenuItemLocator(path)` cover the remaining cases. The `page.menu.open(path)` and `page.menu.getMenuItem(path)` spellings return an `ElementHandle` and are deprecated in favour of those two.
+`page.menu.clickMenuItem('File>New>Terminal')` closes any open menu first, walks nested menus consistently, and waits for each submenu to become active. `page.menu.openLocator(path)`, `page.menu.isOpen(path)` and `page.menu.getMenuItemLocator(path)` cover the remaining cases. `page.menu.open(path)` and `page.menu.getMenuItem(path)` are the deprecated forms of the first and the third.
 
 ## Rule details
 
@@ -28,9 +28,11 @@ A locator held in a `const` is followed to its declaration, so `const item = pag
 
 Lumino gives every menu the same markup. The main menu, the right-click context menu and any dropdown opened from a toolbar button all render as `.lm-Menu` with `role="menu"` content and `role="menuitem"` items, and `page.menu` only walks the main menu. So a selector made only of popup markup is reported only when the main menu was opened first, by a menu bar click or by `page.menu.openLocator` / `page.menu.open` / `page.menu.clickMenuItem` earlier in the same test. A `#jp-mainmenu-*` id names a main menu popup on its own and needs no opener.
 
-A right-click before the item click means the open popup is the context menu, and the rule stays silent. The lookback stops at the enclosing test callback and at any named helper function, so one test's menu state never carries into the next.
+`getByRole('menuitem', { name })` is the same case with even less to go on, since the menu bar, the main menu and the context menu all use that role. The opener above it is what makes the item reportable.
 
-The other direction has the same problem. `page.click('text=File')` is a bare word with no markup at all, and `File`, `Run` and `Help` also name dialog buttons and files. So a selector carrying nothing but a top-level label is reported only when the test is about a menu, in one of two ways: the test title says `menu`, or some string in the test carries real menu markup, from clicking an item in the menu it opened, waiting for the popup, or asserting on it. Only the title takes the bare word; `menu` inside a selector or a file name is not enough.
+A right-click before the item click means the open popup is the context menu, and the rule stays silent. Only the current test is read, and a call to a named helper is not followed into, so one test's menu state never carries into the next.
+
+A bare label has the opposite problem. `page.click('text=File')` is a bare word with no markup at all, and `File`, `Run` and `Help` also name dialog buttons and files. So a selector carrying nothing but a top-level label is reported only when the test is about a menu, in one of two ways: the test title says `menu`, or some string in the test carries real menu markup, from clicking an item in the menu it opened, waiting for the popup, or asserting on it. Only the title takes the bare word; `menu` inside a selector or a file name is not enough.
 
 ```ts
 await page.click('text=File'); // preferMenuOpen
@@ -41,6 +43,9 @@ await page.click('.lm-Menu ul[role="menu"] >> text=Rename'); // not reported: th
 
 await page.locator('[data-jp-item-name="notifyType"]').click();
 await page.locator('.lm-Menu').getByText('Set Default Threshold').click(); // not reported: nothing opened the main menu, so this popup is a toolbar dropdown
+
+await page.getByRole('menuitem', { name: 'File' }).click(); // preferMenuOpen
+await page.getByRole('menuitem', { name: 'Open from Path' }).click(); // preferClickMenuItem, because the menu bar click above opened the main menu
 
 await page.click('.jp-Dialog');
 await page.getByText('Run').click(); // not reported: nothing in this test is about a menu, so this is a button labelled Run
