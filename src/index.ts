@@ -83,7 +83,7 @@ const plugin = {
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
           'jupyter/galata-prefer-filebrowser-helper': 'warn',
-          'jupyter/galata-prefer-menu-helper': 'warn'
+          'jupyter/galata-prefer-menu-helper': 'warn',
           'jupyter/galata-prefer-notebook-cell-helper': 'warn',
           // Test files declare mock plugins; deferring their imports is pointless.
           'jupyter/prefer-lazy-imports': 'off'
