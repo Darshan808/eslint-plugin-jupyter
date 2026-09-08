@@ -2,6 +2,38 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 1.2.0
+
+([Full Changelog](https://github.com/jupyterlab/eslint-plugin/compare/v1.1.0...711438261cdc852a201883b83f02ed916d03f8c4))
+
+### Enhancements made
+
+- Add new `jupyter/prefer-lazy-imports` rule [#108](https://github.com/jupyterlab/eslint-plugin/pull/108) ([@krassowski](https://github.com/krassowski), [@Darshan808](https://github.com/Darshan808))
+- Add type autofix for schema `oneOf` choices [#106](https://github.com/jupyterlab/eslint-plugin/pull/106) ([@MUFFANUJ](https://github.com/MUFFANUJ), [@krassowski](https://github.com/krassowski))
+- Add `galata-prefer-notebook-cell-helper` [#105](https://github.com/jupyterlab/eslint-plugin/pull/105) ([@Darshan808](https://github.com/Darshan808), [@krassowski](https://github.com/krassowski))
+- Add kernel session types to `longLivedTypes` [#103](https://github.com/jupyterlab/eslint-plugin/pull/103) ([@Darshan808](https://github.com/Darshan808), [@Copilot](https://github.com/Copilot), [@krassowski](https://github.com/krassowski))
+- Add sidebar activity helper rule [#101](https://github.com/jupyterlab/eslint-plugin/pull/101) ([@MUFFANUJ](https://github.com/MUFFANUJ), [@Darshan808](https://github.com/Darshan808), [@krassowski](https://github.com/krassowski))
+- Add `galata-prefer-menu-helper` rule [#85](https://github.com/jupyterlab/eslint-plugin/pull/85) ([@Darshan808](https://github.com/Darshan808), [@MUFFANUJ](https://github.com/MUFFANUJ), [@krassowski](https://github.com/krassowski))
+
+### Maintenance and upkeep improvements
+
+- Align with JupyterLab config for `galata-prefer-filebrowser-helper` rule [#104](https://github.com/jupyterlab/eslint-plugin/pull/104) ([@krassowski](https://github.com/krassowski), [@Darshan808](https://github.com/Darshan808))
+
+### Other merged PRs
+
+- Bump fast-uri from 3.1.5 to 3.1.7 in /website in the npm_and_yarn group across 1 directory [#109](https://github.com/jupyterlab/eslint-plugin/pull/109) ([@Darshan808](https://github.com/Darshan808))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/eslint-plugin/graphs/contributors?from=2026-08-11&to=2026-09-08&type=c))
+
+@Copilot ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3ACopilot+updated%3A2026-08-11..2026-09-08&type=Issues)) | @Darshan808 ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3ADarshan808+updated%3A2026-08-11..2026-09-08&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3Akrassowski+updated%3A2026-08-11..2026-09-08&type=Issues)) | @MUFFANUJ ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3AMUFFANUJ+updated%3A2026-08-11..2026-09-08&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 1.1.0
 
 ([Full Changelog](https://github.com/jupyterlab/eslint-plugin/compare/v1.0.1...a810795b233b803ff01d30279a93c1b2ff529b9f))
@@ -50,8 +82,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jupyterlab/eslint-plugin/graphs/contributors?from=2026-05-15&to=2026-08-11&type=c))
 
 @Copilot ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3ACopilot+updated%3A2026-05-15..2026-08-11&type=Issues)) | @Darshan808 ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3ADarshan808+updated%3A2026-05-15..2026-08-11&type=Issues)) | @jtpio ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3Ajtpio+updated%3A2026-05-15..2026-08-11&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3Akrassowski+updated%3A2026-05-15..2026-08-11&type=Issues)) | @MUFFANUJ ([activity](https://github.com/search?q=repo%3Ajupyterlab%2Feslint-plugin+involves%3AMUFFANUJ+updated%3A2026-05-15..2026-08-11&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 1.0.1
 
