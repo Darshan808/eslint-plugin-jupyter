@@ -93,6 +93,11 @@ export interface SelectorInteractionMatch {
   isRightClick: boolean;
 }
 
+export interface StaticSelectorTextOptions {
+  /** Whether to combine static pieces of interpolated template selectors. */
+  allowPartialTemplate?: boolean;
+}
+
 /**
  * Resolves an identifier holding a locator to the expression it was assigned,
  * or returns null when the binding must not be followed. Passed in by a rule
@@ -334,15 +339,26 @@ export function matchSelectorInteraction(
  * matched against known patterns. String literals return their value;
  * template literals return their static parts joined by a space, so
  * `` `.jp-DirListing-item span:has-text("${name}")` `` still exposes its
- * static prefix. Fully dynamic expressions return null.
+ * static prefix. Pass `allowPartialTemplate: false` when interpolated
+ * templates should be treated as dynamic. Fully dynamic expressions return
+ * null.
  */
 export function extractStaticSelectorText(
-  node: TSESTree.Expression
+  node: TSESTree.Expression,
+  options: StaticSelectorTextOptions = {}
 ): string | null {
   if (node.type === 'Literal') {
     return typeof node.value === 'string' ? node.value : null;
   }
+  const allowPartialTemplate = options.allowPartialTemplate !== false;
   if (node.type === 'TemplateLiteral') {
+    if (!allowPartialTemplate) {
+      return node.expressions.length > 0
+        ? null
+        : node.quasis
+            .map(quasi => quasi.value.cooked ?? quasi.value.raw)
+            .join('');
+    }
     return node.quasis.map(quasi => quasi.value.cooked ?? '').join(' ');
   }
   return null;

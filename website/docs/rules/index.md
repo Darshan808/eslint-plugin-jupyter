@@ -8,6 +8,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 - [galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)
 - [galata-prefer-menu-helper](./galata-prefer-menu-helper)
 - [galata-prefer-notebook-cell-helper](./galata-prefer-notebook-cell-helper)
+- [galata-prefer-sidebar-activity-helper](./galata-prefer-sidebar-activity-helper)
 - [incorrect-translator-usage](./incorrect-translator-usage)
 - [no-dynamic-translation](./no-dynamic-translation)
 - [no-schema-enum](./no-schema-enum)
@@ -18,10 +19,10 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 - [plugin-description](./plugin-description)
 - [prefer-lazy-imports](./prefer-lazy-imports)
 - [prefer-signal-this-arg](./prefer-signal-this-arg)
-- [require-signal-cleanup](./require-signal-cleanup)
-- [require-signal-this-arg](./require-signal-this-arg)
 - [require-disposable-ownership](./require-disposable-ownership)
 - [require-disposable-transfer](./require-disposable-transfer)
+- [require-signal-cleanup](./require-signal-cleanup)
+- [require-signal-this-arg](./require-signal-this-arg)
 - [require-soft-assertions-before-snapshots](./require-soft-assertions-before-snapshots)
 - [token-format](./token-format)
 
@@ -49,6 +50,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)                 | `warn` ¹ |
 | [jupyter/galata-prefer-menu-helper](./galata-prefer-menu-helper)                               | `warn` ¹ |
 | [jupyter/galata-prefer-notebook-cell-helper](./galata-prefer-notebook-cell-helper)             | `warn` ¹ |
+| [jupyter/galata-prefer-sidebar-activity-helper](./galata-prefer-sidebar-activity-helper)       | `warn` ¹ |
 | [jupyter/no-schema-enum](./no-schema-enum)                                                     | `warn` ² |
 | [jupyter/no-pageconfig-base-url](./no-pageconfig-base-url)                                     | `warn`   |
 | [jupyter/incorrect-translator-usage](./incorrect-translator-usage)                             | `warn`   |

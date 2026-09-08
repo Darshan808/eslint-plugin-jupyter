@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         'rules/galata-prefer-filebrowser-helper',
         'rules/galata-prefer-menu-helper',
         'rules/galata-prefer-notebook-cell-helper',
+        'rules/galata-prefer-sidebar-activity-helper',
         'rules/incorrect-translator-usage',
         'rules/no-dynamic-translation',
         'rules/no-pageconfig-base-url',
@@ -33,10 +34,10 @@ const sidebars: SidebarsConfig = {
         'rules/plugin-description',
         'rules/prefer-lazy-imports',
         'rules/prefer-signal-this-arg',
-        'rules/require-signal-cleanup',
-        'rules/require-signal-this-arg',
         'rules/require-disposable-ownership',
         'rules/require-disposable-transfer',
+        'rules/require-signal-cleanup',
+        'rules/require-signal-this-arg',
         'rules/require-soft-assertions-before-snapshots',
         'rules/token-format'
       ]

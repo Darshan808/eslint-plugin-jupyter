@@ -20,6 +20,7 @@ import preferSignalThisArg from './rules/prefer-signal-this-arg';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
 import galataPreferMenuHelper from './rules/galata-prefer-menu-helper';
 import galataPreferNotebookCellHelper from './rules/galata-prefer-notebook-cell-helper';
+import galataPreferSidebarActivityHelper from './rules/galata-prefer-sidebar-activity-helper';
 import requireDisposableOwnership from './rules/require-disposable-ownership';
 import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
@@ -44,6 +45,7 @@ const plugin = {
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
     'galata-prefer-menu-helper': galataPreferMenuHelper,
     'galata-prefer-notebook-cell-helper': galataPreferNotebookCellHelper,
+    'galata-prefer-sidebar-activity-helper': galataPreferSidebarActivityHelper,
     'require-disposable-ownership': requireDisposableOwnership,
     'require-disposable-transfer': requireDisposableTransfer,
     'incorrect-translator-usage': incorrectTranslatorUsage,
@@ -85,6 +87,7 @@ const plugin = {
           'jupyter/galata-prefer-filebrowser-helper': 'warn',
           'jupyter/galata-prefer-menu-helper': 'warn',
           'jupyter/galata-prefer-notebook-cell-helper': 'warn',
+          'jupyter/galata-prefer-sidebar-activity-helper': 'warn',
           // Test files declare mock plugins; deferring their imports is pointless.
           'jupyter/prefer-lazy-imports': 'off'
         }
@@ -122,6 +125,7 @@ const plugin = {
             'jupyter/galata-prefer-filebrowser-helper': 'warn',
             'jupyter/galata-prefer-menu-helper': 'warn',
             'jupyter/galata-prefer-notebook-cell-helper': 'warn',
+            'jupyter/galata-prefer-sidebar-activity-helper': 'warn',
             'jupyter/prefer-lazy-imports': 'off'
           }
         }
