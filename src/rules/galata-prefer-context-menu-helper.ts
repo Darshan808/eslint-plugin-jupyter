@@ -137,14 +137,24 @@ function isPageKeyboard(node: TSESTree.Node): boolean {
   );
 }
 
+/**
+ * Whether a call's receiver is Galata's menu helper, `….menu`.
+ */
+function isMenuHelperReceiver(node: TSESTree.Node): boolean {
+  return (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.type === 'Identifier' &&
+    node.property.name === 'menu'
+  );
+}
+
 /** `page.menu.closeAll()`, which dismisses whatever menu is open. */
 function isMenuCloseAll(callee: TSESTree.MemberExpression): boolean {
   return (
     callee.property.type === 'Identifier' &&
     callee.property.name === 'closeAll' &&
-    callee.object.type === 'MemberExpression' &&
-    callee.object.property.type === 'Identifier' &&
-    callee.object.property.name === 'menu'
+    isMenuHelperReceiver(callee.object)
   );
 }
 
@@ -198,7 +208,10 @@ function classifyGesture(
     // right-click the target themselves, so they open the context menu exactly
     // as a raw right-click does. A test that uses them and then walks
     // `Open With` by hand is still the sequence this rule replaces.
-    if (callee.property.name.startsWith('openContextMenu')) {
+    if (
+      callee.property.name.startsWith('openContextMenu') &&
+      isMenuHelperReceiver(callee.object)
+    ) {
       return gesture('contextMenuOpen');
     }
     if (isMenuCloseAll(callee)) {

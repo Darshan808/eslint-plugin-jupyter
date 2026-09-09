@@ -77,6 +77,25 @@ ruleTester.run(
           await page.click('text=Editor');
         `
       },
+      // A `menu.closeAll()` on any receiver dismisses the menu: `this.menu`
+      // is how `JupyterLabPage` calls the helper internally
+      {
+        code: `
+          await page.click('.jp-DirListing-item', { button: 'right' });
+          await page.hover('text=Open With');
+          await this.menu.closeAll();
+          await page.click('text=Editor');
+        `
+      },
+      // An `openContextMenu…` method that is not Galata's menu helper proves
+      // nothing about which menu, if any, is open
+      {
+        code: `
+          await helpers.openContextMenuForTab('notebook.ipynb');
+          await page.hover('text=Open With');
+          await page.click('text=Editor');
+        `
+      },
       // An unrelated click between `Open With` and the factory closes the
       // submenu, so the two are not one flow
       {
