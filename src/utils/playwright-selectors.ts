@@ -396,3 +396,104 @@ export function combineStaticSelectorText(
   }
   return parts.length > 0 ? parts.join(' ') : null;
 }
+
+function isNode(value: unknown): value is TSESTree.Node {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { type?: unknown }).type === 'string'
+  );
+}
+
+/**
+ * Calls `visit` for every child node of `node`, in no particular order.
+ *
+ * `parent` is skipped: it is a back-reference, and following it would not
+ * terminate. A caller that needs source order has to sort the result itself.
+ */
+export function forEachChildNode(
+  node: TSESTree.Node,
+  visit: (child: TSESTree.Node) => void
+): void {
+  for (const [key, value] of Object.entries(
+    node as unknown as Record<string, unknown>
+  )) {
+    if (key === 'parent') {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (isNode(item)) {
+          visit(item);
+        }
+      }
+    } else if (isNode(value)) {
+      visit(value);
+    }
+  }
+}
+
+/**
+ * Calls whose callback is stored and run later. Statements next to such a call
+ * say nothing about the state its body starts in.
+ */
+const DEFERRED_CALLBACK_CALLEES: ReadonlySet<string> = new Set([
+  'test',
+  'it',
+  'describe',
+  'suite',
+  'beforeAll',
+  'beforeEach',
+  'afterAll',
+  'afterEach'
+]);
+
+function rootCalleeName(node: TSESTree.Expression): string | null {
+  let current: TSESTree.Node = node;
+  while (current.type === 'MemberExpression') {
+    current = current.object;
+  }
+  return current.type === 'Identifier' ? current.name : null;
+}
+
+/**
+ * Whether `node` bounds the statements a rule may read as "what ran before".
+ *
+ * A rule that reasons about UI state — which menu is open, what was selected —
+ * reads the statements preceding a gesture. That reading has to stop somewhere,
+ * and the boundary is the unit that runs as one: a test callback or a named
+ * function.
+ */
+export function isTestScopeBoundary(node: TSESTree.Node): boolean {
+  if (node.type === 'FunctionDeclaration') {
+    return true;
+  }
+  if (
+    node.type !== 'FunctionExpression' &&
+    node.type !== 'ArrowFunctionExpression'
+  ) {
+    return false;
+  }
+  const parent = node.parent;
+  if (parent?.type === 'VariableDeclarator' || parent?.type === 'Property') {
+    return true;
+  }
+  return (
+    parent?.type === 'CallExpression' &&
+    parent.arguments.includes(node) &&
+    DEFERRED_CALLBACK_CALLEES.has(rootCalleeName(parent.callee) ?? '')
+  );
+}
+
+/**
+ * The innermost test callback or named function containing `node`, which is
+ * where a lookback over preceding statements has to stop. Falls back to the
+ * `Program` for a gesture written at the top level of a file.
+ */
+export function enclosingTestScope(node: TSESTree.Node): TSESTree.Node {
+  let scope: TSESTree.Node = node;
+  while (scope.parent && !isTestScopeBoundary(scope)) {
+    scope = scope.parent;
+  }
+  return scope;
+}

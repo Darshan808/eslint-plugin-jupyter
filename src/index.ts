@@ -17,6 +17,7 @@ import noPageconfigBaseUrl from './rules/no-pageconfig-base-url';
 import requireSignalCleanup from './rules/require-signal-cleanup';
 import requireSignalThisArg from './rules/require-signal-this-arg';
 import preferSignalThisArg from './rules/prefer-signal-this-arg';
+import galataPreferContextMenuHelper from './rules/galata-prefer-context-menu-helper';
 import galataPreferFilebrowserHelper from './rules/galata-prefer-filebrowser-helper';
 import galataPreferMenuHelper from './rules/galata-prefer-menu-helper';
 import galataPreferNotebookCellHelper from './rules/galata-prefer-notebook-cell-helper';
@@ -42,6 +43,7 @@ const plugin = {
     'require-signal-cleanup': requireSignalCleanup,
     'require-signal-this-arg': requireSignalThisArg,
     'prefer-signal-this-arg': preferSignalThisArg,
+    'galata-prefer-context-menu-helper': galataPreferContextMenuHelper,
     'galata-prefer-filebrowser-helper': galataPreferFilebrowserHelper,
     'galata-prefer-menu-helper': galataPreferMenuHelper,
     'galata-prefer-notebook-cell-helper': galataPreferNotebookCellHelper,
@@ -84,6 +86,7 @@ const plugin = {
         files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
+          'jupyter/galata-prefer-context-menu-helper': 'warn',
           'jupyter/galata-prefer-filebrowser-helper': 'warn',
           'jupyter/galata-prefer-menu-helper': 'warn',
           'jupyter/galata-prefer-notebook-cell-helper': 'warn',
@@ -122,6 +125,7 @@ const plugin = {
           ],
           rules: {
             'jupyter/require-soft-assertions-before-snapshots': 'warn',
+            'jupyter/galata-prefer-context-menu-helper': 'warn',
             'jupyter/galata-prefer-filebrowser-helper': 'warn',
             'jupyter/galata-prefer-menu-helper': 'warn',
             'jupyter/galata-prefer-notebook-cell-helper': 'warn',
