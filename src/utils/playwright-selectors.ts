@@ -397,42 +397,6 @@ export function combineStaticSelectorText(
   return parts.length > 0 ? parts.join(' ') : null;
 }
 
-function isNode(value: unknown): value is TSESTree.Node {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { type?: unknown }).type === 'string'
-  );
-}
-
-/**
- * Calls `visit` for every child node of `node`, in no particular order.
- *
- * `parent` is skipped: it is a back-reference, and following it would not
- * terminate. A caller that needs source order has to sort the result itself.
- */
-export function forEachChildNode(
-  node: TSESTree.Node,
-  visit: (child: TSESTree.Node) => void
-): void {
-  for (const [key, value] of Object.entries(
-    node as unknown as Record<string, unknown>
-  )) {
-    if (key === 'parent') {
-      continue;
-    }
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        if (isNode(item)) {
-          visit(item);
-        }
-      }
-    } else if (isNode(value)) {
-      visit(value);
-    }
-  }
-}
-
 /**
  * Calls whose callback is stored and run later. Statements next to such a call
  * say nothing about the state its body starts in.

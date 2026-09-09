@@ -4,11 +4,11 @@
  */
 
 import { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { walkFrom } from '../utils/ast';
 import { createRule } from '../utils/create-rule';
 import {
   combineStaticSelectorText,
   enclosingTestScope,
-  forEachChildNode,
   isRightClick,
   isTestScopeBoundary,
   matchSelectorInteraction,
@@ -194,19 +194,21 @@ function menuOriginOf(node: TSESTree.CallExpression): MenuOrigin | null {
 }
 
 function collectMenuOrigins(
-  node: TSESTree.Node,
+  root: TSESTree.Node,
   found: { origin: MenuOrigin; start: number }[]
 ): void {
-  if (isTestScopeBoundary(node)) {
-    return;
-  }
-  if (node.type === 'CallExpression') {
-    const origin = menuOriginOf(node);
-    if (origin) {
-      found.push({ origin, start: node.range[0] });
+  walkFrom(root, node => {
+    if (isTestScopeBoundary(node)) {
+      return 'skip-children';
     }
-  }
-  forEachChildNode(node, child => collectMenuOrigins(child, found));
+    if (node.type === 'CallExpression') {
+      const origin = menuOriginOf(node);
+      if (origin) {
+        found.push({ origin, start: node.range[0] });
+      }
+    }
+    return undefined;
+  });
 }
 
 /**
@@ -339,10 +341,7 @@ function testMentionsMenuMarkup(node: TSESTree.Node): boolean {
     }
   }
   let found = false;
-  const visit = (current: TSESTree.Node): void => {
-    if (found) {
-      return;
-    }
+  walkFrom(scope, current => {
     if (
       (current.type === 'Literal' && typeof current.value === 'string'
         ? ANY_MENU_MARKUP_PATTERN.test(current.value)
@@ -351,11 +350,10 @@ function testMentionsMenuMarkup(node: TSESTree.Node): boolean {
         ANY_MENU_MARKUP_PATTERN.test(current.value.cooked ?? ''))
     ) {
       found = true;
-      return;
+      return 'stop';
     }
-    forEachChildNode(current, visit);
-  };
-  visit(scope);
+    return undefined;
+  });
   return found;
 }
 

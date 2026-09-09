@@ -5,8 +5,11 @@
 
 import { TSESTree } from '@typescript-eslint/types';
 import { ParserServices } from '@typescript-eslint/utils';
-import { visitorKeys, getKeys } from '@typescript-eslint/visitor-keys';
+import { walkFrom } from './ast';
 import * as ts from 'typescript';
+
+export { walkFrom } from './ast';
+export type { WalkAction } from './ast';
 
 export type ClassLike = TSESTree.ClassDeclaration | TSESTree.ClassExpression;
 
@@ -15,51 +18,6 @@ export type SignalClassification = 'signal' | 'not-signal' | 'unknown';
 type ConnectCallExpression = TSESTree.CallExpression & {
   callee: TSESTree.MemberExpression;
 };
-
-export type WalkAction = 'skip-children' | 'stop' | undefined;
-
-/**
- * Iterative AST walk from `root`, visiting every node. The visitor may return
- * 'skip-children' to avoid descending into a node, or 'stop' to abort the
- * whole walk.
- */
-export function walkFrom(
-  root: TSESTree.Node,
-  visit: (node: TSESTree.Node) => WalkAction
-): void {
-  const stack: TSESTree.Node[] = [root];
-  while (stack.length > 0) {
-    const node = stack.pop()!;
-    const action = visit(node);
-    if (action === 'stop') {
-      return;
-    }
-    if (action === 'skip-children') {
-      continue;
-    }
-    const keys = visitorKeys[node.type] ?? getKeys(node);
-    for (const key of keys) {
-      const child = (node as unknown as Record<string, unknown>)[key];
-      if (Array.isArray(child)) {
-        for (const item of child) {
-          if (isNode(item)) {
-            stack.push(item);
-          }
-        }
-      } else if (isNode(child)) {
-        stack.push(child);
-      }
-    }
-  }
-}
-
-function isNode(value: unknown): value is TSESTree.Node {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { type?: unknown }).type === 'string'
-  );
-}
 
 /**
  * Checks if a call expression is a non-computed `<expr>.<name>(...)` call.

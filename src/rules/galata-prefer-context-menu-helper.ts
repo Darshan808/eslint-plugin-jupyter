@@ -4,12 +4,12 @@
  */
 
 import { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { walkFrom } from '../utils/ast';
 import { createRule } from '../utils/create-rule';
 import {
   combineStaticSelectorText,
   enclosingTestScope,
   extractStaticSelectorText,
-  forEachChildNode,
   isRightClick,
   isTestScopeBoundary,
   matchSelectorInteraction,
@@ -307,9 +307,9 @@ function collectGestures(
   resolveBinding: (identifier: TSESTree.Identifier) => TSESTree.Node | null
 ): Gesture[] {
   const gestures: Gesture[] = [];
-  const visit = (node: TSESTree.Node): void => {
+  walkFrom(scope, node => {
     if (node !== scope && isTestScopeBoundary(node)) {
-      return;
+      return 'skip-children';
     }
     if (node.type === 'CallExpression') {
       const gesture = classifyGesture(node, resolveBinding);
@@ -320,9 +320,8 @@ function collectGestures(
     // A gesture can sit inside another call's arguments — `Promise.all([…,
     // page.click(…)])` — so children are visited whether or not this node was
     // itself a gesture.
-    forEachChildNode(node, visit);
-  };
-  visit(scope);
+    return undefined;
+  });
   return gestures.sort((left, right) => left.start - right.start);
 }
 
