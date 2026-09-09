@@ -145,6 +145,7 @@ function makeTestConfig(projectName) {
         playwright: playwrightStub
       },
       rules: {
+        'jupyter/galata-prefer-context-menu-helper': 'warn',
         'jupyter/galata-prefer-filebrowser-helper': 'warn',
         'jupyter/galata-prefer-menu-helper': 'warn',
         'jupyter/galata-prefer-notebook-cell-helper': 'warn',
