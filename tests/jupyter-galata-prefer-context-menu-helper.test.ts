@@ -126,6 +126,32 @@ ruleTester.run(
           await page.click('text=Editor');
         `
       },
+      // Dismissing the menu does not deselect, so the menu opened after it
+      // still acts on both files
+      {
+        code: `
+          await page.click('.jp-DirListing-item >> text=a.ipynb');
+          await page.keyboard.press('Shift+ArrowDown');
+          await page.click('.jp-DirListing-item >> text=b.ipynb', { button: 'right' });
+          await page.keyboard.press('Escape');
+          await page.click('.jp-DirListing-item >> text=b.ipynb', { button: 'right' });
+          await page.hover('text=Open With');
+          await page.click('text=Notebook (no kernel)');
+        `
+      },
+      // A second flow in the same test inherits the selection of the first
+      {
+        code: `
+          await page.click('.jp-DirListing-item >> text=a.ipynb');
+          await page.keyboard.press('Shift+ArrowDown');
+          await page.click('.jp-DirListing-item >> text=b.ipynb', { button: 'right' });
+          await page.hover('text=Open With');
+          await page.click('text=Notebook (no kernel)');
+          await page.click('.jp-DirListing-item >> text=b.ipynb', { button: 'right' });
+          await page.hover('text=Open With');
+          await page.click('text=Editor');
+        `
+      },
       // The factory click is raced against `waitForEvent('popup')`, so the test
       // needs the new `Page` the click returns — something the helpers, which
       // resolve to the current page, cannot hand back

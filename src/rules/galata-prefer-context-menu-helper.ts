@@ -381,8 +381,15 @@ function findOpenWithFlows(
         openWithOpen = false;
         break;
       case 'contextMenuOpen':
+        // The selection outlives the menu, so `multiSelectSeen` is not reset
+        // here. A right-click on an item that is already part of a multi-file
+        // selection keeps the whole selection, and only a plain click narrows
+        // it back to one. Which of the two a right-click is cannot be read off
+        // the selector: `Shift+ArrowDown` extends the selection to a neighbour
+        // the test never names, so the item right-clicked next may well be
+        // that neighbour. Staying with the wider selection is the answer that
+        // does not invent a report.
         contextMenu = { multiSelect: multiSelectSeen };
-        multiSelectSeen = false;
         openWithOpen = false;
         break;
       case 'menuClose':
