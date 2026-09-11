@@ -182,6 +182,33 @@ ruleTester.run(
           await page.keyboard.press('Enter');
         `
       },
+      // Two parameterized tests are two scopes, the same as two plain ones
+      {
+        code: `
+          test.each(cases)('opens the menu', async ({ page }) => {
+            await page.click('.jp-DirListing-item', { button: 'right' });
+            await page.hover('text=Open With');
+          });
+          test.each(cases)('clicks elsewhere', async ({ page }) => {
+            await page.click('text=Editor');
+          });
+        `
+      },
+      // The table form of the same API
+      {
+        code: `
+          test.each\`
+            factory
+            \${'Editor'}
+          \`('opens the menu', async ({ page }) => {
+            await page.click('.jp-DirListing-item', { button: 'right' });
+            await page.hover('text=Open With');
+          });
+          test('clicks elsewhere', async ({ page }) => {
+            await page.click('text=Editor');
+          });
+        `
+      },
       // The right-click and the submenu traversal live in different test
       // scopes, so the rule cannot see one flow
       {
@@ -295,6 +322,15 @@ ruleTester.run(
           await page.click('.jp-DirListing-item', { button: 'right' });
           await page.click('text=Open With');
           await page.click(\`.lm-Menu-itemLabel >> text=\${factory}\`);
+        `,
+        errors: [{ messageId: 'preferFilebrowserOpen' }]
+      },
+      // The same label written without any markup around it
+      {
+        code: `
+          await page.click('.jp-DirListing-item', { button: 'right' });
+          await page.click('text=Open With');
+          await page.click(\`text=\${factory}\`);
         `,
         errors: [{ messageId: 'preferFilebrowserOpen' }]
       },

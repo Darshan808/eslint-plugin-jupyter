@@ -279,7 +279,11 @@ function classifyGesture(
     if (POPUP_MENU_PATTERN.test(selectorText)) {
       return gesture('menuItemClick', label);
     }
-    if (label !== null && BARE_TEXT_QUERY_PATTERN.test(selectorText)) {
+    // A null label here means the whole name was interpolated,
+    // `` page.click(`text=${factory}`) ``. The click is still the one that
+    // activates an item, so the flow is complete and the message falls back to
+    // naming the helpers without an argument.
+    if (BARE_TEXT_QUERY_PATTERN.test(selectorText)) {
       return gesture('menuItemClick', label);
     }
     // A plain click on a listing item leaves that one file selected, so a

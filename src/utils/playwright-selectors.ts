@@ -412,10 +412,32 @@ const DEFERRED_CALLBACK_CALLEES: ReadonlySet<string> = new Set([
   'afterEach'
 ]);
 
+/**
+ * The expression a callee is written on, or null once the name itself is
+ * reached. A parameterized test is called twice, `test.each(cases)('name',
+ * cb)`, and the table form tags a template first, `` test.each`a | b`('name',
+ * cb) ``. Stopping at the inner call would read no name and leave `cb` outside
+ * any test scope, so one test's state would reach the next.
+ */
+function calleeReceiver(node: TSESTree.Node): TSESTree.Node | null {
+  switch (node.type) {
+    case 'MemberExpression':
+      return node.object;
+    case 'CallExpression':
+      return node.callee;
+    case 'TaggedTemplateExpression':
+      return node.tag;
+    default:
+      return null;
+  }
+}
+
 function rootCalleeName(node: TSESTree.Expression): string | null {
   let current: TSESTree.Node = node;
-  while (current.type === 'MemberExpression') {
-    current = current.object;
+  let receiver = calleeReceiver(current);
+  while (receiver) {
+    current = receiver;
+    receiver = calleeReceiver(current);
   }
   return current.type === 'Identifier' ? current.name : null;
 }
