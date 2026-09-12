@@ -6,7 +6,7 @@ Require user-facing string literals to be wrapped in a translation call such as 
 
 The rule reports raw string literals (and template literals without expressions) in the following positions.
 
-In every position, blank strings are never flagged. Strings with no letters — such as `'/'` and `'-'` — can be translatable, but this rule only flags them when [`enforcePunctuation`](#enforcepunctuation) is on.
+In every position, blank strings are never flagged. Strings of pure punctuation — such as `'/'` and `'-'` — can be translatable, but this rule only flags them when [`enforcePunctuation`](#enforcepunctuation) is on.
 
 ### 1. `commands.addCommand()` properties
 
@@ -21,9 +21,9 @@ commands.addCommand('file-download', { label: trans.__('Download') });
 commands.addCommand('file-download', { label: () => trans.__('Download') });
 ```
 
-### 2. `element.setAttribute()` with accessibility attributes
+### 2. `element.setAttribute()`
 
-Applies to `aria-label`, `aria-description`, and `title`.
+Applies to the names in [`checkProperties`](#checkproperties).
 
 ```ts
 // Incorrect
@@ -35,7 +35,7 @@ node.setAttribute('aria-label', trans.__('main sidebar'));
 
 ### 3. Direct property assignment
 
-Applies to the names in [`checkAssignments`](#checkassignments), on any receiver. Because the receiver is not inspected, this also covers widget title properties such as `this.title.label`.
+Applies to the names in [`checkProperties`](#checkproperties), on any receiver. Because the receiver is not inspected, this also covers widget title properties such as `this.title.label`.
 
 ```ts
 // Incorrect
@@ -92,7 +92,7 @@ const el = <span>{trans.__('Error message:')}</span>;
 
 ### 7. JSX attributes
 
-Applies to the names in [`checkJsxAttributes`](#checkjsxattributes), on any element.
+Applies to the names in [`checkProperties`](#checkproperties), on any element.
 
 ```tsx
 // Incorrect
@@ -123,24 +123,24 @@ launcher.add({ command, category: trans.__('Notebook') });
 ```ts
 {
   "enforcePunctuation": false,
-  "checkProperties": ["label", "category"],
-  "checkJsxAttributes": ["aria-label", "aria-description", "title", "label"],
-  "checkAssignments": [
-    "title",
-    "ariaLabel",
+  "checkProperties": [
     "alt",
-    "textContent",
+    "aria-description",
+    "aria-label",
+    "caption",
+    "category",
     "label",
-    "caption"
+    "placeholder",
+    "title",
+    "textContent",
+    "innerText"
   ]
 }
 ```
 
-Each `check*` option is a list of names that **replaces** the default list rather than adding to it. Pass `[]` to turn that check off entirely.
-
 ### `enforcePunctuation`
 
-Set to `true` to enforce translation of punctuation characters such as `,`, `-`, `+`, and other symbols.
+Set to `true` to enforce translation of punctuation characters such as `,`, `-`, `+`, and other symbols. Digits are not punctuation: `label: '1970'` is flagged either way.
 
 ```ts
 // Not flagged by default; flagged when enforcePunctuation is true
@@ -151,12 +151,8 @@ const el = <span>,</span>;
 
 ### `checkProperties`
 
-Object property names flagged when their value is a raw string literal, in any object literal.
+The names checked in sections 2, 3, 7 and 8 above — object literal properties, `setAttribute()` attributes, assignment targets and JSX attributes all share this one list, so a name can never apply in one of those positions but not another.
 
-### `checkJsxAttributes`
+The list **replaces** the default rather than adding to it. Pass `[]` to turn those four checks off; the `addCommand`, dialog, dialog button and JSX text checks (sections 1, 4, 5 and 6) are not configurable and stay on.
 
-JSX attribute names flagged when their value is a raw string literal, whether written as `label="text"` or `label={'text'}`.
-
-### `checkAssignments`
-
-Property names flagged when a raw string literal is assigned to them, on any receiver — `widget.label = 'Save'`, `this.label = 'Save'`, `node.textContent = 'Save'`. Only plain `=` assignments are checked.
+Hyphenated and camelCase spellings are the same entry, so listing either `aria-label` or `ariaLabel` covers both the `aria-label` attribute and the `ariaLabel` DOM property.
