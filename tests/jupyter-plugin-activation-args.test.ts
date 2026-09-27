@@ -426,6 +426,90 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           }
         };
       `
+    },
+    {
+      // Referenced function declaration with shorthand
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker, IRenderMimeRegistry } from './fixtures/types';
+        function activate(
+          app: JupyterFrontEnd,
+          tracker: INotebookTracker,
+          rendermime: IRenderMimeRegistry
+        ) {
+          console.log('Activated');
+        }
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker, IRenderMimeRegistry],
+          activate
+        };
+      `
+    },
+    {
+      // Referenced function declaration with property assignment
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        function activatePlugin(app: JupyterFrontEnd, tracker: INotebookTracker) {
+          console.log('Activated');
+        }
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker],
+          activate: activatePlugin
+        };
+      `
+    },
+    {
+      // Referenced arrow function variable
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        const activate = (app: JupyterFrontEnd, tracker: INotebookTracker) => {
+          console.log('Activated');
+        };
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker],
+          activate
+        };
+      `
+    },
+    {
+      // Function declared after plugin object (hoisted declaration)
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker],
+          activate
+        };
+        function activate(app: JupyterFrontEnd, tracker: INotebookTracker) {
+          console.log('Activated');
+        }
+      `
+    },
+    {
+      // Referenced function with optional nullable token
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker, ITranslator } from './fixtures/types';
+        function activate(
+          app: JupyterFrontEnd,
+          tracker: INotebookTracker,
+          translator: ITranslator | null
+        ) {
+          console.log('Activated');
+        }
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker],
+          optional: [ITranslator],
+          activate
+        };
+      `
     }
   ],
 
@@ -797,6 +881,134 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         {
           messageId: 'optionalNotNullable',
           data: { arg: 'toolbarRegistry', type: 'IToolbarWidgetRegistry' }
+        }
+      ]
+    },
+    {
+      // Referenced function with wrong argument order
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker, ITranslator } from './fixtures/types';
+        function activate(
+          app: JupyterFrontEnd,
+          translator: ITranslator,
+          tracker: INotebookTracker
+        ) {
+          console.log('Activated');
+        }
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker, ITranslator],
+          activate
+        };
+      `,
+      errors: [
+        {
+          messageId: 'mismatchedOrder',
+          data: { arg: 'translator' }
+        },
+        {
+          messageId: 'mismatchedOrder',
+          data: { arg: 'tracker' }
+        }
+      ]
+    },
+    {
+      // Referenced function with wrong argument count (missing token)
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker, IRenderMimeRegistry } from './fixtures/types';
+        function activate(app: JupyterFrontEnd, tracker: INotebookTracker) {
+          console.log('Activated');
+        }
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker, IRenderMimeRegistry],
+          activate
+        };
+      `,
+      errors: [
+        {
+          messageId: 'wrongArgumentCount',
+          data: { expected: '3', tokenCount: '2', actual: '2' }
+        },
+        {
+          messageId: 'missingArgument',
+          data: { token: 'IRenderMimeRegistry' }
+        }
+      ]
+    },
+    {
+      // Referenced arrow function with incorrect type annotation
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker, IRenderMimeRegistry } from './fixtures/types';
+        const activatePlugin = (
+          app: JupyterFrontEnd,
+          tracker: IDocumentTracker,
+          rendermime: IRenderMimeRegistry
+        ) => {
+          console.log('Activated');
+        };
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker, IRenderMimeRegistry],
+          activate: activatePlugin
+        };
+      `,
+      errors: [
+        {
+          messageId: 'incorrectType',
+          data: {
+            arg: 'tracker',
+            type: 'IDocumentTracker',
+            expected: 'INotebookTracker'
+          }
+        }
+      ]
+    },
+    {
+      // Referenced function with non-nullable optional token
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { IToolbarWidgetRegistry } from './fixtures/types';
+        function activate(
+          app: JupyterFrontEnd,
+          toolbarRegistry: IToolbarWidgetRegistry
+        ) {
+          console.log('Activated');
+        }
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          optional: [IToolbarWidgetRegistry],
+          activate
+        };
+      `,
+      errors: [
+        {
+          messageId: 'optionalNotNullable',
+          data: { arg: 'toolbarRegistry', type: 'IToolbarWidgetRegistry' }
+        }
+      ]
+    },
+    {
+      // Referenced function with invalid first argument name
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        function activate(tracker: INotebookTracker, app: JupyterFrontEnd) {
+          console.log('Activated');
+        }
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          requires: [INotebookTracker],
+          activate
+        };
+      `,
+      errors: [
+        {
+          messageId: 'appNotFirst',
+          data: { arg: 'tracker', allowedNames: '"app", "_app", "_"' }
         }
       ]
     }

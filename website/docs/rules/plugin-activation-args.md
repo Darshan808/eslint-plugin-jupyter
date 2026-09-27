@@ -130,6 +130,24 @@ const plugin: ServiceManagerPlugin<void> = {
 };
 ```
 
+### Use a referenced activation function
+
+The rule also checks activation functions declared separately and referenced by identifier or shorthand:
+
+**Correct**
+
+```ts
+function activate(app: JupyterFrontEnd, tracker: INotebookTracker): void {
+  // ...
+}
+
+const plugin: JupyterFrontEndPlugin<void> = {
+  id: 'my-extension:tracker',
+  requires: [INotebookTracker],
+  activate
+};
+```
+
 ## Why
 
 JupyterLab passes the application first, followed by required services and then optional services, in the order their tokens are listed. A different signature can pass the wrong service to your code or leave an argument missing. Optional services may be absent, so their argument types must allow `null` or `undefined`.

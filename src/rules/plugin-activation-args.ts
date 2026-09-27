@@ -4,7 +4,11 @@
  */
 
 import { TSESTree } from '@typescript-eslint/types';
-import { ESLintUtils, ParserServices } from '@typescript-eslint/utils';
+import {
+  ESLintUtils,
+  ParserServices,
+  TSESLint
+} from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import {
   getJupyterPluginKind,
@@ -29,11 +33,53 @@ interface RequiresOptionalInfo {
 
 const DEFAULT_ALLOWED_FIRST_ARGUMENT_NAMES = ['app', '_app', '_'];
 
+function unwrapParentheses(node: TSESTree.Expression): TSESTree.Expression {
+  let current = node;
+  while (
+    current.type === 'TSAsExpression' ||
+    current.type === 'TSTypeAssertion' ||
+    current.type === 'TSSatisfiesExpression'
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function extractFunctionInfo(
+  node: TSESTree.Property,
+  fn:
+    | TSESTree.ArrowFunctionExpression
+    | TSESTree.FunctionExpression
+    | TSESTree.FunctionDeclaration
+): ActivateFunctionInfo {
+  const params = fn.params.filter(
+    (param): param is TSESTree.Identifier => param.type === 'Identifier'
+  );
+
+  const paramNames = params.map(param => param.name);
+
+  const paramTypes = params.map(param =>
+    param.type === 'Identifier' ? extractParameterType(param) : null
+  );
+
+  const paramNodes = params.map(param =>
+    param.type === 'Identifier' ? param : null
+  );
+
+  return {
+    node,
+    paramNames,
+    paramTypes,
+    paramNodes
+  };
+}
+
 /**
  * Finds the activate function in the plugin object
  */
 function findActivateFunction(
-  node: TSESTree.ObjectExpression
+  node: TSESTree.ObjectExpression,
+  sourceCode?: TSESLint.SourceCode
 ): ActivateFunctionInfo | null {
   const activateProp = node.properties.find(
     (prop): prop is TSESTree.Property =>
@@ -48,31 +94,46 @@ function findActivateFunction(
 
   const activateValue = activateProp.value;
 
-  // Handle both arrow functions and regular functions
+  // Handle both arrow functions and regular functions inline
   if (
     activateValue.type === 'ArrowFunctionExpression' ||
     activateValue.type === 'FunctionExpression'
   ) {
-    const params = activateValue.params.filter(
-      (param): param is TSESTree.Identifier => param.type === 'Identifier'
-    );
+    return extractFunctionInfo(activateProp, activateValue);
+  }
 
-    const paramNames = params.map(param => param.name);
+  // Handle referenced functions: `activate` or `activate: activatePlugin`
+  if (activateValue.type === 'Identifier' && sourceCode) {
+    const scope = sourceCode.getScope(activateValue);
+    let currentScope: TSESLint.Scope.Scope | null = scope;
+    let variable: TSESLint.Scope.Variable | null = null;
+    while (currentScope) {
+      const found = currentScope.set.get(activateValue.name);
+      if (found) {
+        variable = found;
+        break;
+      }
+      currentScope = currentScope.upper;
+    }
 
-    const paramTypes = params.map(param =>
-      param.type === 'Identifier' ? extractParameterType(param) : null
-    );
-
-    const paramNodes = params.map(param =>
-      param.type === 'Identifier' ? param : null
-    );
-
-    return {
-      node: activateProp,
-      paramNames,
-      paramTypes,
-      paramNodes
-    };
+    if (variable && variable.defs.length > 0) {
+      const def = variable.defs[0];
+      if (
+        def.type === 'FunctionName' &&
+        def.node.type === 'FunctionDeclaration'
+      ) {
+        return extractFunctionInfo(activateProp, def.node);
+      }
+      if (def.type === 'Variable' && def.node.init) {
+        const init = unwrapParentheses(def.node.init);
+        if (
+          init.type === 'ArrowFunctionExpression' ||
+          init.type === 'FunctionExpression'
+        ) {
+          return extractFunctionInfo(activateProp, init);
+        }
+      }
+    }
   }
 
   return null;
@@ -336,10 +397,8 @@ const jupyterPluginActivationArgs = createRule({
 
     return {
       VariableDeclarator(node) {
-        const pluginKind = getJupyterPluginKind(
-          node,
-          checker,
-          n => services?.esTreeNodeToTSNodeMap.get(n)
+        const pluginKind = getJupyterPluginKind(node, checker, n =>
+          services?.esTreeNodeToTSNodeMap.get(n)
         );
         if (!pluginKind) {
           return;
@@ -350,7 +409,10 @@ const jupyterPluginActivationArgs = createRule({
 
           const { requires, optional } = extractRequiresOptional(pluginObj);
 
-          const activateInfo = findActivateFunction(pluginObj);
+          const activateInfo = findActivateFunction(
+            pluginObj,
+            context.sourceCode
+          );
           if (!activateInfo) {
             return;
           }
