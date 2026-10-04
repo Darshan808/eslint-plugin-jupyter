@@ -5,6 +5,7 @@ This section documents all rules currently provided by `eslint-plugin-jupyter`.
 ## Available rules
 
 - [command-described-by](./command-described-by)
+- [command-id-convention](./command-id-convention)
 - [galata-prefer-context-menu-helper](./galata-prefer-context-menu-helper)
 - [galata-prefer-filebrowser-helper](./galata-prefer-filebrowser-helper)
 - [galata-prefer-menu-helper](./galata-prefer-menu-helper)
@@ -38,6 +39,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | ---------------------------------------------------------------------------------------------- | -------- |
 | [jupyter/plugin-activation-args](./plugin-activation-args)                                     | `error`  |
 | [jupyter/command-described-by](./command-described-by)                                         | `warn`   |
+| [jupyter/command-id-convention](./command-id-convention)                                       | `warn` ¹ |
 | [jupyter/no-untranslated-string](./no-untranslated-string)                                     | `warn`   |
 | [jupyter/plugin-description](./plugin-description)                                             | `warn`   |
 | [jupyter/plugin-id-convention](./plugin-id-convention)                                         | `warn` ¹ |
@@ -60,7 +62,7 @@ The plugin ships with a recommended configuration that enables all current rules
 | [jupyter/incorrect-translator-usage](./incorrect-translator-usage)                             | `warn`   |
 | [jupyter/prefer-lazy-imports](./prefer-lazy-imports)                                           | `warn` ¹ |
 
-¹ Turned off for `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files, where mock plugins would otherwise be reported.
+¹ Turned off for `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files, where mock plugins and commands would otherwise be reported.
 
 ² Applied only to `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.
 
