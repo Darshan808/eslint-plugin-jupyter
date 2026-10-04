@@ -41,6 +41,7 @@ function makeProjectConfig(projectName) {
     },
     rules: {
       'jupyter/command-described-by': 'error',
+      'jupyter/command-id-convention': 'error',
       'jupyter/no-untranslated-string': 'error',
       'jupyter/plugin-activation-args': 'error',
       'jupyter/plugin-description': 'error',
@@ -100,7 +101,8 @@ function makeDisposableTestSeverityConfig(projectName) {
       'jupyter/require-disposable-ownership': 'warn',
       'jupyter/require-disposable-transfer': 'warn',
       'jupyter/prefer-lazy-imports': 'off',
-      'jupyter/plugin-id-convention': 'off'
+      'jupyter/plugin-id-convention': 'off',
+      'jupyter/command-id-convention': 'off'
     }
   };
 }
