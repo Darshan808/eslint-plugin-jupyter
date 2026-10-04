@@ -83,8 +83,8 @@ a string literal or assembled from constant strings:
 - with type information, anything whose type is a string literal type, such as
   a `const` imported from another module.
 
-An ID the rule cannot resolve to a string, such as one returned by a function
-call, is not checked. The recommended configuration turns the rule off for
+An ID the rule cannot resolve to a string, such as a function call whose return
+type is plain `string`, is not checked. The recommended configuration turns the rule off for
 `**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.
 
 </details>
