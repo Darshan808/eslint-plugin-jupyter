@@ -1,6 +1,6 @@
 # `plugin-description`
 
-Ensure all `JupyterFrontEndPlugin` objects define a non-empty `description` property.
+Ensure all `JupyterFrontEndPlugin` and `ServiceManagerPlugin` objects define a non-empty `description` property.
 
 ## Examples
 
@@ -71,9 +71,38 @@ const plugin: JupyterFrontEndPlugin<void> = {
 };
 ```
 
+### Plugin arrays and collections
+
+Plugins declared inside arrays, tuples, default export lists, or factory functions must also include descriptions:
+
+**Incorrect**
+
+```ts
+const plugins: JupyterFrontEndPlugin<any>[] = [
+  {
+    id: 'my-extension:status',
+    activate: activateStatus
+  }
+];
+```
+
+**Correct**
+
+```ts
+const plugins: JupyterFrontEndPlugin<any>[] = [
+  {
+    id: 'my-extension:status',
+    description: 'Shows the current kernel status.',
+    activate: activateStatus
+  }
+];
+```
+
 ## Why
 
 A description tells maintainers and integrators what a plugin does without requiring them to read its activation code. Use a short, meaningful description; an empty or whitespace-only string is also reported.
+
+The rule checks plugins defined as single variables, elements within plugin arrays or tuples, default exports, type assertions (`as`, `satisfies`), and factory function return values.
 
 ## Options
 

@@ -145,6 +145,24 @@ ruleTester.run('plugin-description', pluginDescription, {
       `
     },
     {
+      code: `
+        const plugin: app.JupyterFrontEndPlugin<void> = {
+          id: 'test-plugin',
+          description: 'A namespaced plugin',
+          activate: () => {}
+        };
+      `
+    },
+    {
+      code: `
+        const plugin: Partial<JupyterFrontEndPlugin<void>> = {
+          id: 'test-plugin',
+          description: 'A partial plugin',
+          activate: () => {}
+        };
+      `
+    },
+    {
       // Readonly array and tuple type operators
       code: `
         const plugins: readonly JupyterFrontEndPlugin<any>[] = [
@@ -398,6 +416,34 @@ ruleTester.run('plugin-description', pluginDescription, {
         {
           messageId: 'missingDescription',
           data: { pluginId: ' "factory-array-plugin"' }
+        }
+      ]
+    },
+    {
+      code: `
+        const plugin: app.JupyterFrontEndPlugin<void> = {
+          id: 'namespaced-plugin',
+          activate: () => {}
+        };
+      `,
+      errors: [
+        {
+          messageId: 'missingDescription',
+          data: { pluginId: ' "namespaced-plugin"' }
+        }
+      ]
+    },
+    {
+      code: `
+        const plugin: Partial<JupyterFrontEndPlugin<void>> = {
+          id: 'partial-plugin',
+          activate: () => {}
+        };
+      `,
+      errors: [
+        {
+          messageId: 'missingDescription',
+          data: { pluginId: ' "partial-plugin"' }
         }
       ]
     }

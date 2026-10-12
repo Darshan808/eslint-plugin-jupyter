@@ -210,6 +210,36 @@ ruleTester.run('plugin-id-convention', pluginIdConvention, {
       `
     },
     {
+      filename: fixtureFilename,
+      code: `
+        const plugin: app.JupyterFrontEndPlugin<void> = {
+          id: '@jupyterlab/example-extension:plugin',
+          autoStart: true,
+          activate: () => {}
+        };
+      `
+    },
+    {
+      filename: fixtureFilename,
+      code: `
+        const plugins: app.JupyterFrontEndPlugin<void>[] = [
+          {
+            id: '@jupyterlab/example-extension:plugin',
+            activate: () => {}
+          }
+        ];
+      `
+    },
+    {
+      filename: fixtureFilename,
+      code: `
+        const plugin: Partial<JupyterFrontEndPlugin<void>> = {
+          id: '@jupyterlab/example-extension:plugin',
+          activate: () => {}
+        };
+      `
+    },
+    {
       filename: nonExtensionFilename,
       code: `
         const extension: IRenderMime.IExtension = {
@@ -636,6 +666,39 @@ ruleTester.run('plugin-id-convention', pluginIdConvention, {
         const extension: Interfaces.IRenderMime.IExtension = {
           id: '@jupyterlab/other-mime:factory',
           ...shared
+        };
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
+    {
+      filename: fixtureFilename,
+      code: `
+        const plugin: app.JupyterFrontEndPlugin<void> = {
+          id: 'wrong-prefix:plugin',
+          autoStart: true,
+          activate: () => {}
+        };
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
+    {
+      filename: fixtureFilename,
+      code: `
+        const plugins: app.JupyterFrontEndPlugin<void>[] = [
+          {
+            id: 'wrong-prefix:plugin',
+            activate: () => {}
+          }
+        ];
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
+    {
+      filename: fixtureFilename,
+      code: `
+        const plugin: Partial<JupyterFrontEndPlugin<void>> = {
+          id: 'wrong-prefix:plugin',
+          activate: () => {}
         };
       `,
       errors: [{ messageId: 'mismatchedPrefix' }]

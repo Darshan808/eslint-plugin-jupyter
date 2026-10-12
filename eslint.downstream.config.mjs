@@ -83,8 +83,7 @@ function makeExtensionAdoptionConfig(projectName) {
     ],
     rules: {
       'jupyter/require-disposable-ownership': 'warn',
-      'jupyter/require-disposable-transfer': 'warn',
-      'jupyter/plugin-description': 'warn'
+      'jupyter/require-disposable-transfer': 'warn'
     }
   };
 }

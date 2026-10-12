@@ -4,9 +4,8 @@
  */
 
 import { TSESTree } from '@typescript-eslint/types';
-import { ESLintUtils, ParserServices } from '@typescript-eslint/utils';
-import * as ts from 'typescript';
 import { createRule } from '../utils/create-rule';
+import { getTypeServices } from '../utils/type-services';
 import {
   addPendingDisposable,
   DEFAULT_OWNERSHIP_FUNCTION_NAMES,
@@ -156,27 +155,22 @@ const requireDisposableTransfer = createRule({
 
   create(context, [options]) {
     const pending: PendingDisposableMap = new Map();
-    let services: ParserServices | null = null;
-    let checker: ts.TypeChecker | null = null;
-
-    try {
-      services = ESLintUtils.getParserServices(context, true);
-      checker = services.program ? services.program.getTypeChecker() : null;
-    } catch {
-      services = null;
-    }
+    const { services, checker, getTSNode } = getTypeServices(context);
 
     function returnsDisposable(node: TSESTree.CallExpression): boolean {
       if (isDisposableSetFactoryCall(node)) {
         return true;
       }
 
-      if (!checker || !services) {
+      if (!checker || !getTSNode) {
         return false;
       }
 
       try {
-        const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+        const tsNode = getTSNode(node);
+        if (!tsNode) {
+          return false;
+        }
         const type = checker.getTypeAtLocation(tsNode);
         return isDisposableType(type, checker);
       } catch {

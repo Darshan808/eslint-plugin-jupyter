@@ -148,11 +148,28 @@ const plugin: JupyterFrontEndPlugin<void> = {
 };
 ```
 
+### Plugin arrays and collections
+
+Plugins declared inside arrays, tuples, default export lists, or returned from factory functions are also checked:
+
+```ts
+const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
+  {
+    id: 'my-extension:frontend',
+    activate: (app: JupyterFrontEnd) => {}
+  },
+  {
+    id: 'my-extension:service-manager',
+    activate: (manager: null) => {}
+  }
+];
+```
+
 ## Why
 
 JupyterLab passes the application first, followed by required services and then optional services, in the order their tokens are listed. A different signature can pass the wrong service to your code or leave an argument missing. Optional services may be absent, so their argument types must allow `null` or `undefined`.
 
-For a `ServiceManagerPlugin`, the first argument is `null` instead of the application.
+For a `ServiceManagerPlugin`, the first argument is `null` instead of the application. The rule inspects elements of arrays and tuples independently to validate each plugin according to its kind.
 
 ## Type-aware checking
 

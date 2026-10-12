@@ -4,12 +4,8 @@
  */
 
 import { TSESTree } from '@typescript-eslint/types';
-import {
-  ESLintUtils,
-  ParserServices,
-  TSESLint
-} from '@typescript-eslint/utils';
-import * as ts from 'typescript';
+import { TSESLint } from '@typescript-eslint/utils';
+import { getTypeServices } from '../utils/type-services';
 import {
   looksLikePluginObject,
   typeMentionsJupyterPlugin
@@ -145,20 +141,7 @@ const jupyterPreferLazyImports = createRule<[LazyImportOptions], string>({
       reportModuleLevelUsage
     } = options;
 
-    let services: ParserServices | null = null;
-    let checker: ts.TypeChecker | null = null;
-
-    try {
-      services = ESLintUtils.getParserServices(context, true);
-      checker = services.program ? services.program.getTypeChecker() : null;
-    } catch {
-      // Parser services unavailable (non-TS file or no type information)
-      services = null;
-    }
-
-    const getTSNode = services
-      ? (node: TSESTree.Node) => services?.esTreeNodeToTSNodeMap.get(node)
-      : null;
+    const { checker, getTSNode } = getTypeServices(context);
 
     let isPluginModule = false;
     const importDeclarations: TSESTree.ImportDeclaration[] = [];

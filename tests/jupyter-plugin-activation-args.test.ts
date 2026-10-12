@@ -586,6 +586,38 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           ];
         }
       `
+    },
+    {
+      // Mixed tuple of JupyterFrontEndPlugin and ServiceManagerPlugin
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm',
+            activate: (manager: null) => {}
+          }
+        ];
+      `
+    },
+    {
+      // Mixed array union of JupyterFrontEndPlugin and ServiceManagerPlugin
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: (JupyterFrontEndPlugin<void> | ServiceManagerPlugin<void>)[] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm',
+            activate: (manager: null) => {}
+          }
+        ];
+      `
     }
   ],
 
@@ -1142,6 +1174,28 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
       errors: [
         { messageId: 'wrongArgumentCount' },
         { messageId: 'missingArgument', data: { token: 'INotebookTracker' } }
+      ]
+    },
+    {
+      // First argument not app in front-end plugin of mixed tuple
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
+          {
+            id: 'test-fe',
+            activate: (invalidApp: any) => {}
+          },
+          {
+            id: 'test-sm',
+            activate: (manager: null) => {}
+          }
+        ];
+      `,
+      errors: [
+        {
+          messageId: 'appNotFirst',
+          data: { arg: 'invalidApp', allowedNames: '"app", "_app", "_"' }
+        }
       ]
     }
   ]

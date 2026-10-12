@@ -7,6 +7,7 @@ import { TSESTree } from '@typescript-eslint/types';
 import { TSESLint } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import {
+  getObjectProperties,
   getPluginObjectKind,
   extractParameterType,
   extractArrayTokens,
@@ -384,6 +385,11 @@ const jupyterPluginActivationArgs = createRule({
 
     return {
       ObjectExpression(pluginObj) {
+        const hasId = getObjectProperties(pluginObj).has('id');
+        if (!hasId) {
+          return;
+        }
+
         const pluginKind = getPluginObjectKind(pluginObj, checker, getTSNode);
         if (pluginKind !== 'frontend' && pluginKind !== 'service-manager') {
           return;

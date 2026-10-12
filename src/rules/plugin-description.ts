@@ -5,7 +5,11 @@
 
 import { createRule } from '../utils/create-rule';
 import { TSESTree } from '@typescript-eslint/types';
-import { getPluginId, getPluginObjectKind } from '../utils/plugin-utils';
+import {
+  getObjectProperties,
+  getPluginId,
+  getPluginObjectKind
+} from '../utils/plugin-utils';
 import { getTypeServices } from '../utils/type-services';
 
 type DescriptionStatus = 'missing' | 'empty' | 'present';
@@ -69,6 +73,11 @@ const jupyterPluginDescription = createRule({
 
     return {
       ObjectExpression(node) {
+        const hasId = getObjectProperties(node).has('id');
+        if (!hasId) {
+          return;
+        }
+
         const pluginKind = getPluginObjectKind(node, checker, getTSNode);
         if (pluginKind !== 'frontend' && pluginKind !== 'service-manager') {
           return;
