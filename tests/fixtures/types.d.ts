@@ -9,9 +9,23 @@
 
 declare class Token<T> {}
 declare class JupyterFrontEnd {}
+export { JupyterFrontEnd };
 declare class JupyterFrontEndPlugin<T> {}
 export { JupyterFrontEndPlugin };
 export declare class ServiceManagerPlugin<T> {}
+
+export declare interface IPlugin<T, U = void> {
+  id: string;
+  autoStart?: boolean;
+  requires?: unknown[];
+  optional?: unknown[];
+  activate: (app: T, ...args: any[]) => U | Promise<U>;
+  description?: string;
+}
+
+export declare namespace Private {
+  type JupyterFrontEndPlugin<T> = IPlugin<JupyterFrontEnd, T>;
+}
 
 export declare namespace IDebugger {
   interface ISidebar {}

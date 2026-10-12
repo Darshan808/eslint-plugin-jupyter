@@ -150,7 +150,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
 ### Plugin arrays and collections
 
-Plugins declared inside arrays, tuples, default export lists, or returned from factory functions are also checked:
+Plugins declared inside typed arrays, tuples, cast expressions (such as `export default [...] as JupyterFrontEndPlugin<void>[]`), or returned from factory functions are also checked:
 
 ```ts
 const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
@@ -163,7 +163,16 @@ const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
     activate: (manager: null) => {}
   }
 ];
+
+export default [
+  {
+    id: 'my-extension:plugin',
+    activate: (app: JupyterFrontEnd) => {}
+  }
+] as JupyterFrontEndPlugin<void>[];
 ```
+
+Untyped array literals such as `export default [{ ... }]` are not checked by this rule because the plugin kind (`JupyterFrontEndPlugin` vs. `ServiceManagerPlugin`) cannot be determined without a type annotation or cast.
 
 ## Why
 

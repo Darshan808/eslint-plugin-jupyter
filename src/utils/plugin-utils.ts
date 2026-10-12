@@ -10,7 +10,8 @@ import * as ts from 'typescript';
 export type JupyterPluginKind =
   | 'frontend'
   | 'service-manager'
-  | 'mime-renderer';
+  | 'mime-renderer'
+  | 'ambiguous';
 
 /**
  * Gets plugin kind from a variable declaration type annotation.
@@ -32,13 +33,11 @@ export function getJupyterPluginKind(
     return null;
   }
 
-  // Fast path: direct string match (no alias).
+  // Fast path: direct string match (no alias), including namespaced like Private.JupyterFrontEndPlugin.
   const pluginTypeName = extractTypeName(typeNode.typeName);
-  if (pluginTypeName === 'JupyterFrontEndPlugin') {
-    return 'frontend';
-  }
-  if (pluginTypeName === 'ServiceManagerPlugin') {
-    return 'service-manager';
+  const fastKind = getPluginKindFromTypeName(pluginTypeName);
+  if (fastKind) {
+    return fastKind;
   }
 
   // Slow path: resolve import aliases via the TS checker.
@@ -48,11 +47,9 @@ export function getJupyterPluginKind(
       checker,
       getTSNode
     );
-    if (resolvedName === 'JupyterFrontEndPlugin') {
-      return 'frontend';
-    }
-    if (resolvedName === 'ServiceManagerPlugin') {
-      return 'service-manager';
+    const resolvedKind = getPluginKindFromTypeName(resolvedName);
+    if (resolvedKind) {
+      return resolvedKind;
     }
   }
 
@@ -268,7 +265,13 @@ export function getPluginKindFromTsType(
         kinds.add(k);
       }
     }
-    return kinds.size === 1 ? Array.from(kinds)[0] : null;
+    if (kinds.size === 1) {
+      return Array.from(kinds)[0];
+    }
+    if (kinds.size > 1) {
+      return 'ambiguous';
+    }
+    return null;
   }
 
   if (type.isIntersection()) {
@@ -279,7 +282,13 @@ export function getPluginKindFromTsType(
         kinds.add(k);
       }
     }
-    return kinds.size === 1 ? Array.from(kinds)[0] : null;
+    if (kinds.size === 1) {
+      return Array.from(kinds)[0];
+    }
+    if (kinds.size > 1) {
+      return 'ambiguous';
+    }
+    return null;
   }
 
   let symbol = type.aliasSymbol ?? type.getSymbol();
@@ -297,6 +306,41 @@ export function getPluginKindFromTsType(
       return kind;
     }
   }
+
+  const targetSymbol = type.getSymbol();
+  const targetName = targetSymbol?.getName();
+  if (targetName && targetName !== name) {
+    const kind = getPluginKindFromTypeName(targetName);
+    if (kind) {
+      return kind;
+    }
+  }
+
+  // Handle IPlugin<T, ...> interface from @lumino/application
+  if (name === 'IPlugin' || targetName === 'IPlugin') {
+    try {
+      const typeRef = type as ts.TypeReference;
+      const typeArgs = checker.getTypeArguments(typeRef);
+      if (typeArgs && typeArgs.length > 0) {
+        const firstArg = typeArgs[0];
+        const firstArgSymbol = firstArg.aliasSymbol ?? firstArg.getSymbol();
+        const firstArgName = firstArgSymbol?.getName();
+        if (
+          firstArgName === 'JupyterFrontEnd' ||
+          firstArgName === 'JupyterLab' ||
+          firstArgName === 'Application'
+        ) {
+          return 'frontend';
+        }
+        if ((firstArg.flags & ts.TypeFlags.Null) !== 0 || firstArgName === 'null') {
+          return 'service-manager';
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return null;
 }
 
@@ -523,10 +567,16 @@ export function getEnclosingFunction(
   return null;
 }
 
+const ALLOWED_GENERIC_WRAPPERS = new Set([
+  'Array',
+  'ReadonlyArray',
+  'Required'
+]);
+
 /**
  * Resolves the plugin kind from a TypeScript type annotation node, unwrapping
- * arrays, tuples, type operators (readonly), unions, and wrappers like Promise or Partial.
- * Returns null if types are mixed (e.g. union or tuple containing multiple distinct plugin kinds).
+ * arrays, tuples, type operators (readonly), unions, and allowed generic containers.
+ * Returns 'ambiguous' if types are mixed (e.g. union or tuple containing multiple distinct plugin kinds).
  */
 export function getPluginKindFromType(
   typeNode: TSESTree.TypeNode | undefined | null,
@@ -560,30 +610,46 @@ export function getPluginKindFromType(
       }
     }
 
+    // Handle IPlugin<T, ...> in AST
+    const baseName = name ? (name.split('.').pop() ?? name) : null;
+    if (baseName === 'IPlugin') {
+      const firstParam = typeNode.typeArguments?.params?.[0];
+      if (firstParam) {
+        if (firstParam.type === 'TSTypeReference') {
+          const firstParamName = extractTypeName(firstParam.typeName);
+          const firstBase = firstParamName
+            ? (firstParamName.split('.').pop() ?? firstParamName)
+            : null;
+          if (
+            firstBase === 'JupyterFrontEnd' ||
+            firstBase === 'JupyterLab' ||
+            firstBase === 'Application'
+          ) {
+            return 'frontend';
+          }
+        } else if (firstParam.type === 'TSNullKeyword') {
+          return 'service-manager';
+        }
+      }
+    }
+
+    // Only unwrap generic containers in the allowed set (Array, ReadonlyArray, Required).
+    // Arbitrary wrappers like Wrapper<T> or Omit<T, 'description'> must not be treated as plugins.
     if (
+      baseName &&
+      ALLOWED_GENERIC_WRAPPERS.has(baseName) &&
       typeNode.typeArguments?.params &&
       typeNode.typeArguments.params.length > 0
     ) {
-      const kinds = new Set<JupyterPluginKind>();
-      for (const param of typeNode.typeArguments.params) {
-        const kind = getPluginKindFromType(
-          param,
-          checker,
-          getTSNode,
-          options,
-          depth + 1
-        );
-        if (kind) {
-          kinds.add(kind);
-        }
-      }
-      if (kinds.size === 1) {
-        return Array.from(kinds)[0];
-      }
-      if (kinds.size > 1) {
-        return null;
-      }
+      return getPluginKindFromType(
+        typeNode.typeArguments.params[0],
+        checker,
+        getTSNode,
+        options,
+        depth + 1
+      );
     }
+
     return null;
   }
 
@@ -621,7 +687,13 @@ export function getPluginKindFromType(
         }
       }
     }
-    return kinds.size === 1 ? Array.from(kinds)[0] : null;
+    if (kinds.size === 1) {
+      return Array.from(kinds)[0];
+    }
+    if (kinds.size > 1) {
+      return 'ambiguous';
+    }
+    return null;
   }
 
   if (typeNode.type === 'TSTypeOperator' && typeNode.operator === 'readonly') {
@@ -654,7 +726,13 @@ export function getPluginKindFromType(
         kinds.add(kind);
       }
     }
-    return kinds.size === 1 ? Array.from(kinds)[0] : null;
+    if (kinds.size === 1) {
+      return Array.from(kinds)[0];
+    }
+    if (kinds.size > 1) {
+      return 'ambiguous';
+    }
+    return null;
   }
 
   return null;
@@ -721,6 +799,24 @@ function getTupleElementKind(
       }
       if (elementType) {
         return getPluginKindFromType(elementType, checker, getTSNode, options);
+      }
+    } else {
+      // Past fixed length: check if the last member is a rest type
+      const lastMember =
+        typeNode.elementTypes[typeNode.elementTypes.length - 1];
+      if (lastMember) {
+        let lastType =
+          lastMember.type === 'TSNamedTupleMember'
+            ? lastMember.elementType
+            : lastMember;
+        if (lastType.type === 'TSRestType') {
+          return getPluginKindFromType(
+            lastType.typeAnnotation,
+            checker,
+            getTSNode,
+            options
+          );
+        }
       }
     }
   }

@@ -618,6 +618,38 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           }
         ];
       `
+    },
+    {
+      // Tuple with rest elements past tuple length
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ...ServiceManagerPlugin<void>[]] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm-1',
+            activate: (manager: null) => {}
+          },
+          {
+            id: 'test-sm-2',
+            activate: (manager: null) => {}
+          }
+        ];
+      `
+    },
+    {
+      // Custom type alias resolving to IPlugin<JupyterFrontEnd, T>
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { IPlugin, JupyterFrontEnd } from './fixtures/types';
+        type MyPlugin<T> = IPlugin<JupyterFrontEnd, T>;
+        const plugin: MyPlugin<void> = {
+          id: 'test-my-plugin',
+          activate: (app: JupyterFrontEnd) => {}
+        };
+      `
     }
   ],
 
@@ -1190,6 +1222,50 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
             activate: (manager: null) => {}
           }
         ];
+      `,
+      errors: [
+        {
+          messageId: 'appNotFirst',
+          data: { arg: 'invalidApp', allowedNames: '"app", "_app", "_"' }
+        }
+      ]
+    },
+    {
+      // ServiceManagerPlugin rest element past tuple length with non-null first argument
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ...ServiceManagerPlugin<void>[]] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm-1',
+            activate: (manager: null) => {}
+          },
+          {
+            id: 'test-sm-2',
+            activate: (badManager: JupyterFrontEnd) => {}
+          }
+        ];
+      `,
+      errors: [
+        {
+          messageId: 'serviceManagerFirstArgNotNull',
+          data: { arg: 'JupyterFrontEnd' }
+        }
+      ]
+    },
+    {
+      // First argument not app in IPlugin type alias
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { IPlugin, JupyterFrontEnd } from './fixtures/types';
+        type MyPlugin<T> = IPlugin<JupyterFrontEnd, T>;
+        const plugin: MyPlugin<void> = {
+          id: 'test-my-plugin',
+          activate: (invalidApp: any) => {}
+        };
       `,
       errors: [
         {

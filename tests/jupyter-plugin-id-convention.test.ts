@@ -240,6 +240,30 @@ ruleTester.run('plugin-id-convention', pluginIdConvention, {
       `
     },
     {
+      filename: fixtureFilename,
+      code: `
+        const plugin: Private.JupyterFrontEndPlugin<void> = {
+          id: '@jupyterlab/example-extension:plugin',
+          activate: () => {}
+        };
+      `
+    },
+    {
+      filename: fixtureFilename,
+      code: `
+        const plugins: (JupyterFrontEndPlugin<void> | ServiceManagerPlugin<void>)[] = [
+          {
+            id: '@jupyterlab/example-extension:fe-plugin',
+            activate: () => {}
+          },
+          {
+            id: '@jupyterlab/example-extension:sm-plugin',
+            activate: () => {}
+          }
+        ];
+      `
+    },
+    {
       filename: nonExtensionFilename,
       code: `
         const extension: IRenderMime.IExtension = {
@@ -696,10 +720,22 @@ ruleTester.run('plugin-id-convention', pluginIdConvention, {
     {
       filename: fixtureFilename,
       code: `
-        const plugin: Partial<JupyterFrontEndPlugin<void>> = {
+        const plugin: Private.JupyterFrontEndPlugin<void> = {
           id: 'wrong-prefix:plugin',
           activate: () => {}
         };
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
+    {
+      filename: fixtureFilename,
+      code: `
+        const plugins: (JupyterFrontEndPlugin<void> | ServiceManagerPlugin<void>)[] = [
+          {
+            id: 'wrong-prefix:mixed',
+            activate: () => {}
+          }
+        ];
       `,
       errors: [{ messageId: 'mismatchedPrefix' }]
     }
@@ -707,8 +743,32 @@ ruleTester.run('plugin-id-convention', pluginIdConvention, {
 });
 
 typeAwareTester.run('plugin-id-convention (type-aware)', pluginIdConvention, {
-  valid: [],
+  valid: [
+    {
+      filename: 'tests/fixtures/mime-pkg/src/type-aware-fixture.ts',
+      code: `
+        import { IPlugin, JupyterFrontEnd } from '../../types';
+        type MyPlugin<T> = IPlugin<JupyterFrontEnd, T>;
+        const plugin: MyPlugin<void> = {
+          id: '@jupyterlab/example-mime:plugin',
+          activate: () => {}
+        };
+      `
+    }
+  ],
   invalid: [
+    {
+      filename: 'tests/fixtures/mime-pkg/src/type-aware-fixture.ts',
+      code: `
+        import { IPlugin, JupyterFrontEnd } from '../../types';
+        type MyPlugin<T> = IPlugin<JupyterFrontEnd, T>;
+        const plugin: MyPlugin<void> = {
+          id: 'wrong-prefix:plugin',
+          activate: () => {}
+        };
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
     // A const imported from another module has a string literal type.
     {
       filename: 'tests/fixtures/mime-pkg/src/type-aware-fixture.ts',

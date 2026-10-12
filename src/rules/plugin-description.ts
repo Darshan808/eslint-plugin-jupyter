@@ -79,7 +79,11 @@ const jupyterPluginDescription = createRule({
         }
 
         const pluginKind = getPluginObjectKind(node, checker, getTSNode);
-        if (pluginKind !== 'frontend' && pluginKind !== 'service-manager') {
+        if (
+          pluginKind !== 'frontend' &&
+          pluginKind !== 'service-manager' &&
+          pluginKind !== 'ambiguous'
+        ) {
           return;
         }
 
