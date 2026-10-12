@@ -653,12 +653,12 @@ ruleTester.run('prefer-lazy-imports', preferLazyImports, {
     {
       code: `
         import { JupyterFrontEndPlugin } from '@jupyterlab/application';
-        import * as vega from 'vega-embed';
+        import * as plotly from 'plotly.js';
         const plugin: JupyterFrontEndPlugin<void> = {
           id: 'test:plugin',
           activate: app => {
             app.commands.addCommand('render', {
-              execute: () => vega.default('#el', {})
+              execute: () => plotly.newPlot('el', [])
             });
           }
         };
@@ -667,8 +667,8 @@ ruleTester.run('prefer-lazy-imports', preferLazyImports, {
         {
           messageId: 'preferLazyImport',
           data: {
-            source: 'vega-embed',
-            snippet: "const vega = await import('vega-embed');"
+            source: 'plotly.js',
+            snippet: "const plotly = await import('plotly.js');"
           }
         }
       ]
@@ -2134,6 +2134,16 @@ ruleTester.run('prefer-lazy-imports (deferred packages)', preferLazyImports, {
         import { python } from '@codemirror/lang-python';
         export function extensions() {
           return [python()];
+        }
+      `,
+      errors: [{ messageId: 'deferredPackageImport' }]
+    },
+    // A wildcard entry covers every terminal addon.
+    {
+      code: `
+        import { FitAddon } from '@xterm/addon-fit';
+        export function createFitAddon() {
+          return new FitAddon();
         }
       `,
       errors: [{ messageId: 'deferredPackageImport' }]

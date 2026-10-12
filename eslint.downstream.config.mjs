@@ -12,6 +12,10 @@ const pluginModule = await import(path.resolve(__dirname, 'lib/index.js'));
 const resolvedPlugin = pluginModule.default?.rules
   ? pluginModule.default
   : pluginModule;
+const lazyImportsModule = await import(
+  path.resolve(__dirname, 'lib/utils/lazy-imports.js')
+);
+const lazyImports = lazyImportsModule.default ?? lazyImportsModule;
 const parserModule = await import('@typescript-eslint/parser');
 const resolvedParser = parserModule.default ?? parserModule;
 
@@ -25,6 +29,21 @@ const playwrightStub = { rules: new Proxy({}, { get: () => noopRule }) };
 
 const jsoncParserModule = await import('jsonc-eslint-parser');
 const resolvedJsoncParser = jsoncParserModule.default ?? jsoncParserModule;
+
+// The package lists from JupyterLab's own eslint.config.mjs.
+const JUPYTERLAB_LAZY_IMPORTS = {
+  deferredPackages: [
+    ...lazyImports.DEFAULT_DEFERRED_PACKAGES,
+    'regexp-match-indices'
+  ],
+  allowedPackages: [
+    ...lazyImports.DEFAULT_ALLOWED_PACKAGES,
+    '@codemirror/autocomplete',
+    '@codemirror/commands',
+    '@rjsf/core',
+    '@rjsf/utils'
+  ]
+};
 
 function makeProjectConfig(projectName) {
   return {
@@ -59,7 +78,8 @@ function makeProjectConfig(projectName) {
         'error',
         {
           reportInteractionCallbacks: true,
-          reportReExports: true
+          reportReExports: true,
+          ...(projectName === 'jupyterlab' ? JUPYTERLAB_LAZY_IMPORTS : {})
         }
       ]
     },
@@ -142,7 +162,11 @@ function makeTestConfig(projectName) {
         `${projectName}/galata/test/**/*.ts`,
         `${projectName}/ui-tests/test/**/*.ts`
       ],
-      ignores: [`${projectName}/galata/src/helpers/**`],
+      ignores: [
+        `${projectName}/galata/src/helpers/**`,
+        // Benchmarks use the plain Playwright fixture, without Galata page helpers.
+        `${projectName}/galata/test/benchmark/**`
+      ],
       plugins: {
         jupyter: resolvedPlugin,
         '@typescript-eslint': resolvedTsPlugin,

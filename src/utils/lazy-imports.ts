@@ -81,9 +81,18 @@ export const DEFAULT_DEFERRED_PACKAGES = [
   '@codemirror/lang-*',
   '@codemirror/legacy-modes',
   '@codemirror/search',
+  '@mermaid-js/layout-elk',
+  '@plutojl/lang-julia',
   '@rjsf/validator-ajv8',
+  '@xterm/xterm',
+  '@xterm/addon-*',
+  'marked',
+  'marked-gfm-heading-id',
+  'marked-mangle',
+  'mathjax-full',
   'mermaid',
-  'react-toastify'
+  'react-toastify',
+  'vega-embed'
 ];
 
 /**
