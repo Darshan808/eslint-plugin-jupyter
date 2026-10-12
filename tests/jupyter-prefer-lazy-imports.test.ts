@@ -2330,3 +2330,283 @@ espreeTester.run(
     ]
   }
 );
+
+ruleTester.run('prefer-lazy-imports (report re-exports)', preferLazyImports, {
+  valid: [
+    // Type-only re-export does not count as a value re-export.
+    {
+      code: `
+        import type { NotebookDiff } from './diff';
+        export type { NotebookDiff } from './diff';
+      `,
+      options: [{ reportReExports: true }]
+    },
+    // Inline type-only specifiers do not count as value re-exports.
+    {
+      code: `
+        import type { NotebookDiff } from './diff';
+        export { type NotebookDiff } from './diff';
+      `,
+      options: [{ reportReExports: true }]
+    },
+    // When the import is used at module level, the re-export is not what keeps it eager.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { NotebookDiff } from './diff';
+        export { NotebookDiff } from './diff';
+        const diff = new NotebookDiff();
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          autoStart: true,
+          activate: () => diff
+        };
+      `,
+      options: [{ reportReExports: true }]
+    },
+    // When the import is used directly in activate() of an autostart plugin,
+    // a value re-export also keeps it eager, but the rule must not report
+    // usedInAutostartActivate because deferring the import would leave the
+    // re-export keeping the module eager.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { NotebookDiff } from './diff';
+        export { NotebookDiff } from './diff';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'my-ext:diff',
+          autoStart: true,
+          activate: (app) => {
+            NotebookDiff.registerDefaults();
+            app.commands.addCommand('my-ext:diff', {
+              execute: () => new NotebookDiff()
+            });
+          }
+        };
+      `,
+      options: [{ reportReExports: true }]
+    },
+    // When the import is used at module level and also re-exported, enabling
+    // both reportReExports and reportModuleLevelUsage must not report eagerModuleLevelUse
+    // because deferring the module-level use would leave the re-export keeping the module eager.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { NotebookDiff } from './diff';
+        export { NotebookDiff } from './diff';
+        const shared = new NotebookDiff();
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          autoStart: true,
+          activate: () => shared
+        };
+      `,
+      options: [{ reportReExports: true, reportModuleLevelUsage: true }]
+    },
+    // Exempt packages (allowedPackages) are not reported even when re-exported.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { Widget } from '@lumino/widgets';
+        export { Widget } from '@lumino/widgets';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          activate: () => new Widget()
+        };
+      `,
+      options: [{ reportReExports: true }]
+    },
+    // A module smaller than minimumSize is suppressed.
+    {
+      filename: fixtureFilename,
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { CommandIDs } from './lazy-tiny';
+        export { CommandIDs } from './lazy-tiny';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          activate: () => CommandIDs.open
+        };
+      `,
+      options: [{ reportReExports: true }]
+    },
+    // Re-export of a module that is not imported at all is ignored.
+    {
+      code: `
+        export { NotebookDiff } from './diff';
+      `,
+      options: [{ reportReExports: true }]
+    }
+  ],
+  invalid: [
+    // A value re-export in a plugin module keeping a function-only import eager.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { NotebookDiff } from './diff';
+        export { NotebookDiff } from './diff';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          autoStart: true,
+          activate: () => () => new NotebookDiff()
+        };
+      `,
+      options: [{ reportReExports: true }],
+      errors: [
+        {
+          messageId: 'reExportKeepsImportEager',
+          data: { source: './diff' },
+          line: 4
+        }
+      ]
+    },
+    // Wildcard re-export `export * from` keeping a function-only import eager.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { NotebookDiff } from './diff';
+        export * from './diff';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          autoStart: true,
+          activate: () => () => new NotebookDiff()
+        };
+      `,
+      options: [{ reportReExports: true }],
+      errors: [
+        {
+          messageId: 'reExportKeepsImportEager',
+          data: { source: './diff' },
+          line: 4
+        }
+      ]
+    },
+    // Re-exporting a different binding from the same source (the jupyterlab-git case).
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { createNotebookDiff } from './diff';
+        export { NotebookDiff } from './diff';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          activate: () => createNotebookDiff()
+        };
+      `,
+      options: [{ reportReExports: true }],
+      errors: [
+        {
+          messageId: 'reExportKeepsImportEager',
+          data: { source: './diff' },
+          line: 4
+        }
+      ]
+    },
+    // Mixed type and value specifiers: the value specifier keeps it eager.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { createNotebookDiff } from './diff';
+        export { type INotebookDiff, NotebookDiff } from './diff';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          activate: () => createNotebookDiff()
+        };
+      `,
+      options: [{ reportReExports: true }],
+      errors: [
+        {
+          messageId: 'reExportKeepsImportEager',
+          data: { source: './diff' },
+          line: 4
+        }
+      ]
+    },
+    // Type-only re-export: the re-export is not reported, so the import is reported instead.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { NotebookDiff } from './diff';
+        export type { INotebookDiff } from './diff';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          activate: () => new NotebookDiff()
+        };
+      `,
+      options: [{ reportReExports: true }],
+      errors: [
+        {
+          messageId: 'preferLazyImport',
+          line: 3
+        }
+      ]
+    },
+    // Inline type-only specifiers: import is reported instead.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { NotebookDiff } from './diff';
+        export { type INotebookDiff } from './diff';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          activate: () => new NotebookDiff()
+        };
+      `,
+      options: [{ reportReExports: true }],
+      errors: [
+        {
+          messageId: 'preferLazyImport',
+          line: 3
+        }
+      ]
+    },
+    // Interaction callbacks with reportReExports: true and reportInteractionCallbacks: true.
+    {
+      code: `
+        import { NotebookDiff } from './diff';
+        export { NotebookDiff } from './diff';
+        export function addCommands(commands: any) {
+          commands.addCommand('test:diff', {
+            execute: () => new NotebookDiff()
+          });
+        }
+      `,
+      options: [{ reportInteractionCallbacks: true, reportReExports: true }],
+      errors: [
+        {
+          messageId: 'reExportKeepsImportEager',
+          data: { source: './diff' },
+          line: 3
+        }
+      ]
+    }
+  ]
+});
+
+espreeTester.run(
+  'prefer-lazy-imports (report re-exports, javascript)',
+  preferLazyImports,
+  {
+    valid: [],
+    invalid: [
+      {
+        code: `
+          import { NotebookDiff } from './diff';
+          export { NotebookDiff } from './diff';
+          export default {
+            id: 'test:plugin',
+            description: 'Diff plugin',
+            activate: () => new NotebookDiff()
+          };
+        `,
+        options: [{ reportReExports: true }],
+        errors: [
+          {
+            messageId: 'reExportKeepsImportEager',
+            data: { source: './diff' },
+            line: 3
+          }
+        ]
+      }
+    ]
+  }
+);

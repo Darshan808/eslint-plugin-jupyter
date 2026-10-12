@@ -29,6 +29,7 @@ export interface LazyImportOptions {
   minimumSize: number;
   reportInteractionCallbacks: boolean;
   reportModuleLevelUsage: boolean;
+  reportReExports: boolean;
 }
 
 /**

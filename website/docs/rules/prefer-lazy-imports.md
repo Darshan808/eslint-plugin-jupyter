@@ -214,6 +214,7 @@ A plugin without `autoStart: true` can import during activation, but it will sti
 | [`minimumSize`](#minimumsize)                               | `number`   | `4096`    |
 | [`reportInteractionCallbacks`](#reportinteractioncallbacks) | `boolean`  | `false`   |
 | [`reportModuleLevelUsage`](#reportmodulelevelusage)         | `boolean`  | `false`   |
+| [`reportReExports`](#reportreexports)                       | `boolean`  | `false`   |
 
 ### `allowedPackages`
 
@@ -354,6 +355,18 @@ Default: `false`. Enable it to report imports used while a plugin module is eval
 
 This also checks modules that collect imported plugins into an exported array, so expect more reports.
 
+### `reportReExports`
+
+Default: `false`. Enable it to report value re-exports of modules whose imports are only used inside functions, which would otherwise keep the module in the startup bundle.
+
+```json
+{
+  "reportReExports": true
+}
+```
+
+When an imported module is only used inside functions or interaction handlers, but a value from it is re-exported via `export { ... } from '...'` or `export * from '...'`, the re-export keeps the module in the startup bundle. Enabling this option reports the re-export statement. If only TypeScript types are needed, use `export type { ... }` instead, which allows the static import to be deferred.
+
 ## Known limitations
 
 The rule checks one file at a time. If other startup modules import the same dependency, changing only one import may not reduce the startup bundle. Defer the feature as a whole and check the resulting build.
@@ -377,7 +390,7 @@ A plugin without `autoStart: true` may still be required by an autostart plugin.
 
 Plugin files include declarations using `JupyterFrontEndPlugin` or `ServiceManagerPlugin`, including arrays, unions, promises, casts and factory return types. Untyped objects count when they contain a string `id`, an `activate` function and at least one of `autoStart`, `requires`, `optional`, `provides` or `description`. Aliased type names need type information.
 
-For packages outside `deferredPackages`, by default the rule checks imports used only inside functions, methods or instance field initializers. It skips type-only uses, side-effect imports, plugin tokens and sources re-exported from the same file. Imports needed during module evaluation, including through a helper called at module scope, are left alone unless `reportModuleLevelUsage` is enabled. An eager re-export keeps the source in the startup bundle even if its other uses are deferred.
+For packages outside `deferredPackages`, by default the rule checks imports used only inside functions, methods or instance field initializers. It skips type-only uses, side-effect imports, plugin tokens and sources re-exported from the same file. Imports needed during module evaluation, including through a helper called at module scope, are left alone unless `reportModuleLevelUsage` is enabled. An eager re-export keeps the source in the startup bundle even if its other uses are deferred, unless `reportReExports` is enabled.
 
 </details>
 

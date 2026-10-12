@@ -57,7 +57,10 @@ function makeProjectConfig(projectName) {
       'jupyter/incorrect-translator-usage': 'error',
       'jupyter/prefer-lazy-imports': [
         'error',
-        { reportInteractionCallbacks: true }
+        {
+          reportInteractionCallbacks: true,
+          reportReExports: true
+        }
       ]
     },
     languageOptions: {
