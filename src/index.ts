@@ -6,6 +6,7 @@
 import * as jsoncParser from 'jsonc-eslint-parser';
 import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
+import commandIdConvention from './rules/command-id-convention';
 import pluginDescription from './rules/plugin-description';
 import pluginIdConvention from './rules/plugin-id-convention';
 import noTranslationConcatenation from './rules/no-translation-concatenation';
@@ -32,6 +33,7 @@ const plugin = {
   rules: {
     'plugin-activation-args': pluginActivationArgs,
     'command-described-by': commandDescribedBy,
+    'command-id-convention': commandIdConvention,
     'plugin-description': pluginDescription,
     'plugin-id-convention': pluginIdConvention,
     'no-translation-concatenation': noTranslationConcatenation,
@@ -62,6 +64,7 @@ const plugin = {
         rules: {
           'jupyter/plugin-activation-args': 'error',
           'jupyter/command-described-by': 'warn',
+          'jupyter/command-id-convention': 'warn',
           'jupyter/plugin-description': 'warn',
           'jupyter/plugin-id-convention': 'warn',
           'jupyter/no-translation-concatenation': 'error',
@@ -94,10 +97,12 @@ const plugin = {
           'jupyter/galata-prefer-menu-helper': 'warn',
           'jupyter/galata-prefer-notebook-cell-helper': 'warn',
           'jupyter/galata-prefer-sidebar-activity-helper': 'warn',
-          // Test files declare mock plugins; deferring their imports is
-          // pointless and their IDs are never used to disable an extension.
+          // Test files declare mock plugins and commands; deferring their
+          // imports is pointless and their IDs are never used to disable an
+          // extension or to query commands.
           'jupyter/prefer-lazy-imports': 'off',
-          'jupyter/plugin-id-convention': 'off'
+          'jupyter/plugin-id-convention': 'off',
+          'jupyter/command-id-convention': 'off'
         }
       }
     ],
@@ -105,6 +110,7 @@ const plugin = {
       rules: {
         'jupyter/plugin-activation-args': 'error',
         'jupyter/command-described-by': 'warn',
+        'jupyter/command-id-convention': 'warn',
         'jupyter/plugin-description': 'warn',
         'jupyter/plugin-id-convention': 'warn',
         'jupyter/no-translation-concatenation': 'error',
@@ -137,7 +143,8 @@ const plugin = {
             'jupyter/galata-prefer-notebook-cell-helper': 'warn',
             'jupyter/galata-prefer-sidebar-activity-helper': 'warn',
             'jupyter/prefer-lazy-imports': 'off',
-            'jupyter/plugin-id-convention': 'off'
+            'jupyter/plugin-id-convention': 'off',
+            'jupyter/command-id-convention': 'off'
           }
         }
       ]
