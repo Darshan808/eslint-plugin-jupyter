@@ -376,6 +376,42 @@ ruleTester.run('command-id-convention', commandIdConvention, {
       errors: [{ messageId: 'missingNamespace' }]
     },
     {
+      // A nested regular function binds its own \`this\`, so its write does
+      // not prove the field holds a new registry.
+      code: `
+        class Panel {
+          constructor(private _commands: CommandRegistry) {}
+          setup() {
+            function init(this: { _commands: CommandRegistry }) {
+              this._commands = new CommandRegistry();
+            }
+            this._commands.addCommand('open', {
+              execute: () => {}
+            });
+          }
+        }
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
+      // ...and when it is called on this instance, it may assign anything.
+      code: `
+        class Panel {
+          private _commands = new CommandRegistry();
+          setup(app: JupyterFrontEnd) {
+            function useShared(this: Panel) {
+              this._commands = app.commands;
+            }
+            useShared.call(this);
+            this._commands.addCommand('open', {
+              execute: () => {}
+            });
+          }
+        }
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
       code: `
         app.commands.addCommand(':open', {
           execute: () => {}

@@ -205,7 +205,9 @@ function getAssignedValues(
       !node.left.computed &&
       isSameKey(node.left.property, property)
     ) {
-      if (node.operator !== '=') {
+      // In a nested regular function `this` is whatever the caller binds,
+      // which may or may not be this instance, so the write is unknown.
+      if (node.operator !== '=' || getEnclosingClassBody(node) !== classBody) {
         unknownWrite = true;
         return 'stop';
       }
