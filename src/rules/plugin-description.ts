@@ -5,7 +5,12 @@
 
 import { createRule } from '../utils/create-rule';
 import { TSESTree } from '@typescript-eslint/types';
-import { getJupyterPluginKind, getPluginId } from '../utils/plugin-utils';
+import {
+  getObjectProperties,
+  getPluginId,
+  getPluginObjectKind
+} from '../utils/plugin-utils';
+import { getTypeServices } from '../utils/type-services';
 
 type DescriptionStatus = 'missing' | 'empty' | 'present';
 
@@ -64,26 +69,36 @@ const jupyterPluginDescription = createRule({
   defaultOptions: [],
 
   create(context) {
+    const { checker, getTSNode } = getTypeServices(context);
+
     return {
-      VariableDeclarator(varDecl) {
-        // Check if this has a JupyterFrontEndPlugin type annotation
-        if (!getJupyterPluginKind(varDecl)) {
+      ObjectExpression(node) {
+        const hasId = getObjectProperties(node).has('id');
+        if (!hasId) {
           return;
         }
 
-        // Check if init is an object expression
-        if (!varDecl.init || varDecl.init.type !== 'ObjectExpression') {
+        const pluginKind = getPluginObjectKind(node, checker, getTSNode);
+        if (
+          pluginKind !== 'frontend' &&
+          pluginKind !== 'service-manager' &&
+          pluginKind !== 'ambiguous'
+        ) {
           return;
         }
 
-        const pluginId = getPluginId(varDecl.init);
+        const pluginId = getPluginId(
+          node,
+          context.sourceCode.getScope(node),
+          checker,
+          getTSNode
+        );
         const pluginIdSuffix = pluginId ? ` "${pluginId}"` : '';
 
-        // Check if description property exists and is non-empty
-        const descriptionStatus = checkDescriptionProperty(varDecl.init);
+        const descriptionStatus = checkDescriptionProperty(node);
         if (descriptionStatus !== 'present') {
           context.report({
-            node: varDecl.init,
+            node,
             messageId:
               descriptionStatus === 'empty'
                 ? 'emptyDescription'

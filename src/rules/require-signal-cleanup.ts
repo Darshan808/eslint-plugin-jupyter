@@ -4,9 +4,8 @@
  */
 
 import { TSESTree } from '@typescript-eslint/types';
-import { ESLintUtils, ParserServices } from '@typescript-eslint/utils';
-import * as ts from 'typescript';
 import { createRule } from '../utils/create-rule';
+import { getTypeServices } from '../utils/type-services';
 import {
   classHasCleanupEvidence,
   classifySignalReceiver,
@@ -78,15 +77,7 @@ const requireSignalCleanup = createRule({
       options.longLivedTypes ?? DEFAULT_LONG_LIVED_TYPES
     );
 
-    let services: ParserServices | null = null;
-    let checker: ts.TypeChecker | null = null;
-
-    try {
-      services = ESLintUtils.getParserServices(context, true);
-      checker = services.program ? services.program.getTypeChecker() : null;
-    } catch {
-      services = null;
-    }
+    const { services, checker } = getTypeServices(context);
 
     const sourceCode = context.sourceCode;
     let program: TSESTree.Program | null = null;

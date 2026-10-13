@@ -510,6 +510,146 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
           activate
         };
       `
+    },
+    {
+      // Plugins in typed array
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        const plugins: JupyterFrontEndPlugin<any>[] = [
+          {
+            id: 'test-plugin-1',
+            requires: [INotebookTracker],
+            activate: (app: JupyterFrontEnd, tracker: INotebookTracker) => {}
+          },
+          {
+            id: 'test-plugin-2',
+            activate: (app: JupyterFrontEnd) => {}
+          }
+        ];
+      `
+    },
+    {
+      // Plugin in array cast
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        const plugins = [
+          {
+            id: 'test-plugin-1',
+            requires: [INotebookTracker],
+            activate: (app: JupyterFrontEnd, tracker: INotebookTracker) => {}
+          }
+        ] as JupyterFrontEndPlugin<any>[];
+      `
+    },
+    {
+      // Plugin in default exported array
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        export default [
+          {
+            id: 'test-plugin-1',
+            requires: [INotebookTracker],
+            activate: (app: JupyterFrontEnd, tracker: INotebookTracker) => {}
+          }
+        ] as JupyterFrontEndPlugin<any>[];
+      `
+    },
+    {
+      // Plugin returned from factory function
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        function createPlugin(): JupyterFrontEndPlugin<void> {
+          return {
+            id: 'test-plugin',
+            requires: [INotebookTracker],
+            activate: (app: JupyterFrontEnd, tracker: INotebookTracker) => {}
+          };
+        }
+      `
+    },
+    {
+      // Plugin array returned from factory function
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        function createPlugins(): JupyterFrontEndPlugin<void>[] {
+          return [
+            {
+              id: 'test-plugin',
+              requires: [INotebookTracker],
+              activate: (app: JupyterFrontEnd, tracker: INotebookTracker) => {}
+            }
+          ];
+        }
+      `
+    },
+    {
+      // Mixed tuple of JupyterFrontEndPlugin and ServiceManagerPlugin
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm',
+            activate: (manager: null) => {}
+          }
+        ];
+      `
+    },
+    {
+      // Mixed array union of JupyterFrontEndPlugin and ServiceManagerPlugin
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: (JupyterFrontEndPlugin<void> | ServiceManagerPlugin<void>)[] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm',
+            activate: (manager: null) => {}
+          }
+        ];
+      `
+    },
+    {
+      // Tuple with rest elements past tuple length
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ...ServiceManagerPlugin<void>[]] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm-1',
+            activate: (manager: null) => {}
+          },
+          {
+            id: 'test-sm-2',
+            activate: (manager: null) => {}
+          }
+        ];
+      `
+    },
+    {
+      // Custom type alias resolving to IPlugin<JupyterFrontEnd, T>
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { IPlugin, JupyterFrontEnd } from './fixtures/types';
+        type MyPlugin<T> = IPlugin<JupyterFrontEnd, T>;
+        const plugin: MyPlugin<void> = {
+          id: 'test-my-plugin',
+          activate: (app: JupyterFrontEnd) => {}
+        };
+      `
     }
   ],
 
@@ -1009,6 +1149,128 @@ ruleTester.run('plugin-activation-args', pluginActivationArgs, {
         {
           messageId: 'appNotFirst',
           data: { arg: 'tracker', allowedNames: '"app", "_app", "_"' }
+        }
+      ]
+    },
+    {
+      // Missing argument in array plugin
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        const plugins: JupyterFrontEndPlugin<any>[] = [
+          {
+            id: 'test-plugin-1',
+            requires: [INotebookTracker],
+            activate: (app: JupyterFrontEnd) => {}
+          }
+        ];
+      `,
+      errors: [
+        { messageId: 'wrongArgumentCount' },
+        { messageId: 'missingArgument', data: { token: 'INotebookTracker' } }
+      ]
+    },
+    {
+      // app not first in export default array plugin
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        export default [
+          {
+            id: 'test-plugin-1',
+            requires: [INotebookTracker],
+            activate: (tracker: INotebookTracker, app: JupyterFrontEnd) => {}
+          }
+        ] as JupyterFrontEndPlugin<any>[];
+      `,
+      errors: [
+        {
+          messageId: 'appNotFirst',
+          data: { arg: 'tracker', allowedNames: '"app", "_app", "_"' }
+        }
+      ]
+    },
+    {
+      // Missing argument in plugin returned from factory function
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { INotebookTracker } from './fixtures/types';
+        function createPlugin(): JupyterFrontEndPlugin<void> {
+          return {
+            id: 'test-plugin',
+            requires: [INotebookTracker],
+            activate: (app: JupyterFrontEnd) => {}
+          };
+        }
+      `,
+      errors: [
+        { messageId: 'wrongArgumentCount' },
+        { messageId: 'missingArgument', data: { token: 'INotebookTracker' } }
+      ]
+    },
+    {
+      // First argument not app in front-end plugin of mixed tuple
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
+          {
+            id: 'test-fe',
+            activate: (invalidApp: any) => {}
+          },
+          {
+            id: 'test-sm',
+            activate: (manager: null) => {}
+          }
+        ];
+      `,
+      errors: [
+        {
+          messageId: 'appNotFirst',
+          data: { arg: 'invalidApp', allowedNames: '"app", "_app", "_"' }
+        }
+      ]
+    },
+    {
+      // ServiceManagerPlugin rest element past tuple length with non-null first argument
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        const plugins: [JupyterFrontEndPlugin<void>, ...ServiceManagerPlugin<void>[]] = [
+          {
+            id: 'test-fe',
+            activate: (app: JupyterFrontEnd) => {}
+          },
+          {
+            id: 'test-sm-1',
+            activate: (manager: null) => {}
+          },
+          {
+            id: 'test-sm-2',
+            activate: (badManager: JupyterFrontEnd) => {}
+          }
+        ];
+      `,
+      errors: [
+        {
+          messageId: 'serviceManagerFirstArgNotNull',
+          data: { arg: 'JupyterFrontEnd' }
+        }
+      ]
+    },
+    {
+      // First argument not app in IPlugin type alias
+      filename: 'tests/type-aware-fixture.ts',
+      code: `
+        import { IPlugin, JupyterFrontEnd } from './fixtures/types';
+        type MyPlugin<T> = IPlugin<JupyterFrontEnd, T>;
+        const plugin: MyPlugin<void> = {
+          id: 'test-my-plugin',
+          activate: (invalidApp: any) => {}
+        };
+      `,
+      errors: [
+        {
+          messageId: 'appNotFirst',
+          data: { arg: 'invalidApp', allowedNames: '"app", "_app", "_"' }
         }
       ]
     }

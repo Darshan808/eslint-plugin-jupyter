@@ -154,6 +154,8 @@ JupyterLab passes the application first, followed by required services and then 
 
 For a `ServiceManagerPlugin`, the first argument is `null` instead of the application.
 
+Plugins are found in typed variables and arrays or tuples, type assertions (`as`, `satisfies`) and factory function return types; an untyped `export default [{ ... }]` is not checked, nor is a plugin whose type mixes `JupyterFrontEndPlugin` and `ServiceManagerPlugin`.
+
 ## Type-aware checking
 
 Enable `parserOptions.project` or `projectService` in your ESLint configuration to check service argument types and order. Without type information, those checks are skipped and you may see warnings about token types that cannot be resolved.

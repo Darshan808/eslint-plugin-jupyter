@@ -6,18 +6,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { TSESTree } from '@typescript-eslint/types';
-import { ESLintUtils, ParserServices } from '@typescript-eslint/utils';
-import * as ts from 'typescript';
 import { createRule } from '../utils/create-rule';
 import {
-  getJupyterPluginKind,
   getObjectProperties,
   getPluginId,
-  looksLikeMimeExtensionObject,
-  looksLikePluginObject,
-  typeMentionsJupyterPlugin,
-  typeMentionsMimeExtension
+  getPluginObjectKind
 } from '../utils/plugin-utils';
+import { getTypeServices } from '../utils/type-services';
 import { readPackageJson } from '../utils/package-json';
 
 const MAX_PACKAGE_LEVELS = 12;
@@ -159,155 +154,7 @@ const pluginIdConvention = createRule({
   defaultOptions: [{ reportIdEqualToPackageName: false }],
 
   create(context, [options]) {
-    let services: ParserServices | null = null;
-    let checker: ts.TypeChecker | null = null;
-
-    try {
-      services = ESLintUtils.getParserServices(context, true);
-      checker = services.program ? services.program.getTypeChecker() : null;
-    } catch {
-      services = null;
-    }
-
-    const getTSNode = services
-      ? (node: TSESTree.Node) => services?.esTreeNodeToTSNodeMap.get(node)
-      : null;
-
-    /**
-     * Returns true when a type annotation refers to a plugin descriptor or to
-     * a MIME renderer extension entry, which JupyterLab registers as a plugin
-     * under the entry's `id`.
-     */
-    function mentionsPluginType(
-      typeNode: TSESTree.TypeNode | undefined | null
-    ): boolean {
-      return (
-        typeMentionsJupyterPlugin(typeNode, checker, getTSNode) ||
-        typeMentionsMimeExtension(typeNode, checker, getTSNode)
-      );
-    }
-
-    /**
-     * Checks whether an object literal is typed as a plugin descriptor or as
-     * a MIME renderer extension entry.
-     */
-    function hasPluginType(node: TSESTree.ObjectExpression): boolean {
-      const parent = node.parent;
-      if (!parent) {
-        return false;
-      }
-
-      if (parent.type === 'VariableDeclarator') {
-        return (
-          getJupyterPluginKind(parent, checker, getTSNode) !== null ||
-          (parent.id.type === 'Identifier' &&
-            mentionsPluginType(parent.id.typeAnnotation?.typeAnnotation))
-        );
-      }
-
-      if (
-        parent.type === 'TSAsExpression' ||
-        parent.type === 'TSSatisfiesExpression' ||
-        parent.type === 'TSTypeAssertion'
-      ) {
-        return (
-          mentionsPluginType(parent.typeAnnotation) ||
-          isReturnedFromPluginFactory(node)
-        );
-      }
-
-      if (isReturnedFromPluginFactory(node)) {
-        return true;
-      }
-
-      if (parent.type !== 'ArrayExpression') {
-        return false;
-      }
-
-      const grandparent = parent.parent;
-      if (!grandparent) {
-        return false;
-      }
-
-      if (grandparent.type === 'VariableDeclarator') {
-        return (
-          grandparent.id.type === 'Identifier' &&
-          mentionsPluginType(grandparent.id.typeAnnotation?.typeAnnotation)
-        );
-      }
-
-      if (
-        grandparent.type === 'TSAsExpression' ||
-        grandparent.type === 'TSSatisfiesExpression' ||
-        grandparent.type === 'TSTypeAssertion'
-      ) {
-        return (
-          mentionsPluginType(grandparent.typeAnnotation) ||
-          isReturnedFromPluginFactory(parent)
-        );
-      }
-
-      return isReturnedFromPluginFactory(parent);
-    }
-
-    /**
-     * Checks whether an object or array literal is returned by a factory whose
-     * return type is a plugin descriptor.
-     */
-    function isReturnedFromPluginFactory(node: TSESTree.Expression): boolean {
-      let expression: TSESTree.Node = node;
-      let parent = expression.parent;
-
-      while (
-        parent?.type === 'TSAsExpression' ||
-        parent?.type === 'TSSatisfiesExpression' ||
-        parent?.type === 'TSTypeAssertion'
-      ) {
-        expression = parent;
-        parent = parent.parent;
-      }
-
-      if (
-        parent?.type === 'ReturnStatement' &&
-        parent.argument === expression
-      ) {
-        const fn = getEnclosingFunction(parent);
-        return mentionsPluginType(fn?.returnType?.typeAnnotation);
-      }
-
-      if (
-        parent?.type === 'ArrowFunctionExpression' &&
-        parent.body === expression
-      ) {
-        return mentionsPluginType(parent.returnType?.typeAnnotation);
-      }
-
-      return false;
-    }
-
-    /**
-     * Finds the function that owns a return statement.
-     */
-    function getEnclosingFunction(
-      node: TSESTree.Node
-    ):
-      | TSESTree.FunctionDeclaration
-      | TSESTree.FunctionExpression
-      | TSESTree.ArrowFunctionExpression
-      | null {
-      let current = node.parent;
-      while (current) {
-        if (
-          current.type === 'FunctionDeclaration' ||
-          current.type === 'FunctionExpression' ||
-          current.type === 'ArrowFunctionExpression'
-        ) {
-          return current;
-        }
-        current = current.parent;
-      }
-      return null;
-    }
+    const { checker, getTSNode } = getTypeServices(context);
 
     /**
      * Reports plugin IDs that do not use the owning extension package prefix.
@@ -317,12 +164,15 @@ const pluginIdConvention = createRule({
       // ID is resolved: resolving may ask the type checker, and most object
       // literals with an `id` are commands, menu items or DOM nodes.
       const hasId = getObjectProperties(node).has('id');
-      if (
-        !hasId ||
-        (!looksLikePluginObject(node, hasId) &&
-          !looksLikeMimeExtensionObject(node, hasId) &&
-          !hasPluginType(node))
-      ) {
+      if (!hasId) {
+        return;
+      }
+
+      const pluginKind = getPluginObjectKind(node, checker, getTSNode, {
+        allowUntyped: true,
+        matchMime: true
+      });
+      if (!pluginKind) {
         return;
       }
 

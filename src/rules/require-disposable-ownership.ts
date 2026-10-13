@@ -3,9 +3,8 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { ESLintUtils, ParserServices } from '@typescript-eslint/utils';
-import * as ts from 'typescript';
 import { createRule } from '../utils/create-rule';
+import { getTypeServices } from '../utils/type-services';
 import {
   addPendingDisposable,
   DEFAULT_OWNERSHIP_FUNCTION_NAMES,
@@ -67,15 +66,7 @@ const requireDisposableOwnership = createRule({
 
   create(context, [options]) {
     const pending: PendingDisposableMap = new Map();
-    let services: ParserServices | null = null;
-    let checker: ts.TypeChecker | null = null;
-
-    try {
-      services = ESLintUtils.getParserServices(context, true);
-      checker = services.program ? services.program.getTypeChecker() : null;
-    } catch {
-      services = null;
-    }
+    const { services, checker } = getTypeServices(context);
 
     const ownership: DisposableOwnershipContext = {
       sourceCode: context.sourceCode,
