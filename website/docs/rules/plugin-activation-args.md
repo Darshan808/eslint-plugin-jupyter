@@ -148,37 +148,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
 };
 ```
 
-### Plugin arrays and collections
-
-Plugins declared inside typed arrays, tuples, cast expressions (such as `export default [...] as JupyterFrontEndPlugin<void>[]`), or returned from factory functions are also checked:
-
-```ts
-const plugins: [JupyterFrontEndPlugin<void>, ServiceManagerPlugin<void>] = [
-  {
-    id: 'my-extension:frontend',
-    activate: (app: JupyterFrontEnd) => {}
-  },
-  {
-    id: 'my-extension:service-manager',
-    activate: (manager: null) => {}
-  }
-];
-
-export default [
-  {
-    id: 'my-extension:plugin',
-    activate: (app: JupyterFrontEnd) => {}
-  }
-] as JupyterFrontEndPlugin<void>[];
-```
-
-Untyped array literals such as `export default [{ ... }]` are not checked by this rule because the plugin kind (`JupyterFrontEndPlugin` vs. `ServiceManagerPlugin`) cannot be determined without a type annotation or cast.
-
 ## Why
 
 JupyterLab passes the application first, followed by required services and then optional services, in the order their tokens are listed. A different signature can pass the wrong service to your code or leave an argument missing. Optional services may be absent, so their argument types must allow `null` or `undefined`.
 
-For a `ServiceManagerPlugin`, the first argument is `null` instead of the application. The rule inspects elements of arrays and tuples independently to validate each plugin according to its kind.
+For a `ServiceManagerPlugin`, the first argument is `null` instead of the application.
+
+Plugins are found in typed variables and arrays or tuples, type assertions (`as`, `satisfies`) and factory function return types; an untyped `export default [{ ... }]` is not checked, nor is a plugin whose type mixes `JupyterFrontEndPlugin` and `ServiceManagerPlugin`.
 
 ## Type-aware checking
 

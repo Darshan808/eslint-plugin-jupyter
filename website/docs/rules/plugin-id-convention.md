@@ -173,6 +173,8 @@ The rule uses the nearest JupyterLab extension manifest with `jupyterlab.extensi
 
 A MIME-only package can use `"mimeExtension": true` instead.
 
+Plugins are found in typed variables and arrays or tuples, type assertions (`as`, `satisfies`) and factory function return types. Untyped objects are also checked when they look like a plugin (an `id`, an `activate` function and a plugin-only property such as `requires`) or a MIME renderer entry (an `id` and a `rendererFactory`).
+
 The ID can be a string literal or assembled from constant strings:
 
 - a template literal, a `+` concatenation, a `const` that copies another,
