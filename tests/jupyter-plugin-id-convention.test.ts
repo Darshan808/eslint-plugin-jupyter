@@ -79,6 +79,16 @@ const typeAwareTester = new RuleTester({
 ruleTester.run('plugin-id-convention', pluginIdConvention, {
   valid: [
     {
+      // A plain Lumino plugin is not held to JupyterLab's conventions.
+      filename: fixtureFilename,
+      code: `
+        const plugin: IPlugin<Application<Widget>, void> = {
+          id: 'lumino-plugin',
+          activate: (app: Application<Widget>) => {}
+        };
+      `
+    },
+    {
       filename: fixtureFilename,
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
@@ -349,6 +359,41 @@ ruleTester.run('plugin-id-convention', pluginIdConvention, {
   ],
 
   invalid: [
+    {
+      // Partial<...> wraps a plugin type
+      filename: fixtureFilename,
+      code: `
+        const plugin: Partial<JupyterFrontEndPlugin<void>> = {
+          id: '@jupyterlab/other-extension:plugin',
+          activate: () => {}
+        };
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
+    {
+      // Readonly<...> wraps a plugin type
+      filename: fixtureFilename,
+      code: `
+        const plugin: Readonly<JupyterFrontEndPlugin<void>> = {
+          id: '@jupyterlab/other-extension:plugin',
+          activate: () => {}
+        };
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
+    {
+      // Promise<...> wraps a plugin type
+      filename: fixtureFilename,
+      code: `
+        async function createPlugin(): Promise<JupyterFrontEndPlugin<void>> {
+          return {
+            id: '@jupyterlab/other-extension:plugin',
+            activate: () => {}
+          };
+        }
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
     {
       filename: fixtureFilename,
       code: `
@@ -757,6 +802,18 @@ typeAwareTester.run('plugin-id-convention (type-aware)', pluginIdConvention, {
     }
   ],
   invalid: [
+    {
+      filename: 'tests/fixtures/mime-pkg/src/type-aware-fixture.ts',
+      code: `
+        import { JupyterFrontEndPlugin } from '../../types';
+        type Base = Partial<JupyterFrontEndPlugin<void>>;
+        const plugin: Base = {
+          id: 'wrong-prefix:plugin',
+          activate: () => {}
+        };
+      `,
+      errors: [{ messageId: 'mismatchedPrefix' }]
+    },
     {
       filename: 'tests/fixtures/mime-pkg/src/type-aware-fixture.ts',
       code: `

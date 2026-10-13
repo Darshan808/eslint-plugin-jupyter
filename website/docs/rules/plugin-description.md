@@ -73,7 +73,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
 ### Plugin arrays and collections
 
-Plugins declared inside arrays, tuples, default export lists, or factory functions must also include descriptions:
+Plugins declared inside typed arrays or tuples, arrays cast to a plugin type (`export default [...] as JupyterFrontEndPlugin<any>[]`), or factory functions with a plugin return type must also include descriptions. An untyped `export default [{ ... }]` is not checked:
 
 **Incorrect**
 
@@ -102,7 +102,7 @@ const plugins: JupyterFrontEndPlugin<any>[] = [
 
 A description tells maintainers and integrators what a plugin does without requiring them to read its activation code. Use a short, meaningful description; an empty or whitespace-only string is also reported.
 
-The rule checks plugins defined as single variables, elements within plugin arrays or tuples, default exports, type assertions (`as`, `satisfies`), and factory function return values.
+The rule checks plugins defined as single variables, elements within typed plugin arrays or tuples, type assertions (`as`, `satisfies`), and factory function return values.
 
 ## Options
 

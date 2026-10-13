@@ -19,6 +19,15 @@ const ruleTester = new RuleTester({
 ruleTester.run('plugin-description', pluginDescription, {
   valid: [
     {
+      // A plain Lumino plugin is not a JupyterLab plugin.
+      code: `
+        const plugin: IPlugin<Application<Widget>, void> = {
+          id: 'lumino-plugin',
+          activate: (app: Application<Widget>) => {}
+        };
+      `
+    },
+    {
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
           'id': 'jupyterlab-notify:plugin',
@@ -250,6 +259,26 @@ ruleTester.run('plugin-description', pluginDescription, {
   ],
 
   invalid: [
+    {
+      code: `
+        const plugin: Partial<JupyterFrontEndPlugin<void>> = {
+          id: 'partial-plugin',
+          activate: () => {}
+        };
+      `,
+      errors: [{ messageId: 'missingDescription' }]
+    },
+    {
+      code: `
+        async function createPlugin(): Promise<JupyterFrontEndPlugin<void>> {
+          return {
+            id: 'async-plugin',
+            activate: () => {}
+          };
+        }
+      `,
+      errors: [{ messageId: 'missingDescription' }]
+    },
     {
       code: `
         const plugin: JupyterFrontEndPlugin<void> = {
