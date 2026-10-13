@@ -84,8 +84,16 @@ a string literal or assembled from constant strings:
   a `const` imported from another module.
 
 An ID the rule cannot resolve to a string, such as a function call whose return
-type is plain `string`, is not checked. The recommended configuration turns the rule off for
-`**/*.spec.{ts,js}` and `**/*.test.{ts,js}` files.
+type is plain `string`, is not checked.
+
+Commands added to a registry the code creates itself are not checked either,
+such as `const commands = new CommandRegistry()` behind a context menu. That
+registry is never listed or queried alongside the application's. This covers a
+variable or a class field (`this._commands`) that is only ever assigned
+`new CommandRegistry()`.
+
+The recommended configuration turns the rule off for `**/*.spec.{ts,js}` and
+`**/*.test.{ts,js}` files.
 
 </details>
 

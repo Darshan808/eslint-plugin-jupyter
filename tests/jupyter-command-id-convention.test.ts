@@ -129,6 +129,84 @@ ruleTester.run('command-id-convention', commandIdConvention, {
       code: `
         menu.addCommand('open');
       `
+    },
+    {
+      // A throw-away registry backing a menu is never queried.
+      code: `
+        const commands = new CommandRegistry();
+        const menu = new Menu({ commands });
+        commands.addCommand('open-console', {
+          execute: () => {}
+        });
+      `
+    },
+    {
+      code: `
+        let commands;
+        commands = new CommandRegistry();
+        commands.addCommand('open-console', {
+          execute: () => {}
+        });
+      `
+    },
+    {
+      code: `
+        class MainView {
+          private _commands: CommandRegistry;
+          constructor() {
+            this._commands = new CommandRegistry();
+            this._contextMenu = new ContextMenu({ commands: this._commands });
+          }
+          private _setupMenu(): void {
+            this._commands.addCommand('Copy-Coordinates', {
+              execute: () => {}
+            });
+          }
+        }
+      `
+    },
+    {
+      // An arrow function keeps the class instance as \`this\`.
+      code: `
+        class MainView {
+          private _commands = new CommandRegistry();
+          private _setupMenu = () => {
+            this._commands.addCommand('copy', {
+              execute: () => {}
+            });
+          };
+        }
+      `
+    },
+    {
+      code: `
+        class MainView {
+          #commands = new CommandRegistry();
+          setup() {
+            this.#commands.addCommand('copy', {
+              execute: () => {}
+            });
+          }
+        }
+      `
+    },
+    {
+      code: `
+        import { CommandRegistry as Registry } from '@lumino/commands';
+        const commands = new Registry();
+        commands.addCommand('copy', {
+          execute: () => {}
+        });
+      `
+    },
+    {
+      code: `
+        import * as lumino from '@lumino/commands';
+        const commands = new lumino.CommandRegistry();
+        commands.addCommand('copy', {
+          execute: () => {}
+        });
+      `
     }
   ],
   invalid: [
@@ -216,6 +294,84 @@ ruleTester.run('command-id-convention', commandIdConvention, {
         app.commands.addCommand(id, {
           execute: () => {}
         });
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
+      // The shared registry passed in from outside.
+      code: `
+        function activate(app: JupyterFrontEnd) {
+          const { commands } = app;
+          commands.addCommand('open', {
+            execute: () => {}
+          });
+        }
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
+      code: `
+        function setup(commands: CommandRegistry) {
+          commands.addCommand('open', {
+            execute: () => {}
+          });
+        }
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
+      // Any assignment other than a new registry may be the shared one.
+      code: `
+        let commands = new CommandRegistry();
+        commands = app.commands;
+        commands.addCommand('open', {
+          execute: () => {}
+        });
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
+      code: `
+        class Panel {
+          private _commands: CommandRegistry;
+          constructor(options: { commands?: CommandRegistry }) {
+            this._commands = options.commands ?? new CommandRegistry();
+          }
+          setup() {
+            this._commands.addCommand('open', {
+              execute: () => {}
+            });
+          }
+        }
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
+      code: `
+        class Panel {
+          constructor(private _commands: CommandRegistry) {}
+          setup() {
+            this._commands.addCommand('open', {
+              execute: () => {}
+            });
+          }
+        }
+      `,
+      errors: [{ messageId: 'missingNamespace' }]
+    },
+    {
+      // \`this\` in a plain function is not the class instance.
+      code: `
+        class Panel {
+          private _commands = new CommandRegistry();
+          setup() {
+            function register(this: { _commands: CommandRegistry }) {
+              this._commands.addCommand('open', {
+                execute: () => {}
+              });
+            }
+          }
+        }
       `,
       errors: [{ messageId: 'missingNamespace' }]
     },

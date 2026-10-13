@@ -6,7 +6,11 @@
 import { TSESTree } from '@typescript-eslint/types';
 import { ESLintUtils, ParserServices } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
-import { isAddCommandCall, resolveCommandId } from '../utils/commands';
+import {
+  isAddCommandCall,
+  isPrivateCommandRegistry,
+  resolveCommandId
+} from '../utils/commands';
 import { createRule } from '../utils/create-rule';
 
 const commandIdConvention = createRule({
@@ -53,6 +57,19 @@ const commandIdConvention = createRule({
 
         const idArg = node.arguments[0];
         if (idArg.type === 'SpreadElement') {
+          return;
+        }
+
+        // A registry created on the spot, such as one backing a context
+        // menu, is never listed or queried alongside the application's.
+        const callee = node.callee as TSESTree.MemberExpression;
+        if (
+          callee.object.type !== 'Super' &&
+          isPrivateCommandRegistry(
+            callee.object,
+            context.sourceCode.getScope(node)
+          )
+        ) {
           return;
         }
 
