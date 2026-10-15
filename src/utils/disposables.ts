@@ -3,8 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
-import { ParserServices, TSESLint } from '@typescript-eslint/utils';
+import { ParserServices, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import { getJupyterPluginKind } from './plugin-utils';
 
