@@ -246,6 +246,8 @@ This exempts your organization's packages and keeps only the listed defaults. Om
 {
   "allowedPackages": [
     "@jupyterlab/*",
+    "@jupyter-notebook/*",
+    "@jupyterlite/*",
     "@lumino/*",
     "!@lumino/datagrid",
     "@jupyter/ydoc",

@@ -46,11 +46,15 @@ export const DEFAULT_MINIMUM_SIZE = 4096;
  * loads whether or not a plugin module imports them at the top.
  *
  * This is the singleton list from `jupyterlab/staging/package.json`, minus
- * `@lumino/datagrid` which core itself defers (see `packages/csvviewer`).
+ * `@lumino/datagrid` which core itself defers (see `packages/csvviewer`),
+ * plus the `@jupyter-notebook/*` and `@jupyterlite/*` packages, which Jupyter
+ * Notebook and JupyterLite share as singletons in the same way.
  * Entries prefixed with `!` are denied even when another pattern allows them.
  */
 export const DEFAULT_ALLOWED_PACKAGES = [
   '@jupyterlab/*',
+  '@jupyter-notebook/*',
+  '@jupyterlite/*',
   '@lumino/*',
   '!@lumino/datagrid',
   '@jupyter/ydoc',

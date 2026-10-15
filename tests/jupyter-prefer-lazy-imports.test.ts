@@ -560,6 +560,19 @@ ruleTester.run('prefer-lazy-imports', preferLazyImports, {
       `,
       options: [{ ignoreImports: ['./nothing'] }]
     },
+    // Jupyter Notebook and JupyterLite share their own packages too.
+    {
+      code: `
+        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
+        import { INotebookShell } from '@jupyter-notebook/application';
+        import { IKernelSpecs } from '@jupyterlite/kernel';
+        const plugin: JupyterFrontEndPlugin<void> = {
+          id: 'test:plugin',
+          autoStart: true,
+          activate: () => [INotebookShell, IKernelSpecs]
+        };
+      `
+    },
     // A small icon is inlined into the bundle, but not enough of it to matter.
     {
       filename: fixtureFilename,
