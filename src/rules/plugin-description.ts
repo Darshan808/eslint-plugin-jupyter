@@ -4,7 +4,7 @@
  */
 
 import { createRule } from '../utils/create-rule';
-import { TSESTree } from '@typescript-eslint/types';
+import { TSESTree } from '@typescript-eslint/utils';
 import {
   getObjectProperties,
   getPluginId,

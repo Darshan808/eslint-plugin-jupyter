@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
+import { TSESTree } from '@typescript-eslint/utils';
 import { visitorKeys, getKeys } from '@typescript-eslint/visitor-keys';
 
 export type WalkAction = 'skip-children' | 'stop' | undefined;

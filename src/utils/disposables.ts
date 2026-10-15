@@ -3,8 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
-import { ParserServices, TSESLint } from '@typescript-eslint/utils';
+import { ParserServices, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import { getJupyterPluginKind } from './plugin-utils';
 
@@ -1393,9 +1392,7 @@ function getResolvedSignatureCached(
       const tsNode = services.esTreeNodeToTSNodeMap.get(
         call as TSESTree.Node
       ) as ts.CallLikeExpression | undefined;
-      signature = tsNode
-        ? (checker.getResolvedSignature(tsNode) ?? null)
-        : null;
+      signature = tsNode ? checker.getResolvedSignature(tsNode) ?? null : null;
     } catch {
       signature = null;
     }

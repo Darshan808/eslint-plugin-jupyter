@@ -3,8 +3,12 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
-import { ASTUtils, ParserServices, TSESLint } from '@typescript-eslint/utils';
+import {
+  ASTUtils,
+  ParserServices,
+  TSESLint,
+  TSESTree
+} from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import {
   ClassLike,

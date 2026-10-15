@@ -3,8 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
-import { ASTUtils, TSESLint } from '@typescript-eslint/utils';
+import { ASTUtils, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import { walkFrom } from './ast';
 import { resolveStaticString } from './plugin-utils';
