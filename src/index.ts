@@ -3,6 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
+import type { ESLint, Linter, Rule } from 'eslint';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
@@ -152,4 +153,10 @@ const plugin = {
   }
 };
 
-export = plugin;
+export = plugin as unknown as ESLint.Plugin & {
+  rules: Record<string, Rule.RuleModule>;
+  configs: {
+    recommended: Linter.Config[];
+    'recommended-legacy': Linter.LegacyConfig;
+  };
+};
