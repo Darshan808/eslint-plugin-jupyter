@@ -39,11 +39,13 @@ export default [
 
 ### Using Recommended Config
 
-The plugin exports a `recommended` config that comes with sensible defaults. It is an array of config objects, so wrap your config in `defineConfig`, which accepts nested arrays. The recommended rules lint TypeScript, so you also need a TypeScript parser, and several rules (such as `plugin-activation-args`, `require-signal-cleanup` and `prefer-signal-this-arg`) only report when type information is available. The example below uses [typescript-eslint](https://typescript-eslint.io/) for both:
+The plugin exports a `recommended` config that comes with sensible defaults. It is an array of config objects, so wrap your config in `defineConfig`, which accepts nested arrays. The recommended rules lint TypeScript, so you also need a TypeScript parser, and several rules (such as `require-signal-cleanup` and `prefer-signal-this-arg`) only report when type information is available. The example below uses [typescript-eslint](https://typescript-eslint.io/) for both:
 
 ```bash
 npm install --save-dev typescript-eslint
 ```
+
+Both the recommended configuration example below and the overriding-rules example require ESLint 9.22.0 or newer.
 
 ```js
 import { defineConfig } from 'eslint/config';
