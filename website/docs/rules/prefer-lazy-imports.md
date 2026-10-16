@@ -246,8 +246,16 @@ This exempts your organization's packages and keeps only the listed defaults. Om
 {
   "allowedPackages": [
     "@jupyterlab/*",
+    "!@jupyterlab/csvviewer",
     "@jupyter-notebook/*",
+    "!@jupyter-notebook/react-components",
+    "!@jupyter-notebook/web-components",
     "@jupyterlite/*",
+    "!@jupyterlite/javascript-kernel",
+    "!@jupyterlite/p5-kernel",
+    "!@jupyterlite/pyodide-kernel",
+    "!@jupyterlite/xeus",
+    "!@jupyterlite/xeus-core",
     "@lumino/*",
     "!@lumino/datagrid",
     "@jupyter/ydoc",
