@@ -16,6 +16,14 @@ npm install --save-dev @jupyter/eslint-plugin
 
 Add `@jupyter/eslint-plugin` to the plugins section of your ESLint configuration. For detailed usage instructions and available rules, see the [documentation](https://eslint-plugin.readthedocs.io/en/latest/).
 
+## Learn more
+
+- [Catching Jupyter-specific bugs before CI does](https://blog.jupyter.org/posts/2026/catching-jupyter-specific-bugs-before-ci-does/) — the announcement post on the Jupyter Blog, covering the motivation and the first set of rules.
+
+## Acknowledgments
+
+Development of this plugin was supported by the [Jupyter Foundation Community Funding](https://jupyter-governance.github.io/funding-proposals/projects/2025/custom-linting-for-jupyterlab/) program.
+
 ## License
 
 BSD 3-Clause
