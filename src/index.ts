@@ -3,6 +3,8 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
@@ -29,7 +31,16 @@ import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 import preferLazyImports from './rules/prefer-lazy-imports';
 
+const { name, version } = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
+) as { name: string; version: string };
+
 const plugin = {
+  meta: {
+    name,
+    version,
+    namespace: 'jupyter'
+  },
   rules: {
     'plugin-activation-args': pluginActivationArgs,
     'command-described-by': commandDescribedBy,
