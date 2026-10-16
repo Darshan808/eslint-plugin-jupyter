@@ -4,6 +4,8 @@
  */
 
 import type { ESLint, Linter, Rule } from 'eslint';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
@@ -30,7 +32,16 @@ import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 import preferLazyImports from './rules/prefer-lazy-imports';
 
+const { name, version } = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
+) as { name: string; version: string };
+
 const plugin = {
+  meta: {
+    name,
+    version,
+    namespace: 'jupyter'
+  },
   rules: {
     'plugin-activation-args': pluginActivationArgs,
     'command-described-by': commandDescribedBy,
@@ -108,25 +119,26 @@ const plugin = {
       }
     ],
     'recommended-legacy': {
+      plugins: ['@jupyter'],
       rules: {
-        'jupyter/plugin-activation-args': 'error',
-        'jupyter/command-described-by': 'warn',
-        'jupyter/command-id-convention': 'warn',
-        'jupyter/plugin-description': 'warn',
-        'jupyter/plugin-id-convention': 'warn',
-        'jupyter/no-translation-concatenation': 'error',
-        'jupyter/no-dynamic-translation': 'warn',
-        'jupyter/token-format': 'error',
-        'jupyter/no-untranslated-string': 'warn',
-        'jupyter/no-schema-enum': 'warn',
-        'jupyter/no-pageconfig-base-url': 'warn',
-        'jupyter/require-signal-cleanup': 'warn',
-        'jupyter/require-signal-this-arg': 'error',
-        'jupyter/prefer-signal-this-arg': 'warn',
-        'jupyter/require-disposable-ownership': 'warn',
-        'jupyter/require-disposable-transfer': 'warn',
-        'jupyter/incorrect-translator-usage': 'warn',
-        'jupyter/prefer-lazy-imports': 'warn'
+        '@jupyter/plugin-activation-args': 'error',
+        '@jupyter/command-described-by': 'warn',
+        '@jupyter/command-id-convention': 'warn',
+        '@jupyter/plugin-description': 'warn',
+        '@jupyter/plugin-id-convention': 'warn',
+        '@jupyter/no-translation-concatenation': 'error',
+        '@jupyter/no-dynamic-translation': 'warn',
+        '@jupyter/token-format': 'error',
+        '@jupyter/no-untranslated-string': 'warn',
+        '@jupyter/no-schema-enum': 'warn',
+        '@jupyter/no-pageconfig-base-url': 'warn',
+        '@jupyter/require-signal-cleanup': 'warn',
+        '@jupyter/require-signal-this-arg': 'error',
+        '@jupyter/prefer-signal-this-arg': 'warn',
+        '@jupyter/require-disposable-ownership': 'warn',
+        '@jupyter/require-disposable-transfer': 'warn',
+        '@jupyter/incorrect-translator-usage': 'warn',
+        '@jupyter/prefer-lazy-imports': 'warn'
       },
       overrides: [
         {
@@ -137,15 +149,15 @@ const plugin = {
             '**/*.test.js'
           ],
           rules: {
-            'jupyter/require-soft-assertions-before-snapshots': 'warn',
-            'jupyter/galata-prefer-context-menu-helper': 'warn',
-            'jupyter/galata-prefer-filebrowser-helper': 'warn',
-            'jupyter/galata-prefer-menu-helper': 'warn',
-            'jupyter/galata-prefer-notebook-cell-helper': 'warn',
-            'jupyter/galata-prefer-sidebar-activity-helper': 'warn',
-            'jupyter/prefer-lazy-imports': 'off',
-            'jupyter/plugin-id-convention': 'off',
-            'jupyter/command-id-convention': 'off'
+            '@jupyter/require-soft-assertions-before-snapshots': 'warn',
+            '@jupyter/galata-prefer-context-menu-helper': 'warn',
+            '@jupyter/galata-prefer-filebrowser-helper': 'warn',
+            '@jupyter/galata-prefer-menu-helper': 'warn',
+            '@jupyter/galata-prefer-notebook-cell-helper': 'warn',
+            '@jupyter/galata-prefer-sidebar-activity-helper': 'warn',
+            '@jupyter/prefer-lazy-imports': 'off',
+            '@jupyter/plugin-id-convention': 'off',
+            '@jupyter/command-id-convention': 'off'
           }
         }
       ]
