@@ -17,8 +17,8 @@ This plugin is built for JupyterLab extensions and core package development. It 
 
 ## Further reading
 
-- [Catching Jupyter-specific bugs before CI does](https://blog.jupyter.org/posts/2026/catching-jupyter-specific-bugs-before-ci-does/) (Jupyter Blog) — announces the plugin and explains the motivation: framework contracts around plugins, commands, tokens, settings schemas and translations that TypeScript cannot check.
-- [Your AI Agent Ignored AGENTS.md. Your Linter Won't Let It.](https://openteams.com/engineering-blog/lint-rules-for-ai-agents/) — how the plugin's rules give AI coding agents actionable errors for Jupyter conventions that are rare in public code.
+- [Catching Jupyter-specific bugs before CI does](https://blog.jupyter.org/posts/2026/catching-jupyter-specific-bugs-before-ci-does/) (Jupyter Blog) - announces the plugin and explains the motivation: framework contracts around plugins, commands, tokens, settings schemas and translations that TypeScript cannot check.
+- [Your AI Agent Ignored AGENTS.md. Your Linter Won't Let It.](https://openteams.com/engineering-blog/lint-rules-for-ai-agents/) - explains how the plugin's rules give AI coding agents actionable errors for Jupyter conventions that are relatively rare in their training corpus.
 
 ## Acknowledgments
 

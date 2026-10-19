@@ -18,7 +18,7 @@ Add `@jupyter/eslint-plugin` to the plugins section of your ESLint configuration
 
 ## Learn more
 
-- [Catching Jupyter-specific bugs before CI does](https://blog.jupyter.org/posts/2026/catching-jupyter-specific-bugs-before-ci-does/) — the announcement post on the Jupyter Blog, covering the motivation and the first set of rules.
+- [Catching Jupyter-specific bugs before CI does](https://blog.jupyter.org/posts/2026/catching-jupyter-specific-bugs-before-ci-does/) - the announcement post on the Jupyter Blog, covering the motivation and the initial set of rules.
 
 ## Acknowledgments
 
