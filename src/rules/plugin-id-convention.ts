@@ -92,7 +92,7 @@ function getExtensionPackageName(fromFile: string): string | null {
   if (cachedPath !== undefined) {
     return cachedPath === null
       ? null
-      : readExtensionPackage(cachedPath)?.name ?? null;
+      : (readExtensionPackage(cachedPath)?.name ?? null);
   }
 
   const visited: string[] = [];
@@ -118,7 +118,7 @@ function getExtensionPackageName(fromFile: string): string | null {
   for (const seen of visited) {
     packagePathCache.set(seen, found);
   }
-  return found === null ? null : readExtensionPackage(found)?.name ?? null;
+  return found === null ? null : (readExtensionPackage(found)?.name ?? null);
 }
 
 const pluginIdConvention = createRule({

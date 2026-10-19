@@ -1392,7 +1392,9 @@ function getResolvedSignatureCached(
       const tsNode = services.esTreeNodeToTSNodeMap.get(
         call as TSESTree.Node
       ) as ts.CallLikeExpression | undefined;
-      signature = tsNode ? checker.getResolvedSignature(tsNode) ?? null : null;
+      signature = tsNode
+        ? (checker.getResolvedSignature(tsNode) ?? null)
+        : null;
     } catch {
       signature = null;
     }

@@ -625,14 +625,14 @@ export function getPluginKindFromType(
     }
 
     // Handle IPlugin<T, ...> in AST
-    const baseName = name ? name.split('.').pop() ?? name : null;
+    const baseName = name ? (name.split('.').pop() ?? name) : null;
     if (baseName === 'IPlugin') {
       const firstParam = typeNode.typeArguments?.params?.[0];
       if (firstParam) {
         if (firstParam.type === 'TSTypeReference') {
           const firstParamName = extractTypeName(firstParam.typeName);
           const firstBase = firstParamName
-            ? firstParamName.split('.').pop() ?? firstParamName
+            ? (firstParamName.split('.').pop() ?? firstParamName)
             : null;
           if (firstBase && FRONTEND_APPLICATION_TYPES.has(firstBase)) {
             return 'frontend';
