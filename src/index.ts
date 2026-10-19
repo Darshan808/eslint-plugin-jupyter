@@ -75,9 +75,9 @@ const plugin = {
   },
   configs: {
     recommended: [
+      { plugins },
       {
         files: ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx'],
-        plugins,
         rules: {
           'jupyter/plugin-activation-args': 'error',
           'jupyter/command-described-by': 'warn',
@@ -100,7 +100,6 @@ const plugin = {
       },
       {
         files: ['**/schema/*.json'],
-        plugins,
         languageOptions: { parser: jsoncParser },
         rules: {
           'jupyter/no-schema-enum': 'warn'
@@ -108,7 +107,6 @@ const plugin = {
       },
       {
         files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
-        plugins,
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
           'jupyter/galata-prefer-context-menu-helper': 'warn',
