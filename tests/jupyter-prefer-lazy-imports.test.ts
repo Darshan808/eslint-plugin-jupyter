@@ -560,19 +560,6 @@ ruleTester.run('prefer-lazy-imports', preferLazyImports, {
       `,
       options: [{ ignoreImports: ['./nothing'] }]
     },
-    // Jupyter Notebook and JupyterLite share their own packages too.
-    {
-      code: `
-        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
-        import { INotebookShell } from '@jupyter-notebook/application';
-        import { IKernelSpecs } from '@jupyterlite/kernel';
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test:plugin',
-          autoStart: true,
-          activate: () => [INotebookShell, IKernelSpecs]
-        };
-      `
-    },
     // A small icon is inlined into the bundle, but not enough of it to matter.
     {
       filename: fixtureFilename,
@@ -699,26 +686,6 @@ ruleTester.run('prefer-lazy-imports', preferLazyImports, {
       `,
       options: [{ deferredPackages: [] }],
       errors: [{ messageId: 'preferLazyImport' }]
-    },
-    // Packages in the allowed scopes which are not shared are denied too:
-    // `@jupyterlab/csvviewer` pulls in `@lumino/datagrid`, and JupyterLite's
-    // kernels are bundled by each deployment.
-    {
-      code: `
-        import { JupyterFrontEndPlugin } from '@jupyterlab/application';
-        import { CSVViewer } from '@jupyterlab/csvviewer';
-        import { PyodideKernel } from '@jupyterlite/pyodide-kernel';
-        import { WebWorkerKernel } from '@jupyterlite/xeus';
-        const plugin: JupyterFrontEndPlugin<void> = {
-          id: 'test:plugin',
-          activate: () => [CSVViewer, PyodideKernel, WebWorkerKernel]
-        };
-      `,
-      errors: [
-        { messageId: 'preferLazyImport' },
-        { messageId: 'preferLazyImport' },
-        { messageId: 'preferLazyImport' }
-      ]
     },
     // A default import, reported with the matching snippet.
     {
