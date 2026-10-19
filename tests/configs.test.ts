@@ -29,12 +29,6 @@ function lint(config: Linter.Config[]): Linter.LintMessage[] {
 describe('configs.recommended', () => {
   const recommended = plugin.configs.recommended as Linter.Config[];
 
-  it('registers the plugin in every entry', () => {
-    for (const entry of recommended) {
-      expect(entry.plugins).toEqual({ jupyter: plugin });
-    }
-  });
-
   it('works without a separate plugins entry', () => {
     const messages = lint(recommended);
 
@@ -52,5 +46,18 @@ describe('configs.recommended', () => {
     expect(messages.map(message => message.ruleId)).toEqual([
       'jupyter/plugin-description'
     ]);
+  });
+
+  it('accepts an override without files in an .mjs file', () => {
+    expect(() =>
+      new Linter({ configType: 'flat' }).verify(
+        'export default [];',
+        [
+          ...recommended,
+          { rules: { 'jupyter/command-described-by': 'error' } }
+        ],
+        'eslint.config.mjs'
+      )
+    ).not.toThrow();
   });
 });
