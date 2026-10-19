@@ -3,6 +3,9 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
+import type { ESLint, Linter, Rule } from 'eslint';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import pluginActivationArgs from './rules/plugin-activation-args';
 import commandDescribedBy from './rules/command-described-by';
@@ -29,7 +32,20 @@ import requireDisposableTransfer from './rules/require-disposable-transfer';
 import incorrectTranslatorUsage from './rules/incorrect-translator-usage';
 import preferLazyImports from './rules/prefer-lazy-imports';
 
+const { name, version } = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
+) as { name: string; version: string };
+
+// Filled in below once `plugin` exists, so that `configs.recommended` registers
+// the plugin itself and works without a separate `plugins` entry.
+const plugins: Record<string, object> = {};
+
 const plugin = {
+  meta: {
+    name,
+    version,
+    namespace: 'jupyter'
+  },
   rules: {
     'plugin-activation-args': pluginActivationArgs,
     'command-described-by': commandDescribedBy,
@@ -61,6 +77,7 @@ const plugin = {
     recommended: [
       {
         files: ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx'],
+        plugins,
         rules: {
           'jupyter/plugin-activation-args': 'error',
           'jupyter/command-described-by': 'warn',
@@ -83,6 +100,7 @@ const plugin = {
       },
       {
         files: ['**/schema/*.json'],
+        plugins,
         languageOptions: { parser: jsoncParser },
         rules: {
           'jupyter/no-schema-enum': 'warn'
@@ -90,6 +108,7 @@ const plugin = {
       },
       {
         files: ['**/*.spec.ts', '**/*.spec.js', '**/*.test.ts', '**/*.test.js'],
+        plugins,
         rules: {
           'jupyter/require-soft-assertions-before-snapshots': 'warn',
           'jupyter/galata-prefer-context-menu-helper': 'warn',
@@ -107,25 +126,26 @@ const plugin = {
       }
     ],
     'recommended-legacy': {
+      plugins: ['@jupyter'],
       rules: {
-        'jupyter/plugin-activation-args': 'error',
-        'jupyter/command-described-by': 'warn',
-        'jupyter/command-id-convention': 'warn',
-        'jupyter/plugin-description': 'warn',
-        'jupyter/plugin-id-convention': 'warn',
-        'jupyter/no-translation-concatenation': 'error',
-        'jupyter/no-dynamic-translation': 'warn',
-        'jupyter/token-format': 'error',
-        'jupyter/no-untranslated-string': 'warn',
-        'jupyter/no-schema-enum': 'warn',
-        'jupyter/no-pageconfig-base-url': 'warn',
-        'jupyter/require-signal-cleanup': 'warn',
-        'jupyter/require-signal-this-arg': 'error',
-        'jupyter/prefer-signal-this-arg': 'warn',
-        'jupyter/require-disposable-ownership': 'warn',
-        'jupyter/require-disposable-transfer': 'warn',
-        'jupyter/incorrect-translator-usage': 'warn',
-        'jupyter/prefer-lazy-imports': 'warn'
+        '@jupyter/plugin-activation-args': 'error',
+        '@jupyter/command-described-by': 'warn',
+        '@jupyter/command-id-convention': 'warn',
+        '@jupyter/plugin-description': 'warn',
+        '@jupyter/plugin-id-convention': 'warn',
+        '@jupyter/no-translation-concatenation': 'error',
+        '@jupyter/no-dynamic-translation': 'warn',
+        '@jupyter/token-format': 'error',
+        '@jupyter/no-untranslated-string': 'warn',
+        '@jupyter/no-schema-enum': 'warn',
+        '@jupyter/no-pageconfig-base-url': 'warn',
+        '@jupyter/require-signal-cleanup': 'warn',
+        '@jupyter/require-signal-this-arg': 'error',
+        '@jupyter/prefer-signal-this-arg': 'warn',
+        '@jupyter/require-disposable-ownership': 'warn',
+        '@jupyter/require-disposable-transfer': 'warn',
+        '@jupyter/incorrect-translator-usage': 'warn',
+        '@jupyter/prefer-lazy-imports': 'warn'
       },
       overrides: [
         {
@@ -136,15 +156,15 @@ const plugin = {
             '**/*.test.js'
           ],
           rules: {
-            'jupyter/require-soft-assertions-before-snapshots': 'warn',
-            'jupyter/galata-prefer-context-menu-helper': 'warn',
-            'jupyter/galata-prefer-filebrowser-helper': 'warn',
-            'jupyter/galata-prefer-menu-helper': 'warn',
-            'jupyter/galata-prefer-notebook-cell-helper': 'warn',
-            'jupyter/galata-prefer-sidebar-activity-helper': 'warn',
-            'jupyter/prefer-lazy-imports': 'off',
-            'jupyter/plugin-id-convention': 'off',
-            'jupyter/command-id-convention': 'off'
+            '@jupyter/require-soft-assertions-before-snapshots': 'warn',
+            '@jupyter/galata-prefer-context-menu-helper': 'warn',
+            '@jupyter/galata-prefer-filebrowser-helper': 'warn',
+            '@jupyter/galata-prefer-menu-helper': 'warn',
+            '@jupyter/galata-prefer-notebook-cell-helper': 'warn',
+            '@jupyter/galata-prefer-sidebar-activity-helper': 'warn',
+            '@jupyter/prefer-lazy-imports': 'off',
+            '@jupyter/plugin-id-convention': 'off',
+            '@jupyter/command-id-convention': 'off'
           }
         }
       ]
@@ -152,4 +172,12 @@ const plugin = {
   }
 };
 
-export = plugin;
+plugins.jupyter = plugin;
+
+export = plugin as unknown as ESLint.Plugin & {
+  rules: Record<string, Rule.RuleModule>;
+  configs: {
+    recommended: Linter.Config[];
+    'recommended-legacy': Linter.LegacyConfig;
+  };
+};

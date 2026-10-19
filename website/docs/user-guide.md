@@ -39,7 +39,7 @@ export default [
 
 ### Using Recommended Config
 
-The plugin exports a `recommended` config that comes with sensible defaults. It is an array of config objects, so wrap your config in `defineConfig`, which accepts nested arrays. The recommended rules lint TypeScript, so you also need a TypeScript parser, and several rules (such as `require-signal-cleanup` and `prefer-signal-this-arg`) only report when type information is available. The example below uses [typescript-eslint](https://typescript-eslint.io/) for both:
+The plugin exports a `recommended` config with sensible defaults. Use it inside `defineConfig`. TypeScript files need a TypeScript parser, and some rules, such as `require-signal-cleanup`, only report with type information. The example below sets up both with [typescript-eslint](https://typescript-eslint.io/):
 
 ```bash
 npm install --save-dev typescript-eslint
@@ -54,11 +54,6 @@ import jupyterPlugin from '@jupyter/eslint-plugin';
 
 export default defineConfig([
   tseslint.configs.recommended,
-  {
-    plugins: {
-      jupyter: jupyterPlugin
-    }
-  },
   jupyterPlugin.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
@@ -93,11 +88,6 @@ import jupyterPlugin from '@jupyter/eslint-plugin';
 
 export default defineConfig([
   tseslint.configs.recommended,
-  {
-    plugins: {
-      jupyter: jupyterPlugin
-    }
-  },
   jupyterPlugin.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
