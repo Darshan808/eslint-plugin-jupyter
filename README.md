@@ -22,7 +22,7 @@ Add `@jupyter/eslint-plugin` to the plugins section of your ESLint configuration
 
 ## Acknowledgments
 
-Development of this plugin was supported by the [Jupyter Foundation Community Funding](https://jupyter-governance.github.io/funding-proposals/projects/2025/custom-linting-for-jupyterlab/) program.
+Development of this plugin was supported by the [Jupyter Foundation](https://jupyterfoundation.org/). The [progress reports](https://jupyter-governance.github.io/funding-proposals/projects/2025/custom-linting-for-jupyterlab/) cover the scope of the Foundation-funded work.
 
 ## License
 
