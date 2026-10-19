@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
+import { TSESTree } from '@typescript-eslint/utils';
 import { createRule } from '../utils/create-rule';
 import { getTypeServices } from '../utils/type-services';
 import {
