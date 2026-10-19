@@ -45,6 +45,23 @@ const JUPYTERLAB_LAZY_IMPORTS = {
   ]
 };
 
+// The ignored imports from Notebook's own eslint.config.mjs.
+const NOTEBOOK_LAZY_IMPORTS = {
+  ignoreImports: ['@jupyter-notebook/*']
+};
+
+// The ignored imports from JupyterLite's eslint.config.mjs in
+// jupyterlite/jupyterlite#2095.
+const JUPYTERLITE_LAZY_IMPORTS = {
+  ignoreImports: ['@jupyterlite/*', 'localforage', 'mock-socket']
+};
+
+const PROJECT_LAZY_IMPORTS = {
+  jupyterlab: JUPYTERLAB_LAZY_IMPORTS,
+  notebook: NOTEBOOK_LAZY_IMPORTS,
+  jupyterlite: JUPYTERLITE_LAZY_IMPORTS
+};
+
 function makeProjectConfig(projectName) {
   return {
     basePath: __dirname,
@@ -80,7 +97,7 @@ function makeProjectConfig(projectName) {
         {
           reportInteractionCallbacks: true,
           reportReExports: true,
-          ...(projectName === 'jupyterlab' ? JUPYTERLAB_LAZY_IMPORTS : {})
+          ...PROJECT_LAZY_IMPORTS[projectName]
         }
       ]
     },

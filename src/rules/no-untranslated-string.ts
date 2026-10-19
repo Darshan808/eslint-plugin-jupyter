@@ -3,7 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
+import { TSESTree } from '@typescript-eslint/utils';
 import { isAddCommandCall } from '../utils/commands';
 import { getObjectProperties } from '../utils/plugin-utils';
 import { unwrapExpression } from '../utils/translation';
