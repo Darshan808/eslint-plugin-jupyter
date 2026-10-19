@@ -3,8 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
-import { ParserServices } from '@typescript-eslint/utils';
+import { ParserServices, TSESTree } from '@typescript-eslint/utils';
 import { walkFrom } from './ast';
 import * as ts from 'typescript';
 

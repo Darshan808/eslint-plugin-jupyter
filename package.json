@@ -51,7 +51,6 @@
   "devDependencies": {
     "@lumino/signaling": "^2.1.6",
     "@lumino/widgets": "^2.9.0",
-    "@types/eslint": "^9.6.1",
     "@types/estree": "^1.0.8",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.3.5",
@@ -60,7 +59,6 @@
     "@typescript-eslint/rule-tester": "^8.57.0",
     "eslint": "^9.39.2",
     "jest": "^30.2.0",
-    "pre-commit": "^1.2.2",
     "prettier": "^3.8.1",
     "ts-jest": "^29.4.6",
     "typescript": "^5.9.3"
@@ -71,13 +69,10 @@
     "jsonc-eslint-parser": "^2.4.0"
   },
   "peerDependencies": {
-    "eslint": ">=9.0.0"
+    "eslint": ">=9.0.0",
+    "typescript": "*"
   },
   "engines": {
     "node": ">=16.0.0"
-  },
-  "pre-commit": [
-    "lint",
-    "test"
-  ]
+  }
 }

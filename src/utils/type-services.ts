@@ -3,11 +3,11 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { TSESTree } from '@typescript-eslint/types';
 import {
   ESLintUtils,
   ParserServices,
-  TSESLint
+  TSESLint,
+  TSESTree
 } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 
